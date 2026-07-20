@@ -22,7 +22,6 @@
     --ivory-3:#E8DBB8;
     --text-dark:#2B2317;
     --text-muted:#77694B;
-    --seal-red:#9B3A2C;
     --ok:#4C7A52;
     --danger:#A23B31;
     --font-display:'Cormorant Garamond', serif;
@@ -162,15 +161,17 @@
   #invoicePaper{
     background:var(--ivory); color:var(--text-dark); border-radius:6px; padding:28px 30px 24px;
     box-shadow:0 25px 60px -20px rgba(0,0,0,0.6), 0 2px 0 rgba(198,154,58,0.6);
-    font-family:var(--font-ui); position:relative; overflow:hidden;
+    font-family:var(--font-ui); position:relative; isolation:isolate; overflow:hidden;
   }
   #invoicePaper::before{
-    content:""; position:absolute; inset:8px; border:1px solid rgba(198,154,58,0.5); border-radius:3px; pointer-events:none;
+    content:""; position:absolute; z-index:2; inset:8px; border:1px solid rgba(198,154,58,0.5); border-radius:3px; pointer-events:none;
   }
+  #invoicePaper::after{content:""; position:absolute; z-index:0; inset:0; background:url('/assets/vishesh-jewellers-logo.png') center / 265px no-repeat; opacity:0.055; pointer-events:none;}
+  #invoicePaper > *{position:relative; z-index:1;}
   .paper-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding-bottom:12px; border-bottom:2px solid var(--gold);}
   .paper-brand{display:flex; align-items:center; gap:12px;}
-  .paper-brand h2{font-family:var(--font-display); font-size:26px; margin:0; color:#2B2317; letter-spacing:0.03em; font-weight:700;}
-  .paper-brand p{margin:2px 0 0; font-size:10.5px; color:#8A7647; letter-spacing:0.12em; text-transform:uppercase;}
+  .paper-brand h2{font-family:var(--font-display); font-size:30px; line-height:0.95; margin:0; color:#211A10; letter-spacing:0.065em; font-weight:700; font-variant:small-caps;}
+  .paper-brand p{margin:6px 0 0; color:#80652E; font-family:var(--font-ui); font-size:9px; font-weight:600; letter-spacing:0.09em; line-height:1.25; text-align:center; text-transform:none;}
   .paper-contact{text-align:right; font-size:10.5px; color:#6B5D42; line-height:1.6;}
   .gst-badge{font-family:var(--font-mono); font-size:10px; background:#EFE3BC; color:#5B4A22; padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:3px;}
 
@@ -206,11 +207,6 @@
   .sig-block{text-align:center; position:relative; min-width:150px;}
   .sig-block .for-line{font-size:11px; color:#5B4A22; margin-bottom:26px;}
   .sig-block .sig-caption{font-size:10px; color:#5B4A22; border-top:1px solid #8A7647; padding-top:4px; margin-top:2px;}
-
-  .seal{
-    position:absolute; width:104px; height:104px; right:26px; bottom:70px; transform:rotate(-9deg);
-    opacity:0.9; pointer-events:none;
-  }
 
   /* ---------- STOCKS / ITEMS PAGES ---------- */
   .stat-cards{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px;}
@@ -265,7 +261,6 @@
     body *{visibility:hidden;}
     #invoicePaper, #invoicePaper *{visibility:visible;}
     #invoicePaper{position:absolute; top:0; left:0; width:100%; box-shadow:none;}
-    .seal{opacity:0.85;}
   }
 </style>
 </head>
@@ -390,7 +385,7 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
         <div id="invoicePaper">
           <div class="paper-head">
             <div class="paper-brand">
-              <svg width="52" height="52" viewBox="0 0 100 100">
+              <svg width="72" height="72" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="46" fill="none" stroke="#C69A3A" stroke-width="4"/>
                 <circle cx="50" cy="50" r="38" fill="none" stroke="#C69A3A" stroke-width="1"/>
                 <text x="50" y="58" text-anchor="middle" font-family="Cormorant Garamond, serif" font-weight="700" font-size="34" fill="#C69A3A">VJ</text>
@@ -439,20 +434,6 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
               <div class="sig-caption">Authorised Signatory</div>
             </div>
           </div>
-
-          <svg class="seal" viewBox="0 0 140 140" id="p-seal" style="display:none;">
-            <circle cx="70" cy="70" r="62" fill="none" stroke="#9B3A2C" stroke-width="2.4"/>
-            <circle cx="70" cy="70" r="52" fill="none" stroke="#9B3A2C" stroke-width="1.2"/>
-            <path id="sealArcTop" d="M 20 70 A 50 50 0 0 1 120 70" fill="none"/>
-            <path id="sealArcBottom" d="M 26 82 A 44 44 0 0 0 114 82" fill="none"/>
-            <text font-family="Jost, sans-serif" font-size="9.2" fill="#9B3A2C" letter-spacing="2" font-weight="600">
-              <textPath href="#sealArcTop" startOffset="50%" text-anchor="middle">VISHESH JEWELLERS</textPath>
-            </text>
-            <text font-family="Jost, sans-serif" font-size="8" fill="#9B3A2C" letter-spacing="2">
-              <textPath href="#sealArcBottom" startOffset="50%" text-anchor="middle">• GST INVOICE •</textPath>
-            </text>
-            <text x="70" y="76" text-anchor="middle" font-family="Cormorant Garamond, serif" font-weight="700" font-size="26" fill="#9B3A2C">VJ</text>
-          </svg>
         </div>
       </div>
     </div>
@@ -836,8 +817,6 @@ function renderPreview(){
   `;
   document.getElementById('p-words').textContent = t.grand > 0 ? `Rs. ${numToWords(t.grand)} Only` : '';
   document.getElementById('p-terms').textContent = document.getElementById('inv-terms').value;
-  document.getElementById('p-seal').style.display = validRows.length ? 'block' : 'none';
-
   renderMiniTotals();
   if(typeof setSaleStatus === 'function') setSaleStatus();
 }

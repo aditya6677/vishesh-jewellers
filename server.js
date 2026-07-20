@@ -209,8 +209,14 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .f-purity:disabled { opacity: 1; color: var(--gold-pale); cursor: not-allowed; background: rgba(198,154,58,.08); }
 .exchange-panel { margin: 16px 0; padding: 14px; border: 1px solid rgba(198,154,58,.28); border-radius: 8px; background: rgba(198,154,58,.06); }
 .exchange-panel-title { font-family: var(--font-display); color: var(--gold-pale); font-size: 17px; font-weight: 600; margin: 0 0 10px; }
-.old-gold-panel { margin-top: 20px; }
-.old-gold-summary { color: var(--gold-light); font-family: var(--font-mono); font-size: 13px; }
+.exchange-rows { display: grid; gap: 10px; }
+.exchange-row { display: grid; grid-template-columns: minmax(105px, .8fr) minmax(115px, 1fr) minmax(130px, 1fr) minmax(105px, .9fr) auto; gap: 9px; align-items: end; padding: 11px; border: 1px solid rgba(198,154,58,.18); border-radius: 8px; background: rgba(0,0,0,.12); }
+.exchange-row .field { margin: 0; }
+.exchange-row .field label { font-size: 9px; }
+.exchange-row-value { min-height: 39px; display: flex; align-items: center; color: #9CC7A2; font-family: var(--font-mono); font-size: 13px; }
+.exchange-remove { min-width: 38px; min-height: 38px; padding: 5px 9px; color: #e6aaa0; }
+.exchange-add { margin-top: 10px; }
+.exchange-total { margin-top: 6px; }
 .dashboard-metal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 20px; }
 .dashboard-metal-grid .record-info-grid { grid-template-columns: repeat(2, 1fr); margin-bottom: 0; }
 .low-stock-panel { margin-top: 20px; border-color: rgba(218, 135, 76, .56); background: rgba(154, 77, 35, .12); }
@@ -219,13 +225,29 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .low-stock-item { padding: 12px 14px; border: 1px solid rgba(235, 165, 100, .32); border-radius: 8px; background: rgba(0, 0, 0, .15); }
 .low-stock-item b { display: block; margin-bottom: 3px; color: #f0b178; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 .low-stock-item span { color: var(--ivory-1); font-family: var(--font-mono); font-size: 14px; }
+.snapshot-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.snapshot-section { padding: 14px; border: 1px solid rgba(198,154,58,.2); border-radius: 9px; background: rgba(0,0,0,.12); }
+.snapshot-section h4 { margin: 0 0 11px; color: var(--gold-light); font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.snapshot-section .record-info-grid { grid-template-columns: 1fr; gap: 10px; margin: 0; }
 .brand-logo { width: 46px; height: 46px; object-fit: contain; }
-.invoice-logo { width: 52px; height: 52px; object-fit: contain; }
+.invoice-logo { width: 72px; height: 72px; object-fit: contain; }
 .live-rates-refresh { min-width: 28px; min-height: 28px; padding: 2px 7px; font-size: 17px; line-height: 1; }
 body { padding-bottom: 42px; }
 .app-footer { position: fixed; z-index: 30; inset: auto 0 0; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 18px; border-top: 1px solid rgba(198,154,58,.22); background: rgba(23,19,13,.96); backdrop-filter: blur(10px); color: var(--ivory-3); font-size: 11px; letter-spacing: .03em; }
 .app-footer strong { color: var(--gold-light); font-weight: 600; }
 .app-footer .footer-separator { color: rgba(198,154,58,.5); }
+.pin-lock { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 22px; overflow: auto; background: radial-gradient(circle at 50% 20%, rgba(198,154,58,.18), transparent 34%), linear-gradient(135deg, #17130d, #0d0b08); }
+.pin-lock-card { width: min(100%, 400px); padding: 34px; border: 1px solid rgba(222,182,97,.5); border-radius: 16px; box-shadow: 0 28px 70px rgba(0,0,0,.5); background: linear-gradient(160deg, rgba(44,35,22,.98), rgba(23,19,13,.98)); text-align: center; }
+.pin-lock-logo { width: 88px; height: 88px; object-fit: contain; margin: 0 auto 14px; filter: drop-shadow(0 7px 12px rgba(0,0,0,.32)); }
+.pin-lock .eyebrow { margin-bottom: 7px; }
+.pin-lock h1 { margin: 0; color: var(--gold-pale); font-family: var(--font-display); font-size: 31px; font-weight: 600; }
+.pin-lock p { margin: 9px 0 24px; color: var(--ivory-3); font-size: 13px; }
+.pin-lock-form { display: grid; gap: 12px; }
+.pin-lock-input { width: 100%; box-sizing: border-box; padding: 14px; border: 1px solid rgba(222,182,97,.5); border-radius: 9px; outline: none; background: rgba(0,0,0,.25); color: var(--gold-pale); font-family: var(--font-mono); font-size: 26px; letter-spacing: .42em; text-align: center; }
+.pin-lock-input:focus { border-color: var(--gold-light); box-shadow: 0 0 0 3px rgba(198,154,58,.12); }
+.pin-lock-error { min-height: 18px; color: #ef9b8d; font-size: 12px; }
+body.pin-locked { overflow: hidden; }
+body.pin-locked > *:not(.pin-lock) { visibility: hidden; }
 @media (max-width: 760px) {
   header.topnav {
     padding: 10px 14px;
@@ -262,10 +284,16 @@ body { padding-bottom: 42px; }
   .dashboard-metal-grid { grid-template-columns: 1fr; gap: 14px; }
   .dashboard-metal-grid .record-info-grid { grid-template-columns: 1fr; }
   .low-stock-list { grid-template-columns: 1fr; }
+  .snapshot-sections { grid-template-columns: 1fr; }
   .record-actions .field { width: 100%; }
   .exchange-panel { padding: 12px; }
+  .exchange-row { grid-template-columns: 1fr 1fr; }
+  .exchange-row-value { min-height: 34px; }
+  .exchange-remove { align-self: end; }
   body { padding-bottom: 58px; }
   .app-footer { min-height: 58px; flex-wrap: wrap; gap: 3px 8px; padding: 7px 12px; text-align: center; font-size: 10px; }
+  .pin-lock { padding: 14px; }
+  .pin-lock-card { padding: 28px 20px; }
 }
 @media (max-width: 380px) {
   .brand-text h1 { font-size: 17px; }
@@ -325,13 +353,27 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="panel">
       <h3><span class="dot"></span>Business Snapshot</h3>
-      <div class="record-info-grid" id="dashboardSnapshot">
-        <div class="record-info"><b>Total Invoices</b><span id="dash-invoices">0</span></div>
-        <div class="record-info"><b>Total Collected</b><span class="paid-amount" id="dash-collected">₹0.00</span></div>
-        <div class="record-info"><b>Outstanding Due</b><span class="due-amount" id="dash-due">₹0.00</span></div>
-        <div class="record-info"><b>Today's Invoices</b><span id="dash-today-invoices">0</span></div>
-        <div class="record-info"><b>Today's Collection</b><span class="paid-amount" id="dash-today-collected">₹0.00</span></div>
-        <div class="record-info"><b>Today's Due</b><span class="due-amount" id="dash-today-due">₹0.00</span></div>
+      <div class="snapshot-sections" id="dashboardSnapshot">
+        <div class="snapshot-section"><h4>Overall Sales</h4><div class="record-info-grid">
+          <div class="record-info"><b>Total Invoices</b><span id="dash-invoices">0</span></div>
+          <div class="record-info"><b>Total Collected</b><span class="paid-amount" id="dash-collected">₹0.00</span></div>
+          <div class="record-info"><b>Outstanding Due</b><span class="due-amount" id="dash-due">₹0.00</span></div>
+        </div></div>
+        <div class="snapshot-section"><h4>Cash Flow</h4><div class="record-info-grid">
+          <div class="record-info"><b>Old Metal Purchases</b><span class="due-amount" id="dash-purchases">₹0.00</span></div>
+          <div class="record-info"><b>Net after Purchases</b><span class="paid-amount" id="dash-net-collected">₹0.00</span></div>
+          <div class="record-info"><b>Amount Payments</b><span class="due-amount" id="dash-amount-payments">₹0.00</span></div>
+          <div class="record-info"><b>Final Net Collection</b><span class="paid-amount" id="dash-final-net-collected">₹0.00</span></div>
+        </div></div>
+        <div class="snapshot-section"><h4>Today</h4><div class="record-info-grid">
+          <div class="record-info"><b>Invoices</b><span id="dash-today-invoices">0</span></div>
+          <div class="record-info"><b>Collection</b><span class="paid-amount" id="dash-today-collected">₹0.00</span></div>
+          <div class="record-info"><b>Old Metal Purchases</b><span class="due-amount" id="dash-today-purchases">₹0.00</span></div>
+          <div class="record-info"><b>Net after Purchases</b><span class="paid-amount" id="dash-today-net-collected">₹0.00</span></div>
+          <div class="record-info"><b>Amount Payments</b><span class="due-amount" id="dash-today-amount-payments">₹0.00</span></div>
+          <div class="record-info"><b>Final Net</b><span class="paid-amount" id="dash-today-final-net-collected">₹0.00</span></div>
+          <div class="record-info"><b>Due</b><span class="due-amount" id="dash-today-due">₹0.00</span></div>
+        </div></div>
       </div>
     </div>
     <div class="dashboard-metal-grid">
@@ -343,7 +385,7 @@ if ('serviceWorker' in navigator) {
         </div>
       </div>
       <div class="panel">
-        <h3><span class="dot"></span>Old Metal Received</h3>
+        <h3><span class="dot"></span>Old Metal Balance</h3>
         <div class="record-info-grid">
           <div class="record-info"><b>Old Gold</b><span class="paid-amount" id="dash-old-gold">0.000 g</span></div>
           <div class="record-info"><b>Old Silver</b><span class="paid-amount" id="dash-old-silver">0.000 g</span></div>
@@ -353,6 +395,74 @@ if ('serviceWorker' in navigator) {
     <div class="panel low-stock-panel" id="lowStockPanel" style="display:none;">
       <h3><span class="dot"></span>Low Stock Warning</h3>
       <div class="low-stock-list" id="lowStockList"></div>
+    </div>
+  </section>\n`;
+  const paymentsPage = `
+  <section class="page" id="page-payments">
+    <div class="page-head">
+      <p class="eyebrow">Outgoing payments</p>
+      <h2>Payment</h2>
+      <p class="sub">Record cash payments or metal-to-metal payments from your old Gold and Silver balance.</p>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card"><div class="lbl">Cash Payments</div><div class="val" id="paymentCashTotal">₹0.00</div></div>
+      <div class="stat-card"><div class="lbl">Gold Used</div><div class="val" id="paymentGoldWeight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Silver Used</div><div class="val" id="paymentSilverWeight">0.000 g</div></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Add Payment</h3>
+      <form id="paymentForm">
+        <div class="row row-2">
+          <div class="field"><label>Payment type</label><select id="paymentType"><option value="amount">Amount</option><option value="metal">Metal to Metal</option></select></div>
+          <div class="field" id="paymentAmountField"><label>Amount paid (₹)</label><input type="number" id="paymentAmountInput" min="0.01" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div id="paymentMetalFields" style="display:none;">
+          <div class="row row-3">
+            <div class="field"><label>Metal</label><select id="paymentMetal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
+            <div class="field"><label>Gross weight (g)</label><input type="number" id="paymentWeight" min="0.001" step="0.001" placeholder="0.000"></div>
+            <div class="field"><label>Purity (%)</label><input type="number" id="paymentPurity" min="0" max="100" step="0.01" placeholder="e.g. 40"></div>
+          </div>
+          <div class="field" style="margin-bottom:0;"><label>Fine metal weight (g)</label><div class="payment-balance" id="paymentFineWeight">0.000 g</div></div>
+        </div>
+        <div class="btn-row" style="margin:18px 0 0;"><button class="btn btn-gold" type="submit">Save Payment</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Payment History</h3><span style="color:var(--ivory-3); font-size:12px;" id="paymentCount"></span></div>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Metal</th><th>Gross Wt</th><th>Purity</th><th>Fine Wt</th><th>Amount</th></tr></thead><tbody id="paymentTbody"></tbody></table></div>
+      <div class="empty-state" id="paymentsEmpty" style="display:none;"><div class="glyph">✦</div>No payments recorded yet.</div>
+    </div>
+  </section>\n`;
+  const purchasesPage = `
+  <section class="page" id="page-purchases">
+    <div class="page-head">
+      <p class="eyebrow">Old metal register</p>
+      <h2>Purchase</h2>
+      <p class="sub">Record old gold and silver purchases separately from fresh stock.</p>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card"><div class="lbl">Gold Purchased</div><div class="val" id="purchaseGoldWeight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Silver Purchased</div><div class="val" id="purchaseSilverWeight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Total Purchase Value</div><div class="val" id="purchaseTotalValue">₹0.00</div></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Add Old Metal Purchase</h3>
+      <form id="purchaseForm">
+        <div class="row row-3">
+          <div class="field"><label>Metal</label><select id="purchaseMetal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
+          <div class="field"><label>Weight (g)</label><input type="number" id="purchaseWeight" min="0.001" step="0.001" required placeholder="0.000"></div>
+          <div class="field"><label>Rate per gram (₹)</label><input type="number" id="purchaseRate" min="0.01" step="0.01" required placeholder="0.00"></div>
+        </div>
+        <div class="row row-2" style="align-items:end;">
+          <div class="field" style="margin-bottom:0;"><label>Calculated amount (₹)</label><div class="payment-balance" id="purchaseAmount">₹0.00</div></div>
+          <div class="btn-row" style="margin:0;"><button class="btn btn-gold" type="submit">Save Purchase</button></div>
+        </div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Purchase History</h3><span style="color:var(--ivory-3); font-size:12px;" id="purchaseCount"></span></div>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Metal</th><th>Weight</th><th>Rate / g</th><th>Amount</th></tr></thead><tbody id="purchaseTbody"></tbody></table></div>
+      <div class="empty-state" id="purchasesEmpty" style="display:none;"><div class="glyph">✦</div>No old metal purchases recorded yet.</div>
     </div>
   </section>\n`;
   const recordsPage = `
@@ -401,6 +511,31 @@ if ('serviceWorker' in navigator) {
   appFooter.className = 'app-footer';
   appFooter.innerHTML = '<span>© ' + new Date().getFullYear() + ' <strong>Vishesh Jewellers</strong></span><span class="footer-separator">•</span><span>Invoice &amp; Inventory Management</span><span class="footer-separator">•</span><span>Records saved locally</span>';
   document.body.appendChild(appFooter);
+  const PIN_CODE = '5512';
+  const pinSessionKey = 'vishesh-jewellers-pin-unlocked';
+  const showPinLock = () => {
+    if (sessionStorage.getItem(pinSessionKey) === 'true') return;
+    const lock = document.createElement('section');
+    lock.className = 'pin-lock';
+    lock.innerHTML = '<div class="pin-lock-card"><img class="pin-lock-logo" src="/assets/vishesh-jewellers-logo.png" alt="Vishesh Jewellers"><div class="eyebrow">Private workspace</div><h1>Welcome back</h1><p>Enter your 4-digit PIN to open Vishesh Jewellers.</p><form class="pin-lock-form" id="pinLockForm"><input class="pin-lock-input" id="pinLockInput" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]*" maxlength="4" aria-label="Four digit PIN" autofocus><div class="pin-lock-error" id="pinLockError" role="alert"></div><button class="btn btn-gold" type="submit">Unlock App</button></form></div>';
+    document.body.classList.add('pin-locked');
+    document.body.appendChild(lock);
+    const input = document.getElementById('pinLockInput');
+    requestAnimationFrame(() => input.focus());
+    document.getElementById('pinLockForm').addEventListener('submit', event => {
+      event.preventDefault();
+      if (input.value === PIN_CODE) {
+        sessionStorage.setItem(pinSessionKey, 'true');
+        document.body.classList.remove('pin-locked');
+        lock.remove();
+        return;
+      }
+      document.getElementById('pinLockError').textContent = 'Incorrect PIN. Please try again.';
+      input.value = '';
+      input.focus();
+    });
+  };
+  showPinLock();
   const stockItemInput = document.getElementById('st-item');
   stockItemInput.placeholder = 'e.g. Gold Ring or Silver Chain';
   stockItemInput.closest('.field').querySelector('label').textContent = 'Item (Gold / Silver)';
@@ -416,16 +551,43 @@ if ('serviceWorker' in navigator) {
   originalExchangeField.style.display = 'none';
   const exchangePanel = document.createElement('div');
   exchangePanel.className = 'exchange-panel';
-  exchangePanel.innerHTML = '<div class="exchange-panel-title">Gold / Silver Exchange</div><div class="row row-3"><div class="field"><label>Metal</label><select id="exchange-metal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div><div class="field"><label>Exchange weight (g)</label><input type="number" id="exchange-weight" value="0" min="0" step="0.001" placeholder="0.000"></div><div class="field"><label>Rate per gram (₹)</label><input type="number" id="exchange-rate" value="0" min="0" step="0.01" placeholder="0.00"></div></div><div class="field" style="margin-bottom:0;"><label>Calculated exchange value (₹)</label><div class="payment-balance" id="exchange-value">₹0.00</div></div>';
+  exchangePanel.innerHTML = '<div class="toolbar"><div class="exchange-panel-title" style="margin:0;">Gold / Silver Exchange</div><button class="btn btn-ghost btn-sm" id="addExchangeRow" type="button">+ Add item</button></div><p class="sub" style="margin:0 0 12px;">Add each exchanged gold or silver item separately.</p><div class="exchange-rows" id="exchangeRows"></div><div class="field exchange-total" style="margin-bottom:0;"><label>Total exchange credit (₹)</label><div class="payment-balance" id="exchange-value">₹0.00</div></div>';
   originalExchangeField.parentElement.parentElement.insertBefore(exchangePanel, originalExchangeField.parentElement);
+  const exchangeRows = document.getElementById('exchangeRows');
+  const addExchangeRow = (entry = {}) => {
+    const row = document.createElement('div');
+    row.className = 'exchange-row';
+    row.innerHTML = '<div class="field"><label>Metal</label><select class="exchange-row-metal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div><div class="field"><label>Weight (g)</label><input class="exchange-row-weight" type="number" value="' + (Number(entry.weight) || 0) + '" min="0" step="0.001" placeholder="0.000"></div><div class="field"><label>Rate / gram (₹)</label><input class="exchange-row-rate" type="number" value="' + (Number(entry.rate) || 0) + '" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label>Value</label><div class="exchange-row-value">₹0.00</div></div><button class="btn btn-ghost btn-sm exchange-remove" type="button" title="Remove item" aria-label="Remove exchange item">×</button>';
+    row.querySelector('.exchange-row-metal').value = entry.metal === 'silver' ? 'silver' : 'gold';
+    exchangeRows.appendChild(row);
+    return row;
+  };
+  const getExchangeEntries = () => Array.from(exchangeRows.querySelectorAll('.exchange-row')).map(row => {
+    const metal = row.querySelector('.exchange-row-metal').value;
+    const weight = Math.max(Number(row.querySelector('.exchange-row-weight').value) || 0, 0);
+    const rate = Math.max(Number(row.querySelector('.exchange-row-rate').value) || 0, 0);
+    return { metal, weight, rate, value: weight * rate };
+  });
   const updateExchangeValue = () => {
-    const value = Math.max(Number(document.getElementById('exchange-weight').value) || 0, 0) * Math.max(Number(document.getElementById('exchange-rate').value) || 0, 0);
-    document.getElementById('exchange-value').textContent = '₹' + value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const entries = getExchangeEntries();
+    const value = entries.reduce((total, entry) => total + entry.value, 0);
+    const formatExchangeMoney = amount => '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    exchangeRows.querySelectorAll('.exchange-row').forEach((row, index) => { row.querySelector('.exchange-row-value').textContent = formatExchangeMoney(entries[index].value); });
+    document.getElementById('exchange-value').textContent = formatExchangeMoney(value);
     hiddenExchangeInput.value = value.toFixed(2);
     hiddenExchangeInput.dispatchEvent(new Event('input', { bubbles: true }));
   };
-  ['exchange-metal', 'exchange-weight', 'exchange-rate'].forEach(id => document.getElementById(id).addEventListener('input', updateExchangeValue));
-  document.getElementById('exchange-metal').addEventListener('change', updateExchangeValue);
+  document.getElementById('addExchangeRow').addEventListener('click', () => { addExchangeRow(); updateExchangeValue(); });
+  exchangeRows.addEventListener('input', updateExchangeValue);
+  exchangeRows.addEventListener('change', updateExchangeValue);
+  exchangeRows.addEventListener('click', event => {
+    const button = event.target.closest('.exchange-remove');
+    if (!button) return;
+    button.closest('.exchange-row').remove();
+    if (!exchangeRows.children.length) addExchangeRow();
+    updateExchangeValue();
+  });
+  addExchangeRow();
   updateExchangeValue();
   const paymentRow = document.createElement('div');
   paymentRow.className = 'row row-2';
@@ -462,9 +624,8 @@ if ('serviceWorker' in navigator) {
       await new Promise(resolve => setTimeout(resolve, 25));
     }
     document.getElementById('amount-paid').value = '0';
-    document.getElementById('exchange-metal').value = 'gold';
-    document.getElementById('exchange-weight').value = '0';
-    document.getElementById('exchange-rate').value = '0';
+    exchangeRows.innerHTML = '';
+    addExchangeRow();
     document.getElementById('gst-rate').value = '1.5';
     updateExchangeValue();
     updatePaymentSummary();
@@ -486,24 +647,40 @@ if ('serviceWorker' in navigator) {
     const result = await window.storage.get('old-gold-records');
     return result ? JSON.parse(result.value) : [];
   };
+  const getPurchases = async () => {
+    const result = await window.storage.get('purchase-records');
+    return result ? JSON.parse(result.value) : [];
+  };
+  const renderPurchases = async () => {
+    const purchases = await getPurchases();
+    const metalWeight = metal => purchases.filter(purchase => purchase.metal === metal).reduce((total, purchase) => total + (Number(purchase.weight) || 0), 0);
+    document.getElementById('purchaseGoldWeight').textContent = metalWeight('gold').toFixed(3) + ' g';
+    document.getElementById('purchaseSilverWeight').textContent = metalWeight('silver').toFixed(3) + ' g';
+    document.getElementById('purchaseTotalValue').textContent = money(purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0));
+    document.getElementById('purchaseCount').textContent = purchases.length + (purchases.length === 1 ? ' purchase' : ' purchases');
+    document.getElementById('purchaseTbody').innerHTML = purchases.map(purchase => '<tr><td>' + safe(new Date(purchase.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(String(purchase.metal || 'gold').replace(/^./, char => char.toUpperCase())) + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + (Number(purchase.weight) || 0).toFixed(3) + ' g</td><td>' + money(purchase.rate) + '</td><td class="paid-amount">' + money(purchase.amount) + '</td></tr>').join('');
+    document.getElementById('purchasesEmpty').style.display = purchases.length ? 'none' : 'block';
+  };
+  const getPayments = async () => {
+    const result = await window.storage.get('payment-records');
+    return result ? JSON.parse(result.value) : [];
+  };
+  const renderPayments = async () => {
+    const payments = await getPayments();
+    const metalWeight = metal => payments.filter(payment => payment.type === 'metal' && payment.metal === metal).reduce((total, payment) => total + (Number(payment.weight) || 0), 0);
+    document.getElementById('paymentCashTotal').textContent = money(payments.filter(payment => payment.type === 'amount').reduce((total, payment) => total + (Number(payment.amount) || 0), 0));
+    document.getElementById('paymentGoldWeight').textContent = metalWeight('gold').toFixed(3) + ' g';
+    document.getElementById('paymentSilverWeight').textContent = metalWeight('silver').toFixed(3) + ' g';
+    document.getElementById('paymentCount').textContent = payments.length + (payments.length === 1 ? ' payment' : ' payments');
+    document.getElementById('paymentTbody').innerHTML = payments.map(payment => '<tr><td>' + safe(new Date(payment.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(payment.type === 'metal' ? 'Metal to Metal' : 'Amount') + '</td><td>' + safe(payment.metal ? payment.metal.replace(/^./, char => char.toUpperCase()) : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.weight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.purity) || 0).toFixed(2) + '%' : '—') + '</td><td class="paid-amount">' + (payment.type === 'metal' ? (Number(payment.fineWeight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'amount' ? money(payment.amount) : '—') + '</td></tr>').join('');
+    document.getElementById('paymentsEmpty').style.display = payments.length ? 'none' : 'block';
+  };
   const addOldGold = async entry => {
-    if (!entry || !(Number(entry.weight) > 0)) return;
+    if (!entry || !Number(entry.weight)) return;
     const entries = await getOldGold();
     if (entries.some(saved => saved.sourceId === entry.sourceId)) return;
     entries.unshift(entry);
     await originalStorageSet('old-gold-records', JSON.stringify(entries));
-  };
-  const oldGoldPanel = document.createElement('div');
-  oldGoldPanel.className = 'panel old-gold-panel';
-  oldGoldPanel.innerHTML = '<div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Old Gold &amp; Silver Received</h3><span class="old-gold-summary" id="oldGoldSummary">Gold 0.000 g · Silver 0.000 g</span></div><p class="sub" style="margin:0 0 14px;">Gold and silver received through invoice exchange and metal settlements.</p><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Metal</th><th>Source</th><th>Invoice</th><th>Customer</th><th>Weight</th><th>Rate/g</th><th>Value</th></tr></thead><tbody id="oldGoldTbody"></tbody></table></div><div class="empty-state" id="oldGoldEmpty" style="display:none;"><div class="glyph">✦</div>No old gold or silver received yet.</div></div>';
-  document.getElementById('page-stocks').appendChild(oldGoldPanel);
-  const renderOldGold = async () => {
-    const entries = await getOldGold();
-    const goldWeight = entries.filter(entry => String(entry.metal || 'gold').toLowerCase() === 'gold').reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
-    const silverWeight = entries.filter(entry => String(entry.metal || 'gold').toLowerCase() === 'silver').reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
-    document.getElementById('oldGoldSummary').textContent = 'Gold ' + goldWeight.toFixed(3) + ' g · Silver ' + silverWeight.toFixed(3) + ' g · ' + entries.length + ' entries';
-    document.getElementById('oldGoldTbody').innerHTML = entries.map(entry => '<tr><td>' + safe(entry.date || '—') + '</td><td>' + safe(String(entry.metal || 'Gold').replace(/^./, char => char.toUpperCase())) + '</td><td>' + safe(entry.source || '—') + '</td><td style="font-family:var(--font-mono);">' + safe(entry.invoice || '—') + '</td><td>' + safe(entry.customer || 'Walk-in customer') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + (Number(entry.weight) || 0).toFixed(3) + ' g</td><td>' + money(entry.rate) + '</td><td class="paid-amount">' + money(entry.value) + '</td></tr>').join('');
-    document.getElementById('oldGoldEmpty').style.display = entries.length ? 'none' : 'block';
   };
   const dateForRecord = record => {
     if (record.savedAt) {
@@ -527,12 +704,28 @@ if ('serviceWorker' in navigator) {
     document.getElementById('dash-week').textContent = money(salesSince(startWeek));
     document.getElementById('dash-month').textContent = money(salesSince(startMonth));
     document.getElementById('dash-year').textContent = money(salesSince(startYear));
+    const purchases = await getPurchases();
+    const payments = await getPayments();
+    const collected = records.reduce((total, record) => total + (Number(record.paid) || 0), 0);
+    const purchaseValue = purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
+    const amountPayments = payments.filter(payment => payment.type === 'amount').reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
     document.getElementById('dash-invoices').textContent = records.length;
-    document.getElementById('dash-collected').textContent = money(records.reduce((total, record) => total + (Number(record.paid) || 0), 0));
+    document.getElementById('dash-collected').textContent = money(collected);
+    document.getElementById('dash-purchases').textContent = money(purchaseValue);
+    document.getElementById('dash-net-collected').textContent = money(collected - purchaseValue);
+    document.getElementById('dash-amount-payments').textContent = money(amountPayments);
+    document.getElementById('dash-final-net-collected').textContent = money(collected - purchaseValue - amountPayments);
     document.getElementById('dash-due').textContent = money(records.reduce((total, record) => total + Math.max(Number(record.due) || 0, 0), 0));
     const todayRecords = records.filter(record => dateForRecord(record) >= startToday);
     document.getElementById('dash-today-invoices').textContent = todayRecords.length;
-    document.getElementById('dash-today-collected').textContent = money(todayRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0));
+    const todayPurchaseValue = purchases.filter(purchase => new Date(purchase.savedAt) >= startToday).reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
+    const todayAmountPayments = payments.filter(payment => payment.type === 'amount' && new Date(payment.savedAt) >= startToday).reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
+    const todayCollected = todayRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0);
+    document.getElementById('dash-today-collected').textContent = money(todayCollected);
+    document.getElementById('dash-today-purchases').textContent = money(todayPurchaseValue);
+    document.getElementById('dash-today-net-collected').textContent = money(todayCollected - todayPurchaseValue);
+    document.getElementById('dash-today-amount-payments').textContent = money(todayAmountPayments);
+    document.getElementById('dash-today-final-net-collected').textContent = money(todayCollected - todayPurchaseValue - todayAmountPayments);
     document.getElementById('dash-today-due').textContent = money(todayRecords.reduce((total, record) => total + Math.max(Number(record.due) || 0), 0));
     const stockResult = await window.storage.get('stock-list');
     const stockList = stockResult ? JSON.parse(stockResult.value) : [];
@@ -584,6 +777,8 @@ if ('serviceWorker' in navigator) {
     document.getElementById('regeneratedInvoiceTitle').textContent = 'Invoice ' + record.number;
     document.getElementById('regeneratedInvoiceContent').innerHTML = record.invoiceMarkup || fallback;
     const paper = document.querySelector('#regeneratedInvoiceContent #invoicePaper');
+    // Older saved invoice markup may still contain the retired circular seal.
+    paper.querySelectorAll('#p-seal, .seal').forEach(element => element.remove());
     const totals = paper.querySelector('#p-totals');
     if (totals) {
       totals.querySelectorAll('.payment-summary-line, .regenerated-payment-line').forEach(line => line.remove());
@@ -663,6 +858,24 @@ if ('serviceWorker' in navigator) {
     document.getElementById('page-dashboard').classList.add('active');
     await renderDashboard();
   };
+  const openPurchases = async () => {
+    document.querySelectorAll('.tab-btn').forEach(button => button.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById('purchasesTab').classList.add('active');
+    document.getElementById('page-purchases').classList.add('active');
+    await renderPurchases();
+  };
+  const openPayments = async () => {
+    document.querySelectorAll('.tab-btn').forEach(button => button.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById('paymentsTab').classList.add('active');
+    document.getElementById('page-payments').classList.add('active');
+    await renderPayments();
+  };
+  const updatePurchaseAmount = () => {
+    const amount = Math.max(Number(document.getElementById('purchaseWeight').value) || 0, 0) * Math.max(Number(document.getElementById('purchaseRate').value) || 0, 0);
+    document.getElementById('purchaseAmount').textContent = money(amount);
+  };
   document.getElementById('refreshLiveRates').addEventListener('click', () => renderDashboard(true));
   const invoiceTab = document.querySelector('.tab-btn[data-page="home"]');
   invoiceTab.textContent = 'Invoice';
@@ -672,9 +885,20 @@ if ('serviceWorker' in navigator) {
   dashboardTab.textContent = 'Dashboard';
   invoiceTab.parentElement.insertBefore(dashboardTab, invoiceTab);
   dashboardTab.addEventListener('click', openDashboard);
-  const stocksTab = document.querySelector('.tab-btn[data-page="stocks"]');
-  stocksTab.addEventListener('click', () => setTimeout(renderOldGold, 0));
   openDashboard();
+  const stocksTab = document.querySelector('.tab-btn[data-page="stocks"]');
+  const paymentsTab = document.createElement('button');
+  paymentsTab.className = 'tab-btn';
+  paymentsTab.id = 'paymentsTab';
+  paymentsTab.textContent = 'Payment';
+  invoiceTab.parentElement.insertBefore(paymentsTab, stocksTab);
+  paymentsTab.addEventListener('click', openPayments);
+  const purchasesTab = document.createElement('button');
+  purchasesTab.className = 'tab-btn';
+  purchasesTab.id = 'purchasesTab';
+  purchasesTab.textContent = 'Purchase';
+  invoiceTab.parentElement.insertBefore(purchasesTab, stocksTab);
+  purchasesTab.addEventListener('click', openPurchases);
   const itemsTab = document.querySelector('.tab-btn[data-page="items"]');
   if (itemsTab) itemsTab.remove();
   const recordsTab = document.createElement('button');
@@ -684,6 +908,67 @@ if ('serviceWorker' in navigator) {
   document.querySelector('nav.tabs').appendChild(recordsTab);
   recordsTab.addEventListener('click', openRecords);
   document.getElementById('recordSearch').addEventListener('input', renderRecords);
+  const updatePaymentType = () => {
+    const isMetal = document.getElementById('paymentType').value === 'metal';
+    document.getElementById('paymentAmountField').style.display = isMetal ? 'none' : 'block';
+    document.getElementById('paymentMetalFields').style.display = isMetal ? 'block' : 'none';
+  };
+  const updateFineWeight = () => {
+    const weight = Math.max(Number(document.getElementById('paymentWeight').value) || 0, 0);
+    const purity = Math.min(Math.max(Number(document.getElementById('paymentPurity').value) || 0, 0), 100);
+    document.getElementById('paymentFineWeight').textContent = (weight * purity / 100).toFixed(3) + ' g';
+  };
+  document.getElementById('paymentType').addEventListener('change', updatePaymentType);
+  ['paymentWeight', 'paymentPurity'].forEach(id => document.getElementById(id).addEventListener('input', updateFineWeight));
+  document.getElementById('paymentForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const type = document.getElementById('paymentType').value;
+    const payments = await getPayments();
+    const savedAt = new Date().toISOString();
+    if (type === 'amount') {
+      const amountPaid = Number(document.getElementById('paymentAmountInput').value);
+      if (!(amountPaid > 0)) return;
+      payments.unshift({ id: Date.now().toString(), type: 'amount', amount: amountPaid, savedAt });
+      await originalStorageSet('payment-records', JSON.stringify(payments));
+      document.getElementById('paymentAmountInput').value = '';
+    } else {
+      const metal = document.getElementById('paymentMetal').value;
+      const weight = Number(document.getElementById('paymentWeight').value);
+      const purity = Number(document.getElementById('paymentPurity').value);
+      if (!(weight > 0) || !(purity >= 0 && purity <= 100)) return;
+      const oldMetalEntries = await getOldGold();
+      const balance = oldMetalEntries.filter(entry => entry.metal === metal).reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
+      if (weight > balance) { alert('Only ' + balance.toFixed(3) + ' g of old ' + metal + ' is available for payment.'); return; }
+      const fineWeight = weight * purity / 100;
+      const payment = { id: Date.now().toString(), type: 'metal', metal, weight, purity, fineWeight, savedAt };
+      payments.unshift(payment);
+      await originalStorageSet('payment-records', JSON.stringify(payments));
+      await addOldGold({ sourceId: 'payment:' + payment.id, metal, source: 'Metal payment', invoice: '—', customer: '—', date: new Date(savedAt).toLocaleDateString('en-GB'), weight: -weight, rate: 0, value: 0, receivedAt: savedAt });
+      document.getElementById('paymentWeight').value = '';
+      document.getElementById('paymentPurity').value = '';
+      updateFineWeight();
+    }
+    await renderPayments();
+  });
+  updatePaymentType();
+  updateFineWeight();
+  ['purchaseWeight', 'purchaseRate'].forEach(id => document.getElementById(id).addEventListener('input', updatePurchaseAmount));
+  document.getElementById('purchaseForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const metal = document.getElementById('purchaseMetal').value;
+    const weight = Number(document.getElementById('purchaseWeight').value);
+    const rate = Number(document.getElementById('purchaseRate').value);
+    if (!(weight > 0) || !(rate > 0)) return;
+    const purchases = await getPurchases();
+    const purchase = { id: Date.now().toString(), metal, weight, rate, amount: weight * rate, savedAt: new Date().toISOString() };
+    purchases.unshift(purchase);
+    await originalStorageSet('purchase-records', JSON.stringify(purchases));
+    await addOldGold({ sourceId: 'purchase:' + purchase.id, metal, source: 'Old metal purchase', invoice: '—', customer: '—', date: new Date(purchase.savedAt).toLocaleDateString('en-GB'), weight, rate, value: purchase.amount, receivedAt: purchase.savedAt });
+    document.getElementById('purchaseWeight').value = '';
+    document.getElementById('purchaseRate').value = '';
+    updatePurchaseAmount();
+    await renderPurchases();
+  });
   document.getElementById('recordsTbody').addEventListener('change', event => {
     if (!event.target.classList.contains('record-method')) return;
     const index = event.target.dataset.index;
@@ -756,8 +1041,10 @@ if ('serviceWorker' in navigator) {
       records[existing] = record;
     } else records.unshift(record);
     await originalStorageSet('invoice-records', JSON.stringify(records));
-    if (record.exchange && (record.exchange.metal === 'gold' || record.exchange.metal === 'silver') && Number(record.exchange.weight) > 0) {
-      await addOldGold({ sourceId: record.number + ':exchange', metal: record.exchange.metal, source: 'Invoice exchange', invoice: record.number, customer: record.customer, date: record.date, weight: Number(record.exchange.weight), rate: Number(record.exchange.rate), value: Number(record.exchange.value), receivedAt: record.savedAt });
+    const exchanges = Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : [];
+    for (const exchange of exchanges) {
+      if (!exchange || !['gold', 'silver'].includes(exchange.metal) || !(Number(exchange.weight) > 0)) continue;
+      await addOldGold({ sourceId: record.number + ':exchange:' + exchange.metal, metal: exchange.metal, source: 'Invoice exchange', invoice: record.number, customer: record.customer, date: record.date, weight: Number(exchange.weight), rate: Number(exchange.rate), value: Number(exchange.value), receivedAt: record.savedAt });
     }
     if (document.getElementById('page-records').classList.contains('active')) renderRecords();
   };
@@ -787,7 +1074,7 @@ if ('serviceWorker' in navigator) {
       discount: document.getElementById('mini-disc').textContent || '₹0.00',
       tax: document.getElementById('mini-gst').textContent || '₹0.00',
       total: document.getElementById('mini-grand').textContent || '₹0.00',
-      exchange: { metal: document.getElementById('exchange-metal').value, weight: Number(document.getElementById('exchange-weight').value) || 0, rate: Number(document.getElementById('exchange-rate').value) || 0, value: amount(document.getElementById('exchange-value').textContent) },
+      exchanges: getExchangeEntries().filter(exchange => exchange.weight > 0),
       paid: amount(document.getElementById('amount-paid').value),
       due: Math.max(amount(document.getElementById('mini-grand').textContent) - amount(document.getElementById('amount-paid').value), 0),
       payments: amount(document.getElementById('amount-paid').value) > 0 ? [{ method: 'amount', amount: amount(document.getElementById('amount-paid').value), settledAt: new Date().toISOString() }] : [],
@@ -803,7 +1090,7 @@ if ('serviceWorker' in navigator) {
 </script>\n`;
   return html
     .replace('</head>', pwaHead + '</head>')
-    .replace('</main>', dashboardPage + recordsPage + '</main>')
+    .replace('</main>', dashboardPage + paymentsPage + purchasesPage + recordsPage + '</main>')
     .replace('<script>', adapter + '<script>')
     .replace('</body>', recordsScript + '</body>');
 }
