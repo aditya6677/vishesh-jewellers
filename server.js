@@ -13,38 +13,10 @@ const sourceHtml = process.env.SOURCE_HTML || path.join(root, 'source', 'index.h
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
 const dataFile = path.join(dataDir, 'store.json');
 const serverVersion = String(Date.now());
-const jsonStore = createJsonStore(dataFile);
+const jsonStore = createJsonStore(dataFile, { encryptionKey: process.env.DATA_ENCRYPTION_KEY });
 // Local fallback for this single-user installation. An environment value overrides it when provided.
 const goldApiKey = process.env.GOLD_API_KEY || 'goldapi-779c2b0275441b53d934d5ec80fa127f-io';
 let liveRatesCache = null;
-
-function ensureStore() {
-  fs.mkdirSync(dataDir, { recursive: true });
-  if (!fs.existsSync(dataFile)) fs.writeFileSync(dataFile, '{}\n');
-}
-
-function readStore() {
-  ensureStore();
-  try {
-    const parsed = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    // Migrate the first server version, which stored each JSON value as a string.
-    if (parsed.values && typeof parsed.values === 'object') {
-      return Object.fromEntries(Object.entries(parsed.values).map(([key, value]) => {
-        try { return [key, JSON.parse(value)]; } catch { return [key, value]; }
-      }));
-    }
-    return parsed;
-  } catch {
-    return {};
-  }
-}
-
-function writeStore(store) {
-  const temp = `${dataFile}.tmp`;
-  fs.writeFileSync(temp, JSON.stringify(store, null, 2) + '\n');
-  fs.renameSync(temp, dataFile);
-}
 
 function send(res, status, body, type = 'application/json; charset=utf-8') {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
@@ -395,6 +367,21 @@ if ('serviceWorker' in navigator) {
     <div class="panel low-stock-panel" id="lowStockPanel" style="display:none;">
       <h3><span class="dot"></span>Low Stock Warning</h3>
       <div class="low-stock-list" id="lowStockList"></div>
+    </div>
+  </section>\n`;
+  const settingsPage = `
+  <section class="page" id="page-settings">
+    <div class="page-head">
+      <p class="eyebrow">Application settings</p>
+      <h2>Settings</h2>
+      <p class="sub">Choose where the encrypted desktop data is stored on this computer.</p>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Data Location</h3>
+      <div class="record-info-grid" style="margin-bottom:18px;"><div class="record-info"><b>Current folder</b><span id="settingsDataPath" style="word-break:break-all;">Loading…</span></div><div class="record-info"><b>Protection</b><span class="paid-amount">AES-256 encrypted</span></div></div>
+      <p class="sub" style="margin:0 0 14px;">The app copies existing data to the selected folder, then restarts. The old folder is not deleted.</p>
+      <button class="btn btn-gold" id="settingsChooseData" type="button">Choose Data Folder</button>
+      <div id="settingsDataStatus" style="min-height:18px; margin-top:10px; color:var(--ivory-3); font-size:12px;"></div>
     </div>
   </section>\n`;
   const paymentsPage = `
@@ -872,6 +859,20 @@ if ('serviceWorker' in navigator) {
     document.getElementById('page-payments').classList.add('active');
     await renderPayments();
   };
+  const openSettings = async () => {
+    document.querySelectorAll('.tab-btn').forEach(button => button.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById('settingsTab').classList.add('active');
+    document.getElementById('page-settings').classList.add('active');
+    const status = document.getElementById('settingsDataStatus');
+    try {
+      const response = await fetch('/api/data-location', { cache: 'no-store' });
+      const location = await response.json();
+      document.getElementById('settingsDataPath').textContent = location.path;
+      document.getElementById('settingsChooseData').disabled = !location.desktop;
+      status.textContent = location.desktop ? '' : 'Changing the data folder is available in the desktop app.';
+    } catch (_) { status.textContent = 'Could not load the current data location.'; }
+  };
   const updatePurchaseAmount = () => {
     const amount = Math.max(Number(document.getElementById('purchaseWeight').value) || 0, 0) * Math.max(Number(document.getElementById('purchaseRate').value) || 0, 0);
     document.getElementById('purchaseAmount').textContent = money(amount);
@@ -907,6 +908,20 @@ if ('serviceWorker' in navigator) {
   recordsTab.textContent = 'Records';
   document.querySelector('nav.tabs').appendChild(recordsTab);
   recordsTab.addEventListener('click', openRecords);
+  const settingsTab = document.createElement('button');
+  settingsTab.className = 'tab-btn';
+  settingsTab.id = 'settingsTab';
+  settingsTab.textContent = 'Settings';
+  document.querySelector('nav.tabs').appendChild(settingsTab);
+  settingsTab.addEventListener('click', openSettings);
+  document.getElementById('settingsChooseData').addEventListener('click', async () => {
+    const status = document.getElementById('settingsDataStatus');
+    try {
+      const response = await fetch('/api/data-location', { method: 'POST' });
+      if (!response.ok) throw new Error();
+      status.textContent = 'Choose a folder in the system dialog. The app will restart after confirmation.';
+    } catch (_) { status.textContent = 'This option is available only in the desktop app.'; }
+  });
   document.getElementById('recordSearch').addEventListener('input', renderRecords);
   const updatePaymentType = () => {
     const isMetal = document.getElementById('paymentType').value === 'metal';
@@ -1090,18 +1105,28 @@ if ('serviceWorker' in navigator) {
 </script>\n`;
   return html
     .replace('</head>', pwaHead + '</head>')
-    .replace('</main>', dashboardPage + paymentsPage + purchasesPage + recordsPage + '</main>')
+    .replace('</main>', dashboardPage + settingsPage + paymentsPage + purchasesPage + recordsPage + '</main>')
     .replace('<script>', adapter + '<script>')
     .replace('</body>', recordsScript + '</body>');
 }
 
-jsonStore.ensure();
+jsonStore.migrate();
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const match = url.pathname.match(/^\/api\/storage\/([^/]+)$/);
 
   if (url.pathname === '/api/version' && req.method === 'GET') {
     return send(res, 200, JSON.stringify({ version: serverVersion }));
+  }
+
+  if (url.pathname === '/api/data-location' && req.method === 'GET') {
+    return send(res, 200, JSON.stringify({ path: dataDir, desktop: Boolean(process.send) }));
+  }
+
+  if (url.pathname === '/api/data-location' && req.method === 'POST') {
+    if (!process.send) return send(res, 400, JSON.stringify({ error: 'Desktop app required' }));
+    process.send({ type: 'choose-data-location' });
+    return send(res, 202, JSON.stringify({ ok: true }));
   }
 
   if (url.pathname === '/api/live-rates' && req.method === 'GET') {
