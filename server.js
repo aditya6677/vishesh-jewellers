@@ -176,6 +176,18 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .paid-amount { color: #9CC7A2; font-family: var(--font-mono); }
 .record-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 .record-actions .field { margin: 0; min-width: 170px; }
+.record-paid:disabled { display: none; }
+.record-actions:has(.record-method:disabled) .field:has(.record-method),
+.record-actions:has(.record-method:disabled) [data-amount-field],
+.record-actions:has(.record-method:disabled) [data-item-field],
+.record-actions:has(.record-method:disabled) .record-settle { display: none; }
+.voided-record { opacity: .62; }
+.voided-badge { display: inline-block; margin-left: 7px; padding: 2px 6px; border-radius: 999px; background: rgba(232,169,158,.16); color: #E8A99E; font-size: 10px; font-weight: 700; letter-spacing: .06em; }
+.voided-record + .record-detail .record-actions { display: none; }
+.voided-invoice-view { margin-top: 14px; }
+#invoicePaper > .voided-invoice-watermark { position: absolute; z-index: 3; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(164, 44, 35, .22); font-family: var(--font-display); font-size: 74px; font-weight: 800; letter-spacing: .14em; transform: rotate(-28deg); pointer-events: none; }
+.paid-confirm-amount { margin: 16px 0; padding: 14px; border: 1px solid rgba(198,154,58,.3); border-radius: 8px; background: rgba(198,154,58,.08); color: var(--gold-light); font-family: var(--font-mono); font-size: 22px; text-align: center; }
+.void-modal-note { margin: 12px 0; color: var(--ivory-3); font-size: 13px; line-height: 1.5; }
 .payment-balance { padding: 9px 11px; min-height: 40px; border-radius: 7px; border: 1px solid rgba(198,154,58,.28); background: rgba(0,0,0,.22); color: var(--gold-light); font-family: var(--font-mono); font-size: 14px; }
 #inv-no:disabled { opacity: 1; color: var(--gold-pale); cursor: not-allowed; background: rgba(198,154,58,.08); }
 .f-purity:disabled { opacity: 1; color: var(--gold-pale); cursor: not-allowed; background: rgba(198,154,58,.08); }
@@ -677,6 +689,7 @@ if ('serviceWorker' in navigator) {
     const parts = String(record.date || '').split('/');
     return parts.length === 3 ? new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])) : new Date(0);
   };
+  const recordNetTotal = record => Math.max(amount(record.total) - (Number(record.returnTotal) || 0), 0);
   const renderDashboard = async (forceLiveRates = false) => {
     const records = await getRecords();
     const now = new Date();
@@ -686,24 +699,25 @@ if ('serviceWorker' in navigator) {
     startWeek.setDate(startWeek.getDate() - startWeek.getDay());
     const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startYear = new Date(now.getFullYear(), 0, 1);
-    const salesSince = start => records.reduce((total, record) => dateForRecord(record) >= start ? total + amount(record.total) : total, 0);
+    const activeRecords = records.filter(record => record.status !== 'voided');
+    const salesSince = start => activeRecords.reduce((total, record) => dateForRecord(record) >= start ? total + recordNetTotal(record) : total, 0);
     document.getElementById('dash-today').textContent = money(salesSince(startToday));
     document.getElementById('dash-week').textContent = money(salesSince(startWeek));
     document.getElementById('dash-month').textContent = money(salesSince(startMonth));
     document.getElementById('dash-year').textContent = money(salesSince(startYear));
     const purchases = await getPurchases();
     const payments = await getPayments();
-    const collected = records.reduce((total, record) => total + (Number(record.paid) || 0), 0);
+    const collected = activeRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0);
     const purchaseValue = purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
     const amountPayments = payments.filter(payment => payment.type === 'amount').reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
-    document.getElementById('dash-invoices').textContent = records.length;
+    document.getElementById('dash-invoices').textContent = activeRecords.length;
     document.getElementById('dash-collected').textContent = money(collected);
     document.getElementById('dash-purchases').textContent = money(purchaseValue);
     document.getElementById('dash-net-collected').textContent = money(collected - purchaseValue);
     document.getElementById('dash-amount-payments').textContent = money(amountPayments);
     document.getElementById('dash-final-net-collected').textContent = money(collected - purchaseValue - amountPayments);
-    document.getElementById('dash-due').textContent = money(records.reduce((total, record) => total + Math.max(Number(record.due) || 0, 0), 0));
-    const todayRecords = records.filter(record => dateForRecord(record) >= startToday);
+    document.getElementById('dash-due').textContent = money(activeRecords.reduce((total, record) => total + Math.max(Number(record.due) || 0, 0), 0));
+    const todayRecords = activeRecords.filter(record => dateForRecord(record) >= startToday);
     document.getElementById('dash-today-invoices').textContent = todayRecords.length;
     const todayPurchaseValue = purchases.filter(purchase => new Date(purchase.savedAt) >= startToday).reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
     const todayAmountPayments = payments.filter(payment => payment.type === 'amount' && new Date(payment.savedAt) >= startToday).reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
@@ -766,6 +780,13 @@ if ('serviceWorker' in navigator) {
     const paper = document.querySelector('#regeneratedInvoiceContent #invoicePaper');
     // Older saved invoice markup may still contain the retired circular seal.
     paper.querySelectorAll('#p-seal, .seal').forEach(element => element.remove());
+    paper.querySelectorAll('.voided-invoice-watermark').forEach(element => element.remove());
+    if (record.status === 'voided') {
+      const watermark = document.createElement('div');
+      watermark.className = 'voided-invoice-watermark';
+      watermark.textContent = 'VOIDED';
+      paper.appendChild(watermark);
+    }
     const totals = paper.querySelector('#p-totals');
     if (totals) {
       totals.querySelectorAll('.payment-summary-line, .regenerated-payment-line').forEach(line => line.remove());
@@ -794,6 +815,264 @@ if ('serviceWorker' in navigator) {
     regeneratedModal.dataset.invoiceNumber = record.number;
     regeneratedModal.classList.add('open');
   };
+  const voidModal = document.createElement('div');
+  voidModal.id = 'voidInvoiceModal';
+  voidModal.className = 'modal-backdrop';
+  voidModal.innerHTML = '<div class="modal" style="max-width:520px;"><div class="toolbar"><h3 style="margin:0;">Void invoice</h3><button class="btn btn-ghost btn-sm" id="closeVoidInvoice">Close</button></div><p class="void-modal-note" id="voidInvoiceNote"></p><div class="field"><label>Reason for voiding *</label><input id="voidInvoiceReason" type="text" placeholder="e.g. Sale cancelled by customer"></div><div class="btn-row" style="margin-top:18px;"><button class="btn btn-gold" id="confirmVoidInvoice">Void invoice</button><button class="btn btn-ghost" id="cancelVoidInvoice">Cancel</button></div></div>';
+  document.body.appendChild(voidModal);
+  let activeVoidIndex = null;
+  const closeVoidModal = () => { voidModal.classList.remove('open'); activeVoidIndex = null; };
+  const openVoidModal = (record, index) => {
+    if (!Array.isArray(record.soldItems) || !record.soldItems.length) {
+      alert('This older invoice does not have the stock-line details needed to safely void it.');
+      return;
+    }
+    activeVoidIndex = index;
+    document.getElementById('voidInvoiceReason').value = '';
+    document.getElementById('voidInvoiceNote').textContent = 'VJ invoice ' + record.number + ' will be marked void. Sold stock will be restored and linked old-metal exchange/settlement entries will be reversed. This cannot be undone from the app.';
+    voidModal.classList.add('open');
+  };
+  document.getElementById('closeVoidInvoice').addEventListener('click', closeVoidModal);
+  document.getElementById('cancelVoidInvoice').addEventListener('click', closeVoidModal);
+  document.getElementById('confirmVoidInvoice').addEventListener('click', async () => {
+    const reason = document.getElementById('voidInvoiceReason').value.trim();
+    if (!reason) { alert('Enter a reason before voiding this invoice.'); return; }
+    const records = await getRecords();
+    const record = records[activeVoidIndex];
+    if (!record || record.status === 'voided') { closeVoidModal(); return; }
+    const stockResult = await window.storage.get('stock-list');
+    const stockList = stockResult ? JSON.parse(stockResult.value || '[]') : [];
+    for (const item of record.soldItems) {
+      if (!stockList.find(stock => String(stock.id) === String(item.stockId))) {
+        alert('The original stock item “' + item.name + '” no longer exists. The invoice was not voided.');
+        return;
+      }
+    }
+    record.soldItems.forEach(item => {
+      const stock = stockList.find(stockItem => String(stockItem.id) === String(item.stockId));
+      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0);
+      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0);
+    });
+    const oldMetalEntries = await getOldGold();
+    const reversals = oldMetalEntries.filter(entry => entry.invoice === record.number && ['Invoice exchange', 'Gold settlement', 'Silver settlement'].includes(entry.source));
+    const voidedAt = new Date().toISOString();
+    record.status = 'voided';
+    record.voidedAt = voidedAt;
+    record.voidReason = reason;
+    record.due = 0;
+    await originalStorageSet('stock-list', JSON.stringify(stockList));
+    await originalStorageSet('invoice-records', JSON.stringify(records));
+    for (const entry of reversals) {
+      await addOldGold({ sourceId: 'void:' + entry.sourceId, metal: entry.metal, source: 'Invoice void reversal', invoice: record.number, customer: record.customer, date: new Date(voidedAt).toLocaleDateString('en-GB'), weight: -(Number(entry.weight) || 0), rate: Number(entry.rate) || 0, value: -(Number(entry.value) || 0), receivedAt: voidedAt });
+    }
+    closeVoidModal();
+    await renderRecords();
+    if (document.getElementById('page-dashboard').classList.contains('active')) await renderDashboard();
+  });
+  const fullyPaidModal = document.createElement('div');
+  fullyPaidModal.id = 'fullyPaidModal';
+  fullyPaidModal.className = 'modal-backdrop';
+  fullyPaidModal.innerHTML = '<div class="modal" style="max-width:450px;"><div class="toolbar"><h3 style="margin:0;">Confirm payment</h3><button class="btn btn-ghost btn-sm" id="closeFullyPaid">Close</button></div><p class="void-modal-note" id="fullyPaidNote"></p><div class="paid-confirm-amount" id="fullyPaidAmount">₹0.00</div><p class="void-modal-note">This will mark the invoice as fully paid and cannot be changed from this screen.</p><div class="btn-row" style="margin-top:18px;"><button class="btn btn-gold" id="confirmFullyPaid">Yes, mark fully paid</button><button class="btn btn-ghost" id="cancelFullyPaid">Cancel</button></div></div>';
+  document.body.appendChild(fullyPaidModal);
+  let fullyPaidResolver = null;
+  const closeFullyPaidModal = confirmed => {
+    fullyPaidModal.classList.remove('open');
+    const resolve = fullyPaidResolver;
+    fullyPaidResolver = null;
+    if (resolve) resolve(Boolean(confirmed));
+  };
+  const confirmFullyPaid = (record, due) => new Promise(resolve => {
+    fullyPaidResolver = resolve;
+    document.getElementById('fullyPaidNote').textContent = 'Mark invoice ' + record.number + ' as fully paid?';
+    document.getElementById('fullyPaidAmount').textContent = money(due);
+    fullyPaidModal.classList.add('open');
+  });
+  document.getElementById('closeFullyPaid').addEventListener('click', () => closeFullyPaidModal(false));
+  document.getElementById('cancelFullyPaid').addEventListener('click', () => closeFullyPaidModal(false));
+  document.getElementById('confirmFullyPaid').addEventListener('click', () => closeFullyPaidModal(true));
+  const returnModal = document.createElement('div');
+  returnModal.id = 'returnInvoiceModal';
+  returnModal.className = 'modal-backdrop';
+  returnModal.innerHTML = '<div class="modal" style="max-width:760px;"><div class="toolbar"><h3 style="margin:0;">Return items</h3><button class="btn btn-ghost btn-sm" id="closeReturnInvoice">Close</button></div><p class="muted" id="returnInvoiceLabel" style="margin:12px 0 0;"></p><div id="returnItems" class="return-items"></div><div class="return-summary"><span>Return / credit-note value</span><b id="returnAmount">₹0.00</b></div><div class="return-form-grid"><div class="field"><label>Adjustment</label><select id="returnMethod"><option value="due">Reduce amount due</option><option value="cash">Cash refund</option><option value="credit">Customer credit</option><option value="old-metal">Cash and/or return old metal</option></select></div><div class="field return-reason-field"><label>Reason (optional)</label><input id="returnReason" type="text" placeholder="e.g. Size issue"></div></div><div id="returnOldMetalPanel" class="return-metal-panel"><div class="field"><label>Original exchange metal</label><select id="returnOldMetal"></select></div><div class="field"><label>Return wt. (g)</label><input id="returnOldMetalWeight" type="number" min="0" step="0.001" value="0"></div><div class="field"><label>Cash to return (₹) · auto</label><input id="returnCashRefund" type="number" min="0" step="0.01" value="0" readonly></div><div class="field"><label>Metal return value</label><div id="returnOldMetalValue" class="return-metal-value">₹0.00</div></div></div><div class="btn-row" style="margin-top:18px;"><button class="btn btn-gold" id="saveReturnInvoice">Save return</button><button class="btn btn-ghost" id="cancelReturnInvoice">Cancel</button></div></div>';
+  document.body.appendChild(returnModal);
+  let activeReturnRecord = null;
+  let activeReturnIndex = null;
+  const returnableItems = record => (record.soldItems || []).map(item => {
+    const returned = (record.returns || []).reduce((sum, returnEntry) => sum + (returnEntry.items || []).filter(returnItem => returnItem.lineId === item.lineId).reduce((itemSum, returnItem) => itemSum + (Number(returnItem.net) || 0), 0), 0);
+    return Object.assign({}, item, { remainingNet: Math.max((Number(item.net) || 0) - returned, 0) });
+  }).filter(item => item.remainingNet > 0.000001);
+  const returnableExchanges = record => (Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : []).map((exchange, exchangeIndex) => {
+    const returned = (record.returns || []).reduce((sum, returnEntry) => sum + (returnEntry.oldMetal && Number(returnEntry.oldMetal.exchangeIndex) === exchangeIndex ? (Number(returnEntry.oldMetal.weight) || 0) : 0), 0);
+    return Object.assign({}, exchange, { exchangeIndex, remainingWeight: Math.max((Number(exchange.weight) || 0) - returned, 0) });
+  }).filter(exchange => ['gold', 'silver'].includes(String(exchange.metal || '').toLowerCase()) && exchange.remainingWeight > 0.000001);
+  const selectedReturnExchange = () => {
+    if (!activeReturnRecord) return null;
+    const exchangeIndex = Number(document.getElementById('returnOldMetal').value);
+    return returnableExchanges(activeReturnRecord).find(exchange => exchange.exchangeIndex === exchangeIndex) || null;
+  };
+  const updateOldMetalReturn = () => {
+    const exchange = selectedReturnExchange();
+    const input = document.getElementById('returnOldMetalWeight');
+    const value = exchange ? Math.max(Number(input.value) || 0, 0) * (Number(exchange.rate) || 0) : 0;
+    input.max = exchange ? exchange.remainingWeight : 0;
+    document.getElementById('returnOldMetalValue').textContent = money(value);
+    if (activeReturnRecord && document.getElementById('returnMethod').value === 'old-metal') {
+      const returnAmount = calculateReturnAmount(activeReturnRecord);
+      document.getElementById('returnCashRefund').value = Math.max(returnAmount - value, 0).toFixed(2);
+    }
+  };
+  const updateReturnMethod = () => {
+    const isOldMetal = document.getElementById('returnMethod').value === 'old-metal';
+    document.getElementById('returnOldMetalPanel').classList.toggle('visible', isOldMetal);
+    if (isOldMetal) updateOldMetalReturn();
+  };
+  const calculateReturnAmount = record => {
+    const items = returnableItems(record);
+    const originalBase = (record.soldItems || []).reduce((sum, item) => sum + (Number(item.net) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100), 0);
+    const returnedBase = items.reduce((sum, item, index) => {
+      const input = document.querySelector('[data-return-index="' + index + '"]');
+      return sum + (Number(input && input.value) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
+    }, 0);
+    return originalBase > 0 ? returnedBase / originalBase * amount(record.total) : 0;
+  };
+  const updateReturnAmount = () => {
+    if (!activeReturnRecord) return;
+    document.getElementById('returnAmount').textContent = money(calculateReturnAmount(activeReturnRecord));
+    if (document.getElementById('returnMethod').value === 'old-metal') updateOldMetalReturn();
+  };
+  const openReturnModal = (record, index) => {
+    if (!Array.isArray(record.soldItems) || !record.soldItems.length) {
+      alert('This older invoice does not have the stock-line details needed for a safe return. Returns are available for invoices created after this update.');
+      return;
+    }
+    const items = returnableItems(record);
+    if (!items.length) { alert('All stock-backed items on this invoice have already been returned.'); return; }
+    activeReturnRecord = record;
+    activeReturnIndex = index;
+    document.getElementById('returnInvoiceLabel').textContent = 'Invoice ' + record.number + ' · enter only the net weight being returned.';
+    document.getElementById('returnReason').value = '';
+    document.getElementById('returnMethod').value = 'due';
+    const exchanges = returnableExchanges(record);
+    document.getElementById('returnOldMetal').innerHTML = exchanges.length ? exchanges.map(exchange => '<option value="' + exchange.exchangeIndex + '">' + safe(String(exchange.metal).replace(/^./, character => character.toUpperCase())) + ' · ' + exchange.remainingWeight.toFixed(3) + ' g available · ₹' + (Number(exchange.rate) || 0).toFixed(2) + '/g</option>').join('') : '<option value="">No returnable exchanged metal</option>';
+    document.getElementById('returnOldMetalWeight').value = '0';
+    document.getElementById('returnCashRefund').value = '0';
+    document.getElementById('returnItems').innerHTML = items.map((item, itemIndex) => '<div class="return-item"><div><div class="return-item-title">' + safe(item.name || 'Stock item') + '</div><div class="return-item-meta">Available to return: ' + item.remainingNet.toFixed(3) + ' g · Original rate ₹' + (Number(item.rate) || 0).toFixed(2) + '/g</div></div><div class="field" style="min-width:140px;"><label>Return wt. (g)</label><input type="number" min="0" max="' + item.remainingNet + '" step="0.001" value="0" data-return-index="' + itemIndex + '"></div></div>').join('');
+    updateReturnMethod();
+    updateReturnAmount();
+    returnModal.classList.add('open');
+  };
+  const closeReturnModal = () => {
+    returnModal.classList.remove('open');
+    activeReturnRecord = null;
+    activeReturnIndex = null;
+  };
+  document.getElementById('closeReturnInvoice').addEventListener('click', closeReturnModal);
+  document.getElementById('cancelReturnInvoice').addEventListener('click', closeReturnModal);
+  document.getElementById('returnItems').addEventListener('input', updateReturnAmount);
+  document.getElementById('returnMethod').addEventListener('change', updateReturnMethod);
+  document.getElementById('returnOldMetal').addEventListener('change', updateOldMetalReturn);
+  document.getElementById('returnOldMetalWeight').addEventListener('input', updateOldMetalReturn);
+  document.getElementById('saveReturnInvoice').addEventListener('click', async () => {
+    if (!activeReturnRecord || activeReturnIndex === null) return;
+    const records = await getRecords();
+    const record = records[activeReturnIndex];
+    if (!record) { closeReturnModal(); return; }
+    const items = returnableItems(record);
+    const returnedItems = [];
+    for (let index = 0; index < items.length; index += 1) {
+      const input = document.querySelector('[data-return-index="' + index + '"]');
+      const returnNet = Number(input && input.value) || 0;
+      if (returnNet < 0 || returnNet > items[index].remainingNet + 0.000001) {
+        alert('Each return weight must be between 0 and its available return weight.');
+        return;
+      }
+      if (returnNet > 0) {
+        const originalNet = Number(items[index].net) || 0;
+        returnedItems.push(Object.assign({}, items[index], { returnedNet: returnNet, returnedGross: originalNet > 0 ? (Number(items[index].gross) || 0) * returnNet / originalNet : returnNet }));
+      }
+    }
+    if (!returnedItems.length) { alert('Enter a return weight for at least one item.'); return; }
+    const returnAmount = calculateReturnAmount(record);
+    const method = document.getElementById('returnMethod').value;
+    const paid = Number(record.paid) || 0;
+    const due = Number(record.due) || 0;
+    let oldMetal = null;
+    let cashRefund = 0;
+    if (method === 'old-metal') {
+      const exchange = selectedReturnExchange();
+      const weight = Number(document.getElementById('returnOldMetalWeight').value) || 0;
+      cashRefund = Math.max(Number(document.getElementById('returnCashRefund').value) || 0, 0);
+      if (weight > 0) {
+        if (!exchange || weight > exchange.remainingWeight + 0.000001) {
+          alert('Choose an original exchange entry and enter a valid old-metal return weight.');
+          return;
+        }
+        const oldMetalEntries = await getOldGold();
+        const metal = String(exchange.metal).toLowerCase();
+        const available = oldMetalEntries.filter(entry => String(entry.metal || '').toLowerCase() === metal).reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
+        if (weight > available + 0.000001) {
+          alert('Only ' + available.toFixed(3) + ' g of old ' + metal + ' is currently available to return.');
+          return;
+        }
+        oldMetal = { exchangeIndex: exchange.exchangeIndex, metal, weight, rate: Number(exchange.rate) || 0, value: weight * (Number(exchange.rate) || 0) };
+      }
+      const refundTotal = cashRefund + (oldMetal ? oldMetal.value : 0);
+      if (!(refundTotal > 0) || Math.abs(refundTotal - returnAmount) > 0.01) {
+        alert('Cash plus old-metal value must exactly match the return / credit-note value of ' + money(returnAmount) + '.');
+        return;
+      }
+      if (cashRefund > paid + 0.001) {
+        alert('Cash to return cannot exceed the recorded cash payment of ' + money(paid) + '.');
+        return;
+      }
+    }
+    if (method === 'cash' && returnAmount > paid + 0.001) {
+      alert('A cash refund cannot exceed the amount paid (' + money(paid) + '). Choose customer credit or reduce the due amount.');
+      return;
+    }
+    if (method === 'due' && returnAmount > due + 0.001) {
+      alert('This return is larger than the outstanding due (' + money(due) + '). Choose customer credit or cash refund for the balance.');
+      return;
+    }
+    const stockResult = await window.storage.get('stock-list');
+    const stockList = stockResult ? JSON.parse(stockResult.value || '[]') : [];
+    for (const item of returnedItems) {
+      if (!stockList.find(stock => String(stock.id) === String(item.stockId))) {
+        alert('The original stock item “' + item.name + '” no longer exists. The return was not saved.');
+        return;
+      }
+    }
+    returnedItems.forEach(item => {
+      const stock = stockList.find(stockItem => String(stockItem.id) === String(item.stockId));
+      stock.net = (Number(stock.net) || 0) + item.returnedNet;
+      stock.gross = (Number(stock.gross) || 0) + item.returnedGross;
+    });
+    record.returns = Array.isArray(record.returns) ? record.returns : [];
+    const savedAt = new Date().toISOString();
+    const returnEntry = {
+      noteNumber: record.number + '-R' + String(record.returns.length + 1).padStart(2, '0'),
+      items: returnedItems.map(item => ({ lineId: item.lineId, stockId: item.stockId, name: item.name, net: item.returnedNet, gross: item.returnedGross })),
+      amount: returnAmount,
+      method,
+      oldMetal,
+      cashRefund: method === 'old-metal' ? cashRefund : 0,
+      reason: document.getElementById('returnReason').value.trim(),
+      savedAt
+    };
+    record.returns.unshift(returnEntry);
+    record.returnTotal = (Number(record.returnTotal) || 0) + returnAmount;
+    if (method === 'cash') record.paid = Math.max(paid - returnAmount, 0);
+    if (method === 'old-metal') record.paid = Math.max(paid - cashRefund, 0);
+    if (method === 'credit') record.customerCredit = (Number(record.customerCredit) || 0) + returnAmount;
+    record.due = Math.max(recordNetTotal(record) - (Number(record.paid) || 0), 0);
+    await originalStorageSet('stock-list', JSON.stringify(stockList));
+    await originalStorageSet('invoice-records', JSON.stringify(records));
+    if (oldMetal) {
+      await addOldGold({ sourceId: record.number + ':return-metal:' + returnEntry.noteNumber, metal: oldMetal.metal, source: 'Invoice return - old metal given back', invoice: record.number, customer: record.customer, date: new Date(savedAt).toLocaleDateString('en-GB'), weight: -oldMetal.weight, rate: oldMetal.rate, value: -oldMetal.value, receivedAt: savedAt });
+    }
+    closeReturnModal();
+    await renderRecords();
+  });
   document.getElementById('printRegeneratedInvoice').addEventListener('click', () => {
     const paper = document.querySelector('#regeneratedInvoiceContent #invoicePaper');
     const printWindow = window.open('', '_blank');
@@ -821,13 +1100,20 @@ if ('serviceWorker' in navigator) {
       const index = entry.index;
       const due = Number(record.due) || 0;
       const paid = Number(record.paid) || 0;
+      const netTotal = recordNetTotal(record);
+      const voided = record.status === 'voided';
+      const exchanges = Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : [];
+      const exchangeHistory = exchanges.map(exchange => {
+        const metal = String(exchange.metal || 'gold').replace(/^./, character => character.toUpperCase());
+        return safe(metal + ' · ' + (Number(exchange.weight) || 0).toFixed(3) + ' g × ' + money(exchange.rate) + '/g = ' + money(exchange.value));
+      }).join('<br>') || 'No old metal exchanged';
       const settlementHistory = (record.payments || []).map(payment => {
         const method = payment.method === 'gold' ? 'Gold' : payment.method === 'silver' ? 'Silver' : 'Amount';
         const itemDetail = payment.weight ? ' · ' + payment.weight + 'g × ₹' + payment.rate + '/g' : '';
         return safe(method + itemDetail + ' — ' + money(payment.amount));
       }).join('<br>') || 'No settlement recorded';
-      return '<tr><td style="font-family:var(--font-mono);">' + safe(record.number) + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + safe(record.total) + '</td><td class="due-amount">' + money(due) + '</td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
-        '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>Items</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Business / GSTIN</b>' + safe(record.business || 'Vishesh Jewellers') + '<br>' + safe(record.gstin || '—') + '</div><div class="record-info"><b>Subtotal / Tax / Discount</b>' + safe(record.subtotal || '₹0.00') + ' / ' + safe(record.tax || '₹0.00') + ' / ' + safe(record.discount || '₹0.00') + '</div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>Due amount</b><span class="due-amount">' + money(due) + '</span></div><div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div><div class="record-actions"><div class="field"><label>Settlement type</label><select class="record-method" data-index="' + index + '" ' + (due <= 0 ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" placeholder="Enter received amount" ' + (due <= 0 ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g)</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" placeholder="0.000" ' + (due <= 0 ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" placeholder="0.00" ' + (due <= 0 ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">Regenerate Invoice</button></div></div></td></tr>';
+      return '<tr class="' + (voided ? 'voided-record' : '') + '"><td style="font-family:var(--font-mono);">' + safe(record.number) + (voided ? '<span class="voided-badge">VOIDED</span>' : '') + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + money(netTotal) + '</td><td class="due-amount">' + money(due) + '</td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
+        '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>Items</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Old metal exchange</b>' + exchangeHistory + '</div><div class="record-info"><b>Net invoice total</b><span class="paid-amount">' + money(netTotal) + '</span></div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>Due amount</b><span class="due-amount">' + money(due) + '</span></div>' + (voided ? '<div class="record-info"><b>Void reason</b>' + safe(record.voidReason || '—') + '</div>' : '') + '<div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div>' + (voided ? '<div class="voided-invoice-view"><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">View Voided Invoice</button></div>' : '') + '<div class="record-actions"><div class="field"><label>Settlement type</label><select class="record-method" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" placeholder="Enter received amount" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g)</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" placeholder="0.000" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" placeholder="0.00" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-void" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>Void Invoice</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">Regenerate Invoice</button></div></div></td></tr>';
     }).join('');
     document.getElementById('recordsEmpty').style.display = records.length ? 'none' : 'block';
   };
@@ -1019,6 +1305,10 @@ if ('serviceWorker' in navigator) {
       reprintInvoice(record);
       return;
     }
+    if (button.classList.contains('record-void')) {
+      openVoidModal(record, index);
+      return;
+    }
     const due = Number(record.due) || 0;
     const settlementInput = document.getElementById('settlement-' + index);
     const method = document.querySelector('.record-method[data-index="' + index + '"]').value;
@@ -1029,6 +1319,7 @@ if ('serviceWorker' in navigator) {
       alert(method === 'amount' ? 'Enter a valid amount up to the outstanding due of ' + money(due) + '.' : 'Enter a valid weight and price per gram whose value does not exceed the due of ' + money(due) + '.');
       return;
     }
+    if (button.classList.contains('record-paid') && !(await confirmFullyPaid(record, due))) return;
     record.paid = (Number(record.paid) || 0) + settled;
     record.due = Math.max(due - settled, 0);
     record.payments = Array.isArray(record.payments) ? record.payments : [];
@@ -1089,6 +1380,7 @@ if ('serviceWorker' in navigator) {
       discount: document.getElementById('mini-disc').textContent || '₹0.00',
       tax: document.getElementById('mini-gst').textContent || '₹0.00',
       total: document.getElementById('mini-grand').textContent || '₹0.00',
+      soldItems: rows.filter(row => row.stockId).map(row => ({ lineId: row.id, stockId: row.stockId, name: row.name, purity: row.purity, gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0 })),
       exchanges: getExchangeEntries().filter(exchange => exchange.weight > 0),
       paid: amount(document.getElementById('amount-paid').value),
       due: Math.max(amount(document.getElementById('mini-grand').textContent) - amount(document.getElementById('amount-paid').value), 0),
