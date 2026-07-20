@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vishesh Jewellers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Jost:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#14110C;
+    --charcoal:#1E1811;
+    --charcoal-2:#2A2217;
+    --charcoal-3:#3A3020;
+    --gold:#C69A3A;
+    --gold-light:#E4C067;
+    --gold-pale:#F2E3B8;
+    --ivory:#FAF5E7;
+    --ivory-2:#F1E8CF;
+    --ivory-3:#E8DBB8;
+    --text-dark:#2B2317;
+    --text-muted:#77694B;
+    --seal-red:#9B3A2C;
+    --ok:#4C7A52;
+    --danger:#A23B31;
+    --font-display:'Cormorant Garamond', serif;
+    --font-ui:'Jost', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+    --radius:10px;
+    --shadow-lift: 0 12px 30px -12px rgba(20,17,12,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 500px at 15% -10%, #241D12 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #241D12 0%, transparent 55%),
+      var(--ink);
+    color:var(--ivory);
+    font-family:var(--font-ui);
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  button{font-family:var(--font-ui);cursor:pointer;}
+  input,select,textarea{font-family:var(--font-ui);}
+
+  /* ---------- NAV ---------- */
+  header.topnav{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 28px;
+    background:linear-gradient(180deg, rgba(20,17,12,0.97), rgba(20,17,12,0.9));
+    border-bottom:1px solid rgba(198,154,58,0.25);
+    backdrop-filter:blur(6px);
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-text h1{
+    font-family:var(--font-display); font-weight:600; font-size:22px; letter-spacing:0.06em;
+    margin:0; color:var(--gold-pale);
+  }
+  .brand-text p{
+    margin:0; font-size:10px; letter-spacing:0.22em; text-transform:uppercase;
+    color:var(--gold); opacity:0.8;
+  }
+  nav.tabs{display:flex; gap:6px; background:rgba(255,255,255,0.03); padding:4px; border-radius:999px; border:1px solid rgba(198,154,58,0.2);}
+  nav.tabs button{
+    border:none; background:transparent; color:var(--ivory-3);
+    padding:9px 20px; border-radius:999px; font-size:13px; letter-spacing:0.08em; text-transform:uppercase;
+    transition:all .25s ease; font-weight:500;
+  }
+  nav.tabs button.active{
+    background:linear-gradient(135deg, var(--gold-light), var(--gold));
+    color:#221A0E; box-shadow:0 4px 14px -4px rgba(198,154,58,0.6);
+  }
+  nav.tabs button:not(.active):hover{color:var(--gold-light);}
+
+  main{max-width:1400px; margin:0 auto; padding:32px 28px 80px;}
+  .page{display:none; animation:fadein .35s ease;}
+  .page.active{display:block;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .page-head{margin-bottom:22px;}
+  .eyebrow{font-size:11px; letter-spacing:0.28em; text-transform:uppercase; color:var(--gold); margin:0 0 6px;}
+  .page-head h2{font-family:var(--font-display); font-size:34px; font-weight:600; margin:0; color:var(--ivory);}
+  .page-head p.sub{color:var(--ivory-3); opacity:0.7; margin:6px 0 0; font-size:14px;}
+
+  .panel{
+    background:linear-gradient(155deg, var(--charcoal), var(--charcoal-2));
+    border:1px solid rgba(198,154,58,0.18);
+    border-radius:var(--radius);
+    padding:22px;
+    box-shadow:var(--shadow-lift);
+  }
+  .panel h3{
+    font-family:var(--font-display); font-size:19px; margin:0 0 16px; color:var(--gold-pale);
+    display:flex; align-items:center; gap:8px; font-weight:600;
+  }
+  .panel h3 .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+
+  label{display:block; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ivory-3); opacity:0.75; margin-bottom:5px;}
+  .field{margin-bottom:14px;}
+  input[type=text], input[type=number], input[type=date], input[type=tel], input[type=email], textarea, select{
+    width:100%; padding:9px 11px; border-radius:7px; border:1px solid rgba(198,154,58,0.28);
+    background:rgba(0,0,0,0.22); color:var(--ivory); font-size:14px; outline:none;
+    transition:border .2s, box-shadow .2s;
+  }
+  input:focus, textarea:focus, select:focus{border-color:var(--gold-light); box-shadow:0 0 0 3px rgba(198,154,58,0.18);}
+  textarea{resize:vertical; min-height:56px;}
+  .row{display:grid; gap:12px;}
+  .row-2{grid-template-columns:1fr 1fr;}
+  .row-3{grid-template-columns:1fr 1fr 1fr;}
+
+  .btn{
+    border:none; padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600;
+    letter-spacing:0.04em; display:inline-flex; align-items:center; gap:7px; transition:transform .15s, box-shadow .2s;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-gold{background:linear-gradient(135deg, var(--gold-light), var(--gold)); color:#221A0E; box-shadow:0 6px 16px -6px rgba(198,154,58,0.55);}
+  .btn-gold:hover{box-shadow:0 8px 20px -6px rgba(198,154,58,0.75);}
+  .btn-ghost{background:rgba(255,255,255,0.05); color:var(--ivory); border:1px solid rgba(198,154,58,0.3);}
+  .btn-ghost:hover{background:rgba(198,154,58,0.12);}
+  .btn-danger{background:rgba(162,59,49,0.15); color:#E8A99E; border:1px solid rgba(162,59,49,0.5);}
+  .btn-danger:hover{background:rgba(162,59,49,0.28);}
+  .btn-sm{padding:6px 11px; font-size:12px; border-radius:6px;}
+  .btn-block{width:100%; justify-content:center;}
+
+  details.collapse summary{cursor:pointer; color:var(--gold-light); font-size:13px; letter-spacing:0.05em; margin-bottom:12px; list-style:none;}
+  details.collapse summary::-webkit-details-marker{display:none;}
+  details.collapse summary:before{content:"▸ "; }
+  details.collapse[open] summary:before{content:"▾ ";}
+
+  /* ---------- HOME / INVOICE ---------- */
+  .invoice-layout{display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start;}
+  @media (max-width:1080px){ .invoice-layout{grid-template-columns:1fr;} }
+
+  .items-table-wrap{overflow-x:auto; margin-bottom:12px;}
+  table.itable{width:100%; border-collapse:collapse; font-size:12.5px; min-width:640px;}
+  table.itable th{
+    text-align:left; padding:8px 8px; color:var(--gold); font-weight:600; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid rgba(198,154,58,0.3);
+  }
+  table.itable td{padding:6px 6px; border-bottom:1px solid rgba(255,255,255,0.06); vertical-align:middle;}
+  table.itable input, table.itable select{padding:6px 7px; font-size:12.5px;}
+  table.itable input[type=number]{width:78px;}
+  table.itable input[readonly]{background:rgba(198,154,58,0.08); color:var(--gold-pale); cursor:not-allowed;}
+  table.itable .name-cell{min-width:140px;}
+  .amount-cell{font-family:var(--font-mono); text-align:right; white-space:nowrap; color:var(--gold-pale);}
+  .rm-row{background:transparent; border:1px solid rgba(162,59,49,0.4); color:#E8A99E; width:26px; height:26px; border-radius:6px; font-size:14px; line-height:1;}
+  .rm-row:hover{background:rgba(162,59,49,0.2);}
+
+  .totals-mini{display:flex; flex-direction:column; gap:6px; margin-top:10px; padding-top:12px; border-top:1px dashed rgba(198,154,58,0.3);}
+  .totals-mini .tline{display:flex; justify-content:space-between; font-size:13px; color:var(--ivory-3);}
+  .totals-mini .tline b{color:var(--ivory); font-family:var(--font-mono);}
+  .totals-mini .grand{font-size:17px; color:var(--gold-light); font-family:var(--font-display); font-weight:700; margin-top:4px;}
+
+  .btn-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+
+  /* ---------- PAPER INVOICE PREVIEW ---------- */
+  .paper-outer{position:sticky; top:96px;}
+  #invoicePaper{
+    background:var(--ivory); color:var(--text-dark); border-radius:6px; padding:28px 30px 24px;
+    box-shadow:0 25px 60px -20px rgba(0,0,0,0.6), 0 2px 0 rgba(198,154,58,0.6);
+    font-family:var(--font-ui); position:relative; overflow:hidden;
+  }
+  #invoicePaper::before{
+    content:""; position:absolute; inset:8px; border:1px solid rgba(198,154,58,0.5); border-radius:3px; pointer-events:none;
+  }
+  .paper-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding-bottom:12px; border-bottom:2px solid var(--gold);}
+  .paper-brand{display:flex; align-items:center; gap:12px;}
+  .paper-brand h2{font-family:var(--font-display); font-size:26px; margin:0; color:#2B2317; letter-spacing:0.03em; font-weight:700;}
+  .paper-brand p{margin:2px 0 0; font-size:10.5px; color:#8A7647; letter-spacing:0.12em; text-transform:uppercase;}
+  .paper-contact{text-align:right; font-size:10.5px; color:#6B5D42; line-height:1.6;}
+  .gst-badge{font-family:var(--font-mono); font-size:10px; background:#EFE3BC; color:#5B4A22; padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:3px;}
+
+  .meta-row{display:flex; justify-content:space-between; margin-top:14px; font-size:12px; color:#5B4A22;}
+  .meta-row .inv-no{font-family:var(--font-mono); font-weight:600; font-size:13px; color:#2B2317;}
+
+  .bill-to{margin-top:14px; background:#F1E8CF; border-radius:6px; padding:10px 14px;}
+  .bill-to .lbl{font-size:9.5px; letter-spacing:0.16em; text-transform:uppercase; color:#8A7647; margin-bottom:2px;}
+  .bill-to .nm{font-family:var(--font-display); font-size:18px; font-weight:600; color:#2B2317;}
+  .bill-to .addr{font-size:12px; color:#5B4A22; margin-top:2px;}
+
+  table.paper-items{width:100%; border-collapse:collapse; margin-top:16px; font-size:11px;}
+  table.paper-items thead th{
+    background:#2B2317; color:var(--gold-pale); padding:7px 6px; font-size:9.5px; text-transform:uppercase;
+    letter-spacing:0.04em; text-align:left; font-weight:600;
+  }
+  table.paper-items thead th:last-child, table.paper-items td:last-child{text-align:right;}
+  table.paper-items tbody td{padding:6px 6px; border-bottom:1px solid #E2D4A8; color:#3A3020;}
+  table.paper-items tbody tr:nth-child(even){background:#F6EFDA;}
+  table.paper-items td.num{font-family:var(--font-mono);}
+
+  .paper-totals{margin-top:6px; margin-left:auto; width:270px;}
+  .paper-totals .tl{display:flex; justify-content:space-between; font-size:12px; padding:4px 0; color:#5B4A22; border-bottom:1px dotted #D8C89A;}
+  .paper-totals .tl b{font-family:var(--font-mono); color:#2B2317;}
+  .paper-totals .gt{display:flex; justify-content:space-between; margin-top:6px; padding:9px 10px; background:#2B2317; border-radius:5px; color:var(--gold-pale); font-family:var(--font-display); font-size:17px; font-weight:700;}
+  .paper-totals .gt b{font-family:var(--font-mono); color:#F2E3B8;}
+
+  .words-line{margin-top:10px; font-size:11px; color:#5B4A22; font-style:italic;}
+
+  .paper-foot{display:flex; justify-content:space-between; align-items:flex-end; margin-top:26px; gap:14px;}
+  .terms{font-size:9px; color:#8A7647; line-height:1.6; max-width:280px;}
+  .terms .t-title{font-weight:600; color:#5B4A22; text-transform:uppercase; letter-spacing:0.08em; font-size:9.5px; margin-bottom:3px;}
+  .sig-block{text-align:center; position:relative; min-width:150px;}
+  .sig-block .for-line{font-size:11px; color:#5B4A22; margin-bottom:26px;}
+  .sig-block .sig-caption{font-size:10px; color:#5B4A22; border-top:1px solid #8A7647; padding-top:4px; margin-top:2px;}
+
+  .seal{
+    position:absolute; width:104px; height:104px; right:26px; bottom:70px; transform:rotate(-9deg);
+    opacity:0.9; pointer-events:none;
+  }
+
+  /* ---------- STOCKS / ITEMS PAGES ---------- */
+  .stat-cards{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px;}
+  @media (max-width:760px){.stat-cards{grid-template-columns:1fr;}}
+  .stat-card{
+    background:linear-gradient(155deg, var(--charcoal), var(--charcoal-2)); border:1px solid rgba(198,154,58,0.2);
+    border-radius:var(--radius); padding:18px 20px;
+  }
+  .stat-card .lbl{font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); opacity:0.85;}
+  .stat-card .val{font-family:var(--font-display); font-size:30px; font-weight:700; color:var(--ivory); margin-top:4px;}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
+  .search-box{position:relative; flex:1; min-width:220px; max-width:340px;}
+  .search-box input{padding-left:32px;}
+  .search-box::before{content:"⚲"; position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--gold);}
+
+  .data-table-wrap{overflow-x:auto;}
+  table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
+  table.data-table thead th{
+    text-align:left; padding:10px 12px; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--gold); border-bottom:1px solid rgba(198,154,58,0.3); white-space:nowrap;
+  }
+  table.data-table tbody td{padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.06); color:var(--ivory-2);}
+  table.data-table tbody tr:hover{background:rgba(198,154,58,0.06);}
+  .pill{padding:3px 10px; border-radius:999px; font-size:11px; background:rgba(198,154,58,0.15); color:var(--gold-light); border:1px solid rgba(198,154,58,0.3);}
+  .actions-cell{display:flex; gap:6px;}
+  .empty-state{text-align:center; padding:50px 20px; color:var(--ivory-3); opacity:0.65;}
+  .empty-state .glyph{font-size:34px; margin-bottom:10px; opacity:0.6;}
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(10,8,5,0.72); display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:linear-gradient(160deg, var(--charcoal), var(--charcoal-2)); border:1px solid rgba(198,154,58,0.3);
+    border-radius:12px; padding:24px; width:100%; max-width:440px; box-shadow:var(--shadow-lift);
+  }
+  .modal h3{font-family:var(--font-display); margin:0 0 16px; color:var(--gold-pale); font-size:20px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:#2B2317; color:var(--gold-pale);
+    padding:11px 22px; border-radius:999px; border:1px solid rgba(198,154,58,0.4); font-size:13px; opacity:0; pointer-events:none;
+    transition:all .3s ease; z-index:200; box-shadow:0 10px 24px -8px rgba(0,0,0,0.5);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  ::-webkit-scrollbar{height:8px; width:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(198,154,58,0.4); border-radius:8px;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #invoicePaper, #invoicePaper *{visibility:visible;}
+    #invoicePaper{position:absolute; top:0; left:0; width:100%; box-shadow:none;}
+    .seal{opacity:0.85;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topnav">
+  <div class="brand">
+    <svg width="46" height="46" viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="goldRing" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#F2E3B8"/>
+          <stop offset="45%" stop-color="#C69A3A"/>
+          <stop offset="100%" stop-color="#8A6A22"/>
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="46" fill="none" stroke="url(#goldRing)" stroke-width="4"/>
+      <circle cx="50" cy="50" r="38" fill="none" stroke="url(#goldRing)" stroke-width="1"/>
+      <text x="50" y="58" text-anchor="middle" font-family="Cormorant Garamond, serif" font-weight="700" font-size="34" fill="url(#goldRing)">VJ</text>
+    </svg>
+    <div class="brand-text">
+      <h1>Vishesh Jewellers</h1>
+      <p>Fine Gold &amp; Diamond Jewellery</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-page="home">Home</button>
+    <button class="tab-btn" data-page="stocks">Stocks</button>
+    <button class="tab-btn" data-page="items">Items</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================= HOME PAGE ================= -->
+  <section class="page active" id="page-home">
+    <div class="page-head">
+      <p class="eyebrow">Billing</p>
+      <h2>Create Invoice</h2>
+      <p class="sub">Fill in the details on the left — the GST invoice on the right updates as you type.</p>
+    </div>
+
+    <div class="invoice-layout">
+      <!-- FORM -->
+      <div>
+        <div class="panel" style="margin-bottom:18px;">
+          <details class="collapse">
+            <summary>Business details (shown on every invoice)</summary>
+            <div class="row row-2">
+              <div class="field"><label>Shop Name</label><input type="text" id="biz-name" value="Vishesh Jewellers"></div>
+              <div class="field"><label>GSTIN</label><input type="text" id="biz-gstin" placeholder="e.g. 09ABCDE1234F1Z5"></div>
+              <div class="field"><label>Phone</label><input type="text" id="biz-phone" placeholder="Phone number(s)"></div>
+              <div class="field"><label>Email</label><input type="text" id="biz-email" placeholder="Email address"></div>
+            </div>
+            <div class="field"><label>Shop Address</label><textarea id="biz-address" placeholder="Shop address, city">Main Market Road</textarea></div>
+          </details>
+        </div>
+
+        <div class="panel" style="margin-bottom:18px;">
+          <h3><span class="dot"></span>Bill To</h3>
+          <div class="row row-2">
+            <div class="field"><label>Customer Name</label><input type="text" id="cust-name" placeholder="e.g. Taulan Yadav Ji"></div>
+            <div class="field"><label>Mobile (optional)</label><input type="text" id="cust-mobile" placeholder="10-digit mobile"></div>
+          </div>
+          <div class="field"><label>Address</label><textarea id="cust-address" placeholder="Customer address"></textarea></div>
+          <div class="row row-2">
+            <div class="field"><label>Invoice No.</label><input type="text" id="inv-no"></div>
+            <div class="field"><label>Date</label><input type="date" id="inv-date"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:18px;">
+          <h3><span class="dot"></span>Items</h3>
+          <div class="items-table-wrap">
+            <table class="itable" id="itemsTable">
+              <thead>
+                <tr>
+                  <th>Item</th><th>From Stock</th><th>HSN</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th>
+                  <th>Pcs</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount (₹)</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="itemsTbody"></tbody>
+            </table>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="addItemRow">+ Add Item Row</button>
+
+          <div class="row row-2" style="margin-top:16px;">
+            <div class="field"><label>Exchange / Old Gold Deduction (₹)</label><input type="number" id="exchange-disc" value="0" step="0.01"></div>
+            <div class="field"><label>GST Rate (CGST + SGST)</label>
+              <select id="gst-rate">
+                <option value="1.5">1.5% + 1.5% (Standard 3% Gold)</option>
+                <option value="0">0% (Exempt)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="totals-mini">
+            <div class="tline"><span>Subtotal</span><b id="mini-sub">₹0.00</b></div>
+            <div class="tline"><span>Exchange / Discount</span><b id="mini-disc">₹0.00</b></div>
+            <div class="tline"><span>CGST + SGST</span><b id="mini-gst">₹0.00</b></div>
+            <div class="tline grand"><span>Grand Total</span><b id="mini-grand">₹0.00</b></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3><span class="dot"></span>Terms &amp; Conditions</h3>
+          <textarea id="inv-terms" style="min-height:70px;">Jewellery once sold will not be taken back, instead it can be exchanged within a week.
+Exchange of old gold or silver is subject to discount.
+Customer will be intimated of any broken jewellery after sale.</textarea>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-gold" id="btnCompleteSale">✔ Complete Sale &amp; Deduct Stock</button>
+          <button class="btn btn-ghost" id="btnPrint">🖨 Print Invoice</button>
+          <button class="btn btn-ghost" id="btnPdf">⬇ Download PDF</button>
+          <button class="btn btn-ghost" id="btnNewInvoice">＋ New Invoice</button>
+        </div>
+        <p id="saleStatus" style="font-size:12px; color:var(--ivory-3); opacity:0.75; margin-top:8px;"></p>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="paper-outer">
+        <div id="invoicePaper">
+          <div class="paper-head">
+            <div class="paper-brand">
+              <svg width="52" height="52" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="46" fill="none" stroke="#C69A3A" stroke-width="4"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#C69A3A" stroke-width="1"/>
+                <text x="50" y="58" text-anchor="middle" font-family="Cormorant Garamond, serif" font-weight="700" font-size="34" fill="#C69A3A">VJ</text>
+              </svg>
+              <div>
+                <h2 id="p-biz-name">Vishesh Jewellers</h2>
+                <p>Fine Gold &amp; Diamond Jewellery</p>
+              </div>
+            </div>
+            <div class="paper-contact">
+              <div class="gst-badge" id="p-gstin">GSTIN: —</div><br>
+              <span id="p-phone"></span><br>
+              <span id="p-email"></span><br>
+              <span id="p-address"></span>
+            </div>
+          </div>
+
+          <div class="meta-row">
+            <div>Invoice No.: <span class="inv-no" id="p-inv-no">—</span></div>
+            <div>Date: <span class="inv-no" id="p-date">—</span></div>
+          </div>
+
+          <div class="bill-to">
+            <div class="lbl">Bill To</div>
+            <div class="nm" id="p-cust-name">Customer Name</div>
+            <div class="addr" id="p-cust-address"></div>
+          </div>
+
+          <table class="paper-items">
+            <thead>
+              <tr><th>#</th><th>Item</th><th>HSN</th><th>Purity</th><th>Gr.Wt</th><th>Net Wt</th><th>Pcs</th><th>Rate</th><th>Mkg%</th><th>Amount</th></tr>
+            </thead>
+            <tbody id="p-items-body"></tbody>
+          </table>
+
+          <div class="paper-totals" id="p-totals"></div>
+          <div class="words-line" id="p-words"></div>
+
+          <div class="paper-foot">
+            <div class="terms">
+              <div class="t-title">Terms &amp; Conditions</div>
+              <div id="p-terms"></div>
+            </div>
+            <div class="sig-block">
+              <div class="for-line">For <span id="p-biz-name-2">Vishesh Jewellers</span></div>
+              <div class="sig-caption">Authorised Signatory</div>
+            </div>
+          </div>
+
+          <svg class="seal" viewBox="0 0 140 140" id="p-seal" style="display:none;">
+            <circle cx="70" cy="70" r="62" fill="none" stroke="#9B3A2C" stroke-width="2.4"/>
+            <circle cx="70" cy="70" r="52" fill="none" stroke="#9B3A2C" stroke-width="1.2"/>
+            <path id="sealArcTop" d="M 20 70 A 50 50 0 0 1 120 70" fill="none"/>
+            <path id="sealArcBottom" d="M 26 82 A 44 44 0 0 0 114 82" fill="none"/>
+            <text font-family="Jost, sans-serif" font-size="9.2" fill="#9B3A2C" letter-spacing="2" font-weight="600">
+              <textPath href="#sealArcTop" startOffset="50%" text-anchor="middle">VISHESH JEWELLERS</textPath>
+            </text>
+            <text font-family="Jost, sans-serif" font-size="8" fill="#9B3A2C" letter-spacing="2">
+              <textPath href="#sealArcBottom" startOffset="50%" text-anchor="middle">• GST INVOICE •</textPath>
+            </text>
+            <text x="70" y="76" text-anchor="middle" font-family="Cormorant Garamond, serif" font-weight="700" font-size="26" fill="#9B3A2C">VJ</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STOCKS PAGE ================= -->
+  <section class="page" id="page-stocks">
+    <div class="page-head">
+      <p class="eyebrow">Inventory</p>
+      <h2>Stocks</h2>
+      <p class="sub">Track weights, purity and quantities of jewellery currently in stock.</p>
+    </div>
+
+    <div class="stat-cards">
+      <div class="stat-card"><div class="lbl">Stock Entries</div><div class="val" id="stat-count">0</div></div>
+      <div class="stat-card"><div class="lbl">Total Gross Weight</div><div class="val" id="stat-weight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Estimated Stock Value</div><div class="val" id="stat-value">₹0</div></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+      <h3><span class="dot"></span><span id="stockFormTitle">Add Stock Item</span></h3>
+      <div class="row row-3">
+        <div class="field"><label>Item</label><input type="text" id="st-item" list="itemNamesList" placeholder="Select or type item"></div>
+        <div class="field"><label>Purity</label>
+          <select id="st-purity">
+            <option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>Silver</option>
+          </select>
+        </div>
+        <div class="field"><label>Quantity (pcs)</label><input type="number" id="st-qty" value="1" min="1"></div>
+      </div>
+      <div class="row row-3">
+        <div class="field"><label>Gross Weight — total for qty (g)</label><input type="number" id="st-gross" step="0.001" placeholder="0.000"></div>
+        <div class="field"><label>Net Weight — total for qty (g)</label><input type="number" id="st-net" step="0.001" placeholder="0.000"></div>
+        <div class="field"><label>Rate (₹/g)</label><input type="number" id="st-rate" step="0.01" placeholder="0.00"></div>
+      </div>
+      <input type="hidden" id="st-edit-id">
+      <div class="btn-row">
+        <button class="btn btn-gold" id="btnStockSave">＋ Add to Stock</button>
+        <button class="btn btn-ghost" id="btnStockCancel" style="display:none;">Cancel Edit</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="stockSearch" placeholder="Search stock by item name…"></div>
+        <span style="color:var(--ivory-3); font-size:12px; opacity:.7;" id="stockCountLabel"></span>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Item</th><th>Purity</th><th>Qty</th><th>Gross Wt</th><th>Net Wt</th><th>Rate/g</th><th>Value</th><th>Added</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="stockTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="stockEmpty" style="display:none;">
+        <div class="glyph">✦</div>No stock items yet — add your first piece above.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ITEMS PAGE ================= -->
+  <section class="page" id="page-items">
+    <div class="page-head">
+      <p class="eyebrow">Catalogue</p>
+      <h2>Items</h2>
+      <p class="sub">Manage your master item list — names, HSN codes and default making charges used to auto-fill invoices.</p>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+      <h3><span class="dot"></span><span id="itemFormTitle">Add Item</span></h3>
+      <div class="row row-3">
+        <div class="field"><label>Item Name</label><input type="text" id="it-name" placeholder="e.g. Nathiya Hallmark"></div>
+        <div class="field"><label>HSN Code</label><input type="text" id="it-hsn" placeholder="e.g. 7113" value="7113"></div>
+        <div class="field"><label>Category</label>
+          <select id="it-category">
+            <option>Ring</option><option>Necklace</option><option>Locket</option><option>Bangle</option>
+            <option>Chain</option><option>Earring</option><option>Nathiya</option><option>Bracelet</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="row row-2">
+        <div class="field"><label>Default Making Charge (%)</label><input type="number" id="it-making" step="0.01" placeholder="10.00" value="10"></div>
+        <div class="field"><label>Default Purity</label>
+          <select id="it-purity"><option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>Silver</option></select>
+        </div>
+      </div>
+      <input type="hidden" id="it-edit-id">
+      <div class="btn-row">
+        <button class="btn btn-gold" id="btnItemSave">＋ Add Item</button>
+        <button class="btn btn-ghost" id="btnItemCancel" style="display:none;">Cancel Edit</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="itemSearch" placeholder="Search items…"></div>
+        <span style="color:var(--ivory-3); font-size:12px; opacity:.7;" id="itemCountLabel"></span>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Item Name</th><th>HSN</th><th>Category</th><th>Purity</th><th>Making %</th><th>Actions</th></tr></thead>
+          <tbody id="itemsMasterTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="itemsEmpty" style="display:none;">
+        <div class="glyph">✦</div>No items yet — add your first catalogue item above.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<datalist id="itemNamesList"></datalist>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h3>Confirm Delete</h3>
+    <p style="color:var(--ivory-3); font-size:14px;">This action cannot be undone. Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" id="modalCancel">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="modalConfirm">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= STORAGE HELPERS ================= */
+async function storeGet(key, fallback){
+  try{
+    const r = await window.storage.get(key, false);
+    return r ? JSON.parse(r.value) : fallback;
+  }catch(e){ return fallback; }
+}
+async function storeSet(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), false); }catch(e){ console.error('storage set failed', e); }
+}
+
+let itemsMaster = [];
+let stockList = [];
+let bizInfo = {};
+let invoiceCounter = 1;
+let rows = []; // current invoice line items
+
+const uid = () => Math.random().toString(36).slice(2,10);
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function fmt(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtWt(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-IN', {minimumFractionDigits:3, maximumFractionDigits:3});
+}
+
+/* ---------- Number to words (Indian system) ---------- */
+function numToWords(num){
+  num = Math.round(num);
+  if(num === 0) return 'Zero';
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function twoDigit(n){
+    if(n < 20) return ones[n];
+    return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+  }
+  function threeDigit(n){
+    if(n < 100) return twoDigit(n);
+    return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + twoDigit(n%100) : '');
+  }
+  let crore = Math.floor(num / 10000000); num %= 10000000;
+  let lakh = Math.floor(num / 100000); num %= 100000;
+  let thousand = Math.floor(num / 1000); num %= 1000;
+  let rest = num;
+  let parts = [];
+  if(crore) parts.push(threeDigit(crore) + ' Crore');
+  if(lakh) parts.push(threeDigit(lakh) + ' Lakh');
+  if(thousand) parts.push(threeDigit(thousand) + ' Thousand');
+  if(rest) parts.push(threeDigit(rest));
+  return parts.join(' ');
+}
+
+/* ================= NAV ================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+  });
+});
+
+/* ================= INVOICE ROWS ================= */
+// gross/net on a row are PER-PIECE weights; pcs is how many of that piece are being sold.
+function newRow(){
+  return { id: uid(), name:'', hsn:'7113', purity:'22K', gross:'', net:'', pcs:1, rate:'', making:'10', stockId:'' };
+}
+
+function renderItemsDatalist(){
+  const dl = document.getElementById('itemNamesList');
+  dl.innerHTML = itemsMaster.map(i => `<option value="${escapeHtml(i.name)}">`).join('');
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Stock entries available to link, factoring in pieces already earmarked by OTHER rows on this invoice
+function availableQtyFor(stockEntry, excludingRowId){
+  const earmarked = rows
+    .filter(r => r.id !== excludingRowId && r.stockId === stockEntry.id)
+    .reduce((s,r)=> s + (parseInt(r.pcs)||0), 0);
+  return Math.max(stockEntry.qty - earmarked, 0);
+}
+
+function stockOptionsHtml(selectedId, rowId){
+  const opts = ['<option value="">— manual entry (no stock deduction) —</option>'];
+  stockList.forEach(s=>{
+    const avail = availableQtyFor(s, rowId);
+    if(avail <= 0 && s.id !== selectedId) return;
+    opts.push(`<option value="${s.id}" ${s.id===selectedId?'selected':''}>${escapeHtml(s.item)} · ${s.purity} · ${fmtWt(s.net)}g · ${avail} in stock</option>`);
+  });
+  return opts.join('');
+}
+
+function renderRowsTable(){
+  const tbody = document.getElementById('itemsTbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr data-id="${r.id}">
+      <td class="name-cell"><input type="text" list="itemNamesList" class="f-name" value="${escapeHtml(r.name)}" placeholder="Item name"></td>
+      <td style="min-width:170px;"><select class="f-stock">${stockOptionsHtml(r.stockId, r.id)}</select></td>
+      <td><input type="text" class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;"></td>
+      <td>
+        <select class="f-purity">
+          ${['24K','22K','18K','14K','Silver'].map(p=>`<option ${r.purity===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </td>
+      <td><input type="number" step="0.001" class="f-gross" value="${r.gross}" placeholder="0.000" ${r.stockId?'readonly':''}></td>
+      <td><input type="number" step="0.001" class="f-net" value="${r.net}" placeholder="0.000" ${r.stockId?'readonly':''}></td>
+      <td><input type="number" min="1" step="1" class="f-pcs" value="${r.pcs}" style="width:56px;"></td>
+      <td><input type="number" step="0.01" class="f-rate" value="${r.rate}" placeholder="0.00"></td>
+      <td><input type="number" step="0.01" class="f-making" value="${r.making}" style="width:60px;"></td>
+      <td class="amount-cell">₹${fmt(rowAmount(r))}</td>
+      <td><button class="rm-row" data-rm="${r.id}">×</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const id = tr.dataset.id;
+    const row = rows.find(r=>r.id===id);
+    tr.querySelector('.f-name').addEventListener('input', e=>{
+      row.name = e.target.value;
+      const match = itemsMaster.find(i=>i.name.toLowerCase() === row.name.toLowerCase());
+      if(match && !row.stockId){ row.hsn = match.hsn; row.making = match.making; row.purity = match.purity || row.purity; renderRowsTable(); renderPreview(); return; }
+      renderPreview();
+    });
+    tr.querySelector('.f-stock').addEventListener('change', e=>{
+      const stockId = e.target.value;
+      row.stockId = stockId;
+      if(stockId){
+        const s = stockList.find(x=>x.id===stockId);
+        if(s){
+          row.name = s.item;
+          row.purity = s.purity;
+          row.rate = s.rate || row.rate;
+          row.gross = s.qty ? (s.gross / s.qty).toFixed(3) : s.gross;
+          row.net = s.qty ? (s.net / s.qty).toFixed(3) : s.net;
+          const match = itemsMaster.find(i=>i.name.toLowerCase() === s.item.toLowerCase());
+          if(match){ row.hsn = match.hsn; row.making = match.making; }
+          const avail = availableQtyFor(s, row.id);
+          row.pcs = Math.min(parseInt(row.pcs)||1, Math.max(avail,1));
+        }
+      }
+      renderRowsTable(); renderPreview();
+    });
+    tr.querySelector('.f-hsn').addEventListener('input', e=>{ row.hsn = e.target.value; renderPreview(); });
+    tr.querySelector('.f-purity').addEventListener('change', e=>{ row.purity = e.target.value; renderPreview(); });
+    tr.querySelector('.f-gross').addEventListener('input', e=>{ row.gross = e.target.value; renderRowsTable(); renderPreview(); });
+    tr.querySelector('.f-net').addEventListener('input', e=>{ row.net = e.target.value; renderRowsTable(); renderPreview(); });
+    tr.querySelector('.f-pcs').addEventListener('input', e=>{
+      let pcs = parseInt(e.target.value)||1;
+      if(row.stockId){
+        const s = stockList.find(x=>x.id===row.stockId);
+        if(s){
+          const avail = availableQtyFor(s, row.id);
+          if(pcs > avail){ toast(`Only ${avail} piece(s) of "${s.item}" left in stock`); pcs = Math.max(avail,1); }
+        }
+      }
+      row.pcs = pcs;
+      renderRowsTable(); renderPreview();
+    });
+    tr.querySelector('.f-rate').addEventListener('input', e=>{ row.rate = e.target.value; renderRowsTable(); renderPreview(); });
+    tr.querySelector('.f-making').addEventListener('input', e=>{ row.making = e.target.value; renderRowsTable(); renderPreview(); });
+  });
+  tbody.querySelectorAll('[data-rm]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      rows = rows.filter(r=>r.id !== b.dataset.rm);
+      if(rows.length===0) rows.push(newRow());
+      renderRowsTable(); renderPreview();
+    });
+  });
+}
+
+function rowAmount(r){
+  const net = parseFloat(r.net)||0;
+  const rate = parseFloat(r.rate)||0;
+  const making = parseFloat(r.making)||0;
+  const pcs = parseInt(r.pcs)||1;
+  return net * pcs * rate * (1 + making/100);
+}
+
+function computeTotals(){
+  const subtotal = rows.reduce((s,r)=>s + rowAmount(r), 0);
+  const disc = parseFloat(document.getElementById('exchange-disc').value) || 0;
+  const gstPct = parseFloat(document.getElementById('gst-rate').value) || 0;
+  const taxable = Math.max(subtotal - disc, 0);
+  const cgst = taxable * (gstPct/100);
+  const sgst = taxable * (gstPct/100);
+  const rawGrand = taxable + cgst + sgst;
+  const grand = Math.round(rawGrand);
+  const roundOff = grand - rawGrand;
+  return { subtotal, disc, cgst, sgst, gstPct, grand, roundOff };
+}
+
+function renderMiniTotals(){
+  const t = computeTotals();
+  document.getElementById('mini-sub').textContent = '₹'+fmt(t.subtotal);
+  document.getElementById('mini-disc').textContent = '₹'+fmt(t.disc);
+  document.getElementById('mini-gst').textContent = '₹'+fmt(t.cgst + t.sgst);
+  document.getElementById('mini-grand').textContent = '₹'+fmt(t.grand);
+}
+
+/* ================= PREVIEW ================= */
+function renderPreview(){
+  document.getElementById('p-biz-name').textContent = document.getElementById('biz-name').value || 'Vishesh Jewellers';
+  document.getElementById('p-biz-name-2').textContent = document.getElementById('biz-name').value || 'Vishesh Jewellers';
+  document.getElementById('p-gstin').textContent = 'GSTIN: ' + (document.getElementById('biz-gstin').value || '—');
+  document.getElementById('p-phone').textContent = document.getElementById('biz-phone').value ? 'Ph: '+document.getElementById('biz-phone').value : '';
+  document.getElementById('p-email').textContent = document.getElementById('biz-email').value || '';
+  document.getElementById('p-address').textContent = document.getElementById('biz-address').value || '';
+
+  document.getElementById('p-inv-no').textContent = document.getElementById('inv-no').value || '—';
+  document.getElementById('p-date').textContent = formatDateDisplay(document.getElementById('inv-date').value);
+
+  document.getElementById('p-cust-name').textContent = document.getElementById('cust-name').value || 'Customer Name';
+  document.getElementById('p-cust-address').textContent = [document.getElementById('cust-address').value, document.getElementById('cust-mobile').value ? ('Mob: '+document.getElementById('cust-mobile').value) : ''].filter(Boolean).join(' · ');
+
+  const validRows = rows.filter(r => r.name || r.net || r.rate);
+  document.getElementById('p-items-body').innerHTML = validRows.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${escapeHtml(r.name)||'—'}</td>
+      <td class="num">${escapeHtml(r.hsn)}</td>
+      <td>${r.purity}</td>
+      <td class="num">${fmtWt((parseFloat(r.gross)||0)*(parseInt(r.pcs)||1))}</td>
+      <td class="num">${fmtWt((parseFloat(r.net)||0)*(parseInt(r.pcs)||1))}</td>
+      <td class="num">${parseInt(r.pcs)||1}</td>
+      <td class="num">${fmt(r.rate)}</td>
+      <td class="num">${fmt(r.making)}%</td>
+      <td class="num">${fmt(rowAmount(r))}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="10" style="text-align:center; color:#9C8B60; padding:16px 0;">Add items to see them here</td></tr>`;
+
+  const t = computeTotals();
+  document.getElementById('p-totals').innerHTML = `
+    <div class="tl"><span>Total</span><b>₹${fmt(t.subtotal)}</b></div>
+    <div class="tl"><span>Exchange / Discount</span><b>₹${fmt(t.disc)}</b></div>
+    <div class="tl"><span>CGST ${t.gstPct}%</span><b>₹${fmt(t.cgst)}</b></div>
+    <div class="tl"><span>SGST ${t.gstPct}%</span><b>₹${fmt(t.sgst)}</b></div>
+    <div class="tl"><span>Round Off</span><b>₹${fmt(t.roundOff)}</b></div>
+    <div class="gt"><span>Grand Total</span><b>₹${fmt(t.grand)}</b></div>
+  `;
+  document.getElementById('p-words').textContent = t.grand > 0 ? `Rs. ${numToWords(t.grand)} Only` : '';
+  document.getElementById('p-terms').textContent = document.getElementById('inv-terms').value;
+  document.getElementById('p-seal').style.display = validRows.length ? 'block' : 'none';
+
+  renderMiniTotals();
+  if(typeof setSaleStatus === 'function') setSaleStatus();
+}
+
+function formatDateDisplay(iso){
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+/* ================= INVOICE ACTIONS ================= */
+document.getElementById('addItemRow').addEventListener('click', ()=>{
+  rows.push(newRow());
+  renderRowsTable(); renderPreview();
+});
+
+['exchange-disc','gst-rate','biz-name','biz-gstin','biz-phone','biz-email','biz-address','cust-name','cust-mobile','cust-address','inv-no','inv-date','inv-terms']
+  .forEach(id => document.getElementById(id).addEventListener('input', renderPreview));
+document.getElementById('gst-rate').addEventListener('change', renderPreview);
+
+async function persistBizInfo(){
+  bizInfo = {
+    name: document.getElementById('biz-name').value,
+    gstin: document.getElementById('biz-gstin').value,
+    phone: document.getElementById('biz-phone').value,
+    email: document.getElementById('biz-email').value,
+    address: document.getElementById('biz-address').value,
+  };
+  await storeSet('business-info', bizInfo);
+}
+['biz-name','biz-gstin','biz-phone','biz-email','biz-address'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', persistBizInfo);
+});
+
+async function nextInvoiceNo(){
+  const n = String(invoiceCounter).padStart(6,'0');
+  return 'VJ' + n;
+}
+
+let saleCompleted = false;
+
+function setSaleStatus(){
+  const el = document.getElementById('saleStatus');
+  const btn = document.getElementById('btnCompleteSale');
+  const linkedRows = rows.filter(r => r.stockId && (r.name || r.net));
+  if(saleCompleted){
+    el.textContent = '✔ Stock updated for this invoice. Start a new invoice to record another sale.';
+    btn.disabled = true; btn.style.opacity = 0.55; btn.style.cursor = 'not-allowed';
+  }else if(linkedRows.length){
+    el.textContent = `${linkedRows.length} item(s) linked to stock — click "Complete Sale" to deduct them once the invoice is final.`;
+    btn.disabled = false; btn.style.opacity = 1; btn.style.cursor = 'pointer';
+  }else{
+    el.textContent = 'Tip: pick "From Stock" on an item row to auto-deduct that piece from your Stocks page when you complete the sale.';
+    btn.disabled = false; btn.style.opacity = 1; btn.style.cursor = 'pointer';
+  }
+}
+
+async function resetInvoiceForm(bumpCounter){
+  if(bumpCounter){
+    invoiceCounter += 1;
+    await storeSet('invoice-counter', invoiceCounter);
+  }
+  document.getElementById('inv-no').value = await nextInvoiceNo();
+  document.getElementById('inv-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('cust-name').value = '';
+  document.getElementById('cust-mobile').value = '';
+  document.getElementById('cust-address').value = '';
+  document.getElementById('exchange-disc').value = 0;
+  rows = [newRow()];
+  saleCompleted = false;
+  renderRowsTable();
+  renderPreview();
+  setSaleStatus();
+}
+
+document.getElementById('btnNewInvoice').addEventListener('click', ()=>{
+  resetInvoiceForm(true);
+  toast('New invoice started');
+});
+
+document.getElementById('btnCompleteSale').addEventListener('click', async ()=>{
+  if(saleCompleted) return;
+  const linkedRows = rows.filter(r => r.stockId && (r.name || r.net));
+  if(!linkedRows.length){
+    toast('No items are linked to stock on this invoice');
+    saleCompleted = true;
+    setSaleStatus();
+    return;
+  }
+  // validate availability first
+  for(const r of linkedRows){
+    const s = stockList.find(x=>x.id===r.stockId);
+    const pcs = parseInt(r.pcs)||1;
+    if(!s || pcs > s.qty){
+      toast(`Not enough stock for "${r.name}" — only ${s ? s.qty : 0} left`);
+      return;
+    }
+  }
+  linkedRows.forEach(r=>{
+    const s = stockList.find(x=>x.id===r.stockId);
+    const pcs = parseInt(r.pcs)||1;
+    const perGross = s.qty ? s.gross / s.qty : parseFloat(r.gross)||0;
+    const perNet = s.qty ? s.net / s.qty : parseFloat(r.net)||0;
+    s.qty = Math.max(s.qty - pcs, 0);
+    s.gross = Math.max(s.gross - perGross*pcs, 0);
+    s.net = Math.max(s.net - perNet*pcs, 0);
+  });
+  await storeSet('stock-list', stockList);
+  renderStockTable(); renderStockStats();
+  saleCompleted = true;
+  setSaleStatus();
+  toast('Stock updated — sale recorded');
+});
+
+document.getElementById('btnPrint').addEventListener('click', ()=>{ window.print(); });
+
+document.getElementById('btnPdf').addEventListener('click', async ()=>{
+  const node = document.getElementById('invoicePaper');
+  toast('Preparing PDF…');
+  try{
+    const canvas = await html2canvas(node, {scale:2, backgroundColor:'#FAF5E7'});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','pt','a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 40;
+    const imgHeight = canvas.height * (imgWidth / canvas.width);
+    pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+    const invNo = document.getElementById('inv-no').value || 'invoice';
+    pdf.save(`Invoice-${invNo}.pdf`);
+    toast('PDF downloaded');
+  }catch(e){
+    console.error(e);
+    toast('Could not generate PDF — try Print instead');
+  }
+});
+
+/* ================= STOCKS PAGE ================= */
+function renderStockStats(){
+  document.getElementById('stat-count').textContent = stockList.length;
+  const totalWt = stockList.reduce((s,x)=>s + (parseFloat(x.gross)||0), 0);
+  const totalVal = stockList.reduce((s,x)=>s + (parseFloat(x.net)||0) * (parseFloat(x.rate)||0), 0);
+  document.getElementById('stat-weight').textContent = fmtWt(totalWt) + ' g';
+  document.getElementById('stat-value').textContent = '₹' + fmt(totalVal);
+}
+
+function renderStockTable(){
+  const q = (document.getElementById('stockSearch').value || '').toLowerCase();
+  const filtered = stockList.filter(s => s.item.toLowerCase().includes(q));
+  document.getElementById('stockCountLabel').textContent = `${filtered.length} of ${stockList.length} shown`;
+  const tbody = document.getElementById('stockTbody');
+  tbody.innerHTML = filtered.map(s => `
+    <tr>
+      <td>${escapeHtml(s.item)}</td>
+      <td><span class="pill">${s.purity}</span></td>
+      <td>${s.qty}</td>
+      <td>${fmtWt(s.gross)} g</td>
+      <td>${fmtWt(s.net)} g</td>
+      <td>₹${fmt(s.rate)}</td>
+      <td>₹${fmt((parseFloat(s.net)||0)*(parseFloat(s.rate)||0))}</td>
+      <td>${s.added || '—'}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" data-edit="${s.id}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-del="${s.id}">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+  document.getElementById('stockEmpty').style.display = stockList.length ? 'none' : 'block';
+
+  tbody.querySelectorAll('[data-edit]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const s = stockList.find(x=>x.id===b.dataset.edit);
+      document.getElementById('st-item').value = s.item;
+      document.getElementById('st-purity').value = s.purity;
+      document.getElementById('st-qty').value = s.qty;
+      document.getElementById('st-gross').value = s.gross;
+      document.getElementById('st-net').value = s.net;
+      document.getElementById('st-rate').value = s.rate;
+      document.getElementById('st-edit-id').value = s.id;
+      document.getElementById('stockFormTitle').textContent = 'Edit Stock Item';
+      document.getElementById('btnStockSave').textContent = 'Save Changes';
+      document.getElementById('btnStockCancel').style.display = 'inline-flex';
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click', ()=> confirmDelete(()=> deleteStock(b.dataset.del)));
+  });
+}
+
+async function deleteStock(id){
+  stockList = stockList.filter(s=>s.id!==id);
+  await storeSet('stock-list', stockList);
+  renderStockTable(); renderStockStats();
+  toast('Stock item deleted');
+}
+
+function resetStockForm(){
+  document.getElementById('st-item').value='';
+  document.getElementById('st-qty').value=1;
+  document.getElementById('st-gross').value='';
+  document.getElementById('st-net').value='';
+  document.getElementById('st-rate').value='';
+  document.getElementById('st-edit-id').value='';
+  document.getElementById('stockFormTitle').textContent = 'Add Stock Item';
+  document.getElementById('btnStockSave').textContent = '＋ Add to Stock';
+  document.getElementById('btnStockCancel').style.display = 'none';
+}
+
+document.getElementById('btnStockSave').addEventListener('click', async ()=>{
+  const item = document.getElementById('st-item').value.trim();
+  if(!item){ toast('Please enter an item name'); return; }
+  const editId = document.getElementById('st-edit-id').value;
+  const data = {
+    id: editId || uid(),
+    item,
+    purity: document.getElementById('st-purity').value,
+    qty: parseInt(document.getElementById('st-qty').value)||1,
+    gross: parseFloat(document.getElementById('st-gross').value)||0,
+    net: parseFloat(document.getElementById('st-net').value)||0,
+    rate: parseFloat(document.getElementById('st-rate').value)||0,
+    added: editId ? (stockList.find(s=>s.id===editId)||{}).added : new Date().toLocaleDateString('en-IN'),
+  };
+  if(editId){
+    stockList = stockList.map(s=>s.id===editId ? data : s);
+    toast('Stock item updated');
+  }else{
+    stockList.push(data);
+    toast('Added to stock');
+  }
+  await storeSet('stock-list', stockList);
+  resetStockForm();
+  renderStockTable(); renderStockStats();
+});
+document.getElementById('btnStockCancel').addEventListener('click', resetStockForm);
+document.getElementById('stockSearch').addEventListener('input', renderStockTable);
+
+/* ================= ITEMS PAGE ================= */
+function renderItemsMasterTable(){
+  const q = (document.getElementById('itemSearch').value || '').toLowerCase();
+  const filtered = itemsMaster.filter(i => i.name.toLowerCase().includes(q));
+  document.getElementById('itemCountLabel').textContent = `${filtered.length} of ${itemsMaster.length} shown`;
+  const tbody = document.getElementById('itemsMasterTbody');
+  tbody.innerHTML = filtered.map(i => `
+    <tr>
+      <td>${escapeHtml(i.name)}</td>
+      <td>${escapeHtml(i.hsn)}</td>
+      <td><span class="pill">${i.category}</span></td>
+      <td>${i.purity}</td>
+      <td>${fmt(i.making)}%</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" data-edit="${i.id}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-del="${i.id}">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+  document.getElementById('itemsEmpty').style.display = itemsMaster.length ? 'none' : 'block';
+
+  tbody.querySelectorAll('[data-edit]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const i = itemsMaster.find(x=>x.id===b.dataset.edit);
+      document.getElementById('it-name').value = i.name;
+      document.getElementById('it-hsn').value = i.hsn;
+      document.getElementById('it-category').value = i.category;
+      document.getElementById('it-making').value = i.making;
+      document.getElementById('it-purity').value = i.purity;
+      document.getElementById('it-edit-id').value = i.id;
+      document.getElementById('itemFormTitle').textContent = 'Edit Item';
+      document.getElementById('btnItemSave').textContent = 'Save Changes';
+      document.getElementById('btnItemCancel').style.display = 'inline-flex';
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click', ()=> confirmDelete(()=> deleteItem(b.dataset.del)));
+  });
+}
+
+async function deleteItem(id){
+  itemsMaster = itemsMaster.filter(i=>i.id!==id);
+  await storeSet('items-master', itemsMaster);
+  renderItemsMasterTable(); renderItemsDatalist();
+  toast('Item deleted');
+}
+
+function resetItemForm(){
+  document.getElementById('it-name').value='';
+  document.getElementById('it-hsn').value='7113';
+  document.getElementById('it-category').value='Ring';
+  document.getElementById('it-making').value='10';
+  document.getElementById('it-purity').value='22K';
+  document.getElementById('it-edit-id').value='';
+  document.getElementById('itemFormTitle').textContent = 'Add Item';
+  document.getElementById('btnItemSave').textContent = '＋ Add Item';
+  document.getElementById('btnItemCancel').style.display = 'none';
+}
+
+document.getElementById('btnItemSave').addEventListener('click', async ()=>{
+  const name = document.getElementById('it-name').value.trim();
+  if(!name){ toast('Please enter an item name'); return; }
+  const editId = document.getElementById('it-edit-id').value;
+  const data = {
+    id: editId || uid(),
+    name,
+    hsn: document.getElementById('it-hsn').value.trim() || '7113',
+    category: document.getElementById('it-category').value,
+    making: parseFloat(document.getElementById('it-making').value)||0,
+    purity: document.getElementById('it-purity').value,
+  };
+  if(editId){
+    itemsMaster = itemsMaster.map(i=>i.id===editId ? data : i);
+    toast('Item updated');
+  }else{
+    itemsMaster.push(data);
+    toast('Item added');
+  }
+  await storeSet('items-master', itemsMaster);
+  resetItemForm();
+  renderItemsMasterTable(); renderItemsDatalist();
+});
+document.getElementById('btnItemCancel').addEventListener('click', resetItemForm);
+document.getElementById('itemSearch').addEventListener('input', renderItemsMasterTable);
+
+/* ================= CONFIRM MODAL ================= */
+let pendingDelete = null;
+function confirmDelete(fn){
+  pendingDelete = fn;
+  document.getElementById('confirmModal').classList.add('open');
+}
+document.getElementById('modalCancel').addEventListener('click', ()=>{
+  pendingDelete = null;
+  document.getElementById('confirmModal').classList.remove('open');
+});
+document.getElementById('modalConfirm').addEventListener('click', ()=>{
+  if(pendingDelete) pendingDelete();
+  pendingDelete = null;
+  document.getElementById('confirmModal').classList.remove('open');
+});
+
+/* ================= INIT ================= */
+async function init(){
+  itemsMaster = await storeGet('items-master', null);
+  if(itemsMaster === null){
+    itemsMaster = [
+      { id: uid(), name:'Nathiya Hallmark', hsn:'7113', category:'Nathiya', making:10, purity:'18K' },
+      { id: uid(), name:'Locket Hallmark', hsn:'7113', category:'Locket', making:10, purity:'18K' },
+      { id: uid(), name:'Gold Chain', hsn:'7113', category:'Chain', making:8, purity:'22K' },
+      { id: uid(), name:'Gold Ring', hsn:'7113', category:'Ring', making:12, purity:'22K' },
+      { id: uid(), name:'Gold Bangle (pair)', hsn:'7113', category:'Bangle', making:9, purity:'22K' },
+    ];
+    await storeSet('items-master', itemsMaster);
+  }
+
+  stockList = await storeGet('stock-list', []);
+  bizInfo = await storeGet('business-info', {});
+  invoiceCounter = await storeGet('invoice-counter', 1);
+
+  if(bizInfo.name) document.getElementById('biz-name').value = bizInfo.name;
+  if(bizInfo.gstin) document.getElementById('biz-gstin').value = bizInfo.gstin;
+  if(bizInfo.phone) document.getElementById('biz-phone').value = bizInfo.phone;
+  if(bizInfo.email) document.getElementById('biz-email').value = bizInfo.email;
+  if(bizInfo.address) document.getElementById('biz-address').value = bizInfo.address;
+
+  renderItemsDatalist();
+  renderItemsMasterTable();
+  renderStockTable();
+  renderStockStats();
+
+  await resetInvoiceForm(false);
+}
+init();
+</script>
+</body>
+</html>

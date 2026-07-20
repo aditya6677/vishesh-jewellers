@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "lib", "public", "assets"],
+  "ext": "js",
+  "ignore": ["data/**", "node_modules/**"],
+  "delay": "200"
+}

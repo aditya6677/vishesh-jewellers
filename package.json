@@ -1,0 +1,46 @@
+{
+  "name": "vishesh-jewellers-json-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "electron-main.js",
+  "description": "Vishesh Jewellers billing and inventory app with JSON persistence",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon --config nodemon.json server.js",
+    "watch": "node --watch server.js",
+    "desktop": "electron .",
+    "package:desktop": "electron-builder --mac dmg",
+    "package:windows": "electron-builder --win nsis",
+    "package:all": "electron-builder --mac dmg --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "nodemon": "^3.1.10"
+  },
+  "build": {
+    "appId": "com.visheshjewellers.billing",
+    "productName": "Vishesh Jewellers",
+    "files": [
+      "electron-main.js",
+      "server.js",
+      "lib/**/*",
+      "source/**/*",
+      "public/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "server.js",
+      "lib/**/*",
+      "source/**/*",
+      "public/**/*",
+      "assets/**/*"
+    ],
+    "mac": { "target": ["dmg"] },
+    "win": { "target": ["nsis"] }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

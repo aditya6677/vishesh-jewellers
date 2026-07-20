@@ -1,0 +1,17 @@
+{
+  "name": "Vishesh Jewellers",
+  "short_name": "Vishesh",
+  "description": "Vishesh Jewellers billing, inventory, and invoice management.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#17130d",
+  "theme_color": "#17130d",
+  "icons": [
+    {
+      "src": "/assets/vishesh-jewellers-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
