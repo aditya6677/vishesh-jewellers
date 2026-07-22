@@ -187,6 +187,8 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .voided-invoice-view { margin-top: 14px; }
 #invoicePaper > .voided-invoice-watermark { position: absolute; z-index: 3; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(164, 44, 35, .22); font-family: var(--font-display); font-size: 74px; font-weight: 800; letter-spacing: .14em; transform: rotate(-28deg); pointer-events: none; }
 .paid-confirm-amount { margin: 16px 0; padding: 14px; border: 1px solid rgba(198,154,58,.3); border-radius: 8px; background: rgba(198,154,58,.08); color: var(--gold-light); font-family: var(--font-mono); font-size: 22px; text-align: center; }
+.invoice-success-icon { width: 46px; height: 46px; display: grid; place-items: center; margin: 0 auto 12px; border-radius: 50%; background: rgba(156,199,162,.14); border: 1px solid rgba(156,199,162,.38); color: #9CC7A2; font-size: 24px; }
+.invoice-success-number { margin: 12px 0; color: var(--gold-light); font-family: var(--font-mono); font-size: 20px; text-align: center; }
 .void-modal-note { margin: 12px 0; color: var(--ivory-3); font-size: 13px; line-height: 1.5; }
 .payment-balance { padding: 9px 11px; min-height: 40px; border-radius: 7px; border: 1px solid rgba(198,154,58,.28); background: rgba(0,0,0,.22); color: var(--gold-light); font-family: var(--font-mono); font-size: 14px; }
 #inv-no:disabled { opacity: 1; color: var(--gold-pale); cursor: not-allowed; background: rgba(198,154,58,.08); }
@@ -346,7 +348,7 @@ if ('serviceWorker' in navigator) {
         <div class="snapshot-section"><h4>Cash Flow</h4><div class="record-info-grid">
           <div class="record-info"><b>Old Metal Purchases</b><span class="due-amount" id="dash-purchases">₹0.00</span></div>
           <div class="record-info"><b>Net after Purchases</b><span class="paid-amount" id="dash-net-collected">₹0.00</span></div>
-          <div class="record-info"><b>Amount Payments</b><span class="due-amount" id="dash-amount-payments">₹0.00</span></div>
+          <div class="record-info"><b>Cash Outflow</b><span class="due-amount" id="dash-amount-payments">₹0.00</span></div>
           <div class="record-info"><b>Final Net Collection</b><span class="paid-amount" id="dash-final-net-collected">₹0.00</span></div>
         </div></div>
         <div class="snapshot-section"><h4>Today</h4><div class="record-info-grid">
@@ -354,7 +356,7 @@ if ('serviceWorker' in navigator) {
           <div class="record-info"><b>Collection</b><span class="paid-amount" id="dash-today-collected">₹0.00</span></div>
           <div class="record-info"><b>Old Metal Purchases</b><span class="due-amount" id="dash-today-purchases">₹0.00</span></div>
           <div class="record-info"><b>Net after Purchases</b><span class="paid-amount" id="dash-today-net-collected">₹0.00</span></div>
-          <div class="record-info"><b>Amount Payments</b><span class="due-amount" id="dash-today-amount-payments">₹0.00</span></div>
+          <div class="record-info"><b>Cash Outflow</b><span class="due-amount" id="dash-today-amount-payments">₹0.00</span></div>
           <div class="record-info"><b>Final Net</b><span class="paid-amount" id="dash-today-final-net-collected">₹0.00</span></div>
           <div class="record-info"><b>Due</b><span class="due-amount" id="dash-today-due">₹0.00</span></div>
         </div></div>
@@ -401,10 +403,10 @@ if ('serviceWorker' in navigator) {
     <div class="page-head">
       <p class="eyebrow">Outgoing payments</p>
       <h2>Payment</h2>
-      <p class="sub">Record cash payments or metal-to-metal payments from your old Gold and Silver balance.</p>
+      <p class="sub">Record cash payments, self expenses, or metal-to-metal payments from your old Gold and Silver balance.</p>
     </div>
     <div class="stat-cards">
-      <div class="stat-card"><div class="lbl">Cash Payments</div><div class="val" id="paymentCashTotal">₹0.00</div></div>
+      <div class="stat-card"><div class="lbl">Cash Outflow</div><div class="val" id="paymentCashTotal">₹0.00</div></div>
       <div class="stat-card"><div class="lbl">Gold Used</div><div class="val" id="paymentGoldWeight">0.000 g</div></div>
       <div class="stat-card"><div class="lbl">Silver Used</div><div class="val" id="paymentSilverWeight">0.000 g</div></div>
     </div>
@@ -412,9 +414,10 @@ if ('serviceWorker' in navigator) {
       <h3><span class="dot"></span>Add Payment</h3>
       <form id="paymentForm">
         <div class="row row-2">
-          <div class="field"><label>Payment type</label><select id="paymentType"><option value="amount">Amount</option><option value="metal">Metal to Metal</option></select></div>
+          <div class="field"><label>Payment type</label><select id="paymentType"><option value="amount">Amount</option><option value="self-expense">Self Expense</option><option value="metal">Metal to Metal</option></select></div>
           <div class="field" id="paymentAmountField"><label>Amount paid (₹)</label><input type="number" id="paymentAmountInput" min="0.01" step="0.01" placeholder="0.00"></div>
         </div>
+        <div class="field"><label>Reason (optional)</label><input type="text" id="paymentReason" placeholder="e.g. Shop electricity, supplier payment"></div>
         <div id="paymentMetalFields" style="display:none;">
           <div class="row row-3">
             <div class="field"><label>Metal</label><select id="paymentMetal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
@@ -570,10 +573,11 @@ if ('serviceWorker' in navigator) {
   const updateExchangeValue = () => {
     const entries = getExchangeEntries();
     const value = entries.reduce((total, entry) => total + entry.value, 0);
+    const manualDiscount = Math.max(Number(document.getElementById('invoice-discount') && document.getElementById('invoice-discount').value) || 0, 0);
     const formatExchangeMoney = amount => '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     exchangeRows.querySelectorAll('.exchange-row').forEach((row, index) => { row.querySelector('.exchange-row-value').textContent = formatExchangeMoney(entries[index].value); });
     document.getElementById('exchange-value').textContent = formatExchangeMoney(value);
-    hiddenExchangeInput.value = value.toFixed(2);
+    hiddenExchangeInput.value = (value + manualDiscount).toFixed(2);
     hiddenExchangeInput.dispatchEvent(new Event('input', { bubbles: true }));
   };
   document.getElementById('addExchangeRow').addEventListener('click', () => { addExchangeRow(); updateExchangeValue(); });
@@ -589,10 +593,10 @@ if ('serviceWorker' in navigator) {
   addExchangeRow();
   updateExchangeValue();
   const paymentRow = document.createElement('div');
-  paymentRow.className = 'row row-2';
+  paymentRow.className = 'row row-3';
   paymentRow.id = 'invoicePaymentRow';
   paymentRow.style.marginTop = '16px';
-  paymentRow.innerHTML = '<div class="field"><label>Amount Paid (₹)</label><input type="number" id="amount-paid" value="0" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label id="amount-balance-label">Amount Due (₹)</label><div id="amount-balance" class="payment-balance">₹0.00</div></div>';
+  paymentRow.innerHTML = '<div class="field"><label>Discount (₹)</label><input type="number" id="invoice-discount" value="0" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label>Amount Paid (₹)</label><input type="number" id="amount-paid" value="0" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label id="amount-balance-label">Amount Due (₹)</label><div id="amount-balance" class="payment-balance">₹0.00</div></div>';
   const totalsMini = document.querySelector('.totals-mini');
   totalsMini.parentNode.insertBefore(paymentRow, totalsMini);
   const updatePaymentSummary = () => {
@@ -611,6 +615,7 @@ if ('serviceWorker' in navigator) {
     totals.appendChild(line);
   };
   document.getElementById('amount-paid').addEventListener('input', updatePaymentSummary);
+  document.getElementById('invoice-discount').addEventListener('input', updateExchangeValue);
   document.addEventListener('input', event => {
     if (event.target.id !== 'amount-paid') setTimeout(updatePaymentSummary, 0);
   });
@@ -623,6 +628,7 @@ if ('serviceWorker' in navigator) {
       await new Promise(resolve => setTimeout(resolve, 25));
     }
     document.getElementById('amount-paid').value = '0';
+    document.getElementById('invoice-discount').value = '0';
     exchangeRows.innerHTML = '';
     addExchangeRow();
     document.getElementById('gst-rate').value = '1.5';
@@ -667,11 +673,11 @@ if ('serviceWorker' in navigator) {
   const renderPayments = async () => {
     const payments = await getPayments();
     const metalWeight = metal => payments.filter(payment => payment.type === 'metal' && payment.metal === metal).reduce((total, payment) => total + (Number(payment.weight) || 0), 0);
-    document.getElementById('paymentCashTotal').textContent = money(payments.filter(payment => payment.type === 'amount').reduce((total, payment) => total + (Number(payment.amount) || 0), 0));
+    document.getElementById('paymentCashTotal').textContent = money(payments.filter(payment => payment.type === 'amount' || payment.type === 'self-expense').reduce((total, payment) => total + (Number(payment.amount) || 0), 0));
     document.getElementById('paymentGoldWeight').textContent = metalWeight('gold').toFixed(3) + ' g';
     document.getElementById('paymentSilverWeight').textContent = metalWeight('silver').toFixed(3) + ' g';
     document.getElementById('paymentCount').textContent = payments.length + (payments.length === 1 ? ' payment' : ' payments');
-    document.getElementById('paymentTbody').innerHTML = payments.map(payment => '<tr><td>' + safe(new Date(payment.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(payment.type === 'metal' ? 'Metal to Metal' : 'Amount') + '</td><td>' + safe(payment.metal ? payment.metal.replace(/^./, char => char.toUpperCase()) : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.weight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.purity) || 0).toFixed(2) + '%' : '—') + '</td><td class="paid-amount">' + (payment.type === 'metal' ? (Number(payment.fineWeight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'amount' ? money(payment.amount) : '—') + '</td></tr>').join('');
+    document.getElementById('paymentTbody').innerHTML = payments.map(payment => '<tr><td>' + safe(new Date(payment.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(payment.type === 'metal' ? 'Metal to Metal' : payment.type === 'self-expense' ? 'Self Expense' : 'Amount') + (payment.reason ? '<br><small style="color:var(--ivory-3);">' + safe(payment.reason) + '</small>' : '') + '</td><td>' + safe(payment.metal ? payment.metal.replace(/^./, char => char.toUpperCase()) : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.weight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.purity) || 0).toFixed(2) + '%' : '—') + '</td><td class="paid-amount">' + (payment.type === 'metal' ? (Number(payment.fineWeight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' || !Number(payment.amount) ? '—' : money(payment.amount)) + '</td></tr>').join('');
     document.getElementById('paymentsEmpty').style.display = payments.length ? 'none' : 'block';
   };
   const addOldGold = async entry => {
@@ -709,7 +715,7 @@ if ('serviceWorker' in navigator) {
     const payments = await getPayments();
     const collected = activeRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0);
     const purchaseValue = purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
-    const amountPayments = payments.filter(payment => payment.type === 'amount').reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
+    const amountPayments = payments.filter(payment => payment.type === 'amount' || payment.type === 'self-expense').reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
     document.getElementById('dash-invoices').textContent = activeRecords.length;
     document.getElementById('dash-collected').textContent = money(collected);
     document.getElementById('dash-purchases').textContent = money(purchaseValue);
@@ -720,7 +726,7 @@ if ('serviceWorker' in navigator) {
     const todayRecords = activeRecords.filter(record => dateForRecord(record) >= startToday);
     document.getElementById('dash-today-invoices').textContent = todayRecords.length;
     const todayPurchaseValue = purchases.filter(purchase => new Date(purchase.savedAt) >= startToday).reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
-    const todayAmountPayments = payments.filter(payment => payment.type === 'amount' && new Date(payment.savedAt) >= startToday).reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
+    const todayAmountPayments = payments.filter(payment => (payment.type === 'amount' || payment.type === 'self-expense') && new Date(payment.savedAt) >= startToday).reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
     const todayCollected = todayRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0);
     document.getElementById('dash-today-collected').textContent = money(todayCollected);
     document.getElementById('dash-today-purchases').textContent = money(todayPurchaseValue);
@@ -890,6 +896,23 @@ if ('serviceWorker' in navigator) {
   document.getElementById('closeFullyPaid').addEventListener('click', () => closeFullyPaidModal(false));
   document.getElementById('cancelFullyPaid').addEventListener('click', () => closeFullyPaidModal(false));
   document.getElementById('confirmFullyPaid').addEventListener('click', () => closeFullyPaidModal(true));
+  const invoiceSuccessModal = document.createElement('div');
+  invoiceSuccessModal.id = 'invoiceSuccessModal';
+  invoiceSuccessModal.className = 'modal-backdrop';
+  invoiceSuccessModal.innerHTML = '<div class="modal" style="max-width:430px; text-align:center;"><div class="invoice-success-icon">✓</div><h3 style="margin:0;">Invoice generated</h3><p class="void-modal-note">Stock has been updated and the invoice was saved successfully.</p><div class="invoice-success-number" id="generatedInvoiceNumber">—</div><div class="btn-row" style="margin-top:18px; justify-content:center;"><button class="btn btn-gold" id="viewGeneratedInvoice">View Invoice</button><button class="btn btn-ghost" id="closeInvoiceSuccess">Done</button></div></div>';
+  document.body.appendChild(invoiceSuccessModal);
+  let generatedInvoiceRecord = null;
+  const showInvoiceSuccess = record => {
+    generatedInvoiceRecord = record;
+    document.getElementById('generatedInvoiceNumber').textContent = record.number;
+    invoiceSuccessModal.classList.add('open');
+  };
+  document.getElementById('closeInvoiceSuccess').addEventListener('click', () => invoiceSuccessModal.classList.remove('open'));
+  document.getElementById('viewGeneratedInvoice').addEventListener('click', () => {
+    if (!generatedInvoiceRecord) return;
+    invoiceSuccessModal.classList.remove('open');
+    reprintInvoice(generatedInvoiceRecord);
+  });
   const returnModal = document.createElement('div');
   returnModal.id = 'returnInvoiceModal';
   returnModal.className = 'modal-backdrop';
@@ -1210,9 +1233,11 @@ if ('serviceWorker' in navigator) {
   });
   document.getElementById('recordSearch').addEventListener('input', renderRecords);
   const updatePaymentType = () => {
-    const isMetal = document.getElementById('paymentType').value === 'metal';
+    const paymentType = document.getElementById('paymentType').value;
+    const isMetal = paymentType === 'metal';
     document.getElementById('paymentAmountField').style.display = isMetal ? 'none' : 'block';
     document.getElementById('paymentMetalFields').style.display = isMetal ? 'block' : 'none';
+    document.querySelector('#paymentAmountField label').textContent = paymentType === 'self-expense' ? 'Self expense amount (₹)' : 'Amount paid (₹)';
   };
   const updateFineWeight = () => {
     const weight = Math.max(Number(document.getElementById('paymentWeight').value) || 0, 0);
@@ -1226,10 +1251,11 @@ if ('serviceWorker' in navigator) {
     const type = document.getElementById('paymentType').value;
     const payments = await getPayments();
     const savedAt = new Date().toISOString();
-    if (type === 'amount') {
+    const reason = document.getElementById('paymentReason').value.trim();
+    if (type === 'amount' || type === 'self-expense') {
       const amountPaid = Number(document.getElementById('paymentAmountInput').value);
       if (!(amountPaid > 0)) return;
-      payments.unshift({ id: Date.now().toString(), type: 'amount', amount: amountPaid, savedAt });
+      payments.unshift({ id: Date.now().toString(), type, amount: amountPaid, reason, savedAt });
       await originalStorageSet('payment-records', JSON.stringify(payments));
       document.getElementById('paymentAmountInput').value = '';
     } else {
@@ -1241,7 +1267,7 @@ if ('serviceWorker' in navigator) {
       const balance = oldMetalEntries.filter(entry => entry.metal === metal).reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
       if (weight > balance) { alert('Only ' + balance.toFixed(3) + ' g of old ' + metal + ' is available for payment.'); return; }
       const fineWeight = weight * purity / 100;
-      const payment = { id: Date.now().toString(), type: 'metal', metal, weight, purity, fineWeight, savedAt };
+      const payment = { id: Date.now().toString(), type: 'metal', metal, weight, purity, fineWeight, reason, savedAt };
       payments.unshift(payment);
       await originalStorageSet('payment-records', JSON.stringify(payments));
       await addOldGold({ sourceId: 'payment:' + payment.id, metal, source: 'Metal payment', invoice: '—', customer: '—', date: new Date(savedAt).toLocaleDateString('en-GB'), weight: -weight, rate: 0, value: 0, receivedAt: savedAt });
@@ -1249,6 +1275,7 @@ if ('serviceWorker' in navigator) {
       document.getElementById('paymentPurity').value = '';
       updateFineWeight();
     }
+    document.getElementById('paymentReason').value = '';
     await renderPayments();
   });
   updatePaymentType();
@@ -1352,6 +1379,7 @@ if ('serviceWorker' in navigator) {
       if (!exchange || !['gold', 'silver'].includes(exchange.metal) || !(Number(exchange.weight) > 0)) continue;
       await addOldGold({ sourceId: record.number + ':exchange:' + exchange.metal, metal: exchange.metal, source: 'Invoice exchange', invoice: record.number, customer: record.customer, date: record.date, weight: Number(exchange.weight), rate: Number(exchange.rate), value: Number(exchange.value), receivedAt: record.savedAt });
     }
+    showInvoiceSuccess(record);
     if (document.getElementById('page-records').classList.contains('active')) renderRecords();
   };
   window.storage.set = async (key, value) => {
