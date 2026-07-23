@@ -125,8 +125,8 @@ function applyWeightOnlyStockFlow(html) {
     .replace(/function stockOptionsHtml\(selectedId, rowId\)\{[\s\S]*?\n\}\n\nfunction renderRowsTable\(\)/, stockOptions)
     .replace('          row.gross = s.qty ? (s.gross / s.qty).toFixed(3) : s.gross;\n          row.net = s.qty ? (s.net / s.qty).toFixed(3) : s.net;', "          row.gross = '';\n          row.net = '';")
     .replace('class="f-stock">', 'class="f-stock" required>')
-    .replace('class="f-name" value="${escapeHtml(r.name)}" placeholder="Item name">', 'class="f-name" value="${escapeHtml(r.name)}" placeholder="Select from stock" readonly>')
-    .replace('class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;">', 'class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;" readonly>')
+    .replace('class="f-name" value="${escapeHtml(r.name)}" placeholder="Item name">', 'class="f-name" value="${escapeHtml(r.name)}" placeholder="${window.orderMode ? \'Item name\' : \'Select from stock\'}" ${window.orderMode ? \'\' : \'readonly\'}>')
+    .replace('class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;">', 'class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;" ${window.orderMode ? \'\' : \'readonly\'}>')
     .replace(/\$\{r\.stockId\?'readonly':''\}/g, '')
     .replace('<select class="f-purity">', '<select class="f-purity" ${r.stockId?\'disabled\':\'\'}>')
     .replace("tr.querySelector('.f-gross').addEventListener('input', e=>{ row.gross = e.target.value; renderRowsTable(); renderPreview(); });", "tr.querySelector('.f-gross').addEventListener('input', e=>{ row.gross = e.target.value; tr.querySelector('.amount-cell').textContent = '₹'+fmt(rowAmount(row)); renderPreview(); });")
@@ -186,6 +186,10 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .voided-record + .record-detail .record-actions { display: none; }
 .voided-invoice-view { margin-top: 14px; }
 #invoicePaper > .voided-invoice-watermark { position: absolute; z-index: 3; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(164, 44, 35, .22); font-family: var(--font-display); font-size: 74px; font-weight: 800; letter-spacing: .14em; transform: rotate(-28deg); pointer-events: none; }
+#invoicePaper > .pending-invoice-watermark { position: absolute; z-index: 3; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(198, 154, 58, .2); font-family: var(--font-display); font-size: 52px; font-weight: 800; letter-spacing: .1em; text-align:center; transform: rotate(-28deg); pointer-events: none; }
+.pending-badge { display: inline-block; margin-left: 7px; padding: 2px 6px; border-radius: 999px; background: rgba(198,154,58,.16); color: var(--gold-light); font-size: 10px; font-weight: 700; letter-spacing: .06em; }
+.payment-delete, .purchase-delete { color: #E8A99E !important; border-color: rgba(232,169,158,.42) !important; background: rgba(164,44,35,.1) !important; }
+.payment-delete:hover, .purchase-delete:hover { background: rgba(164,44,35,.2) !important; border-color: rgba(232,169,158,.72) !important; }
 .paid-confirm-amount { margin: 16px 0; padding: 14px; border: 1px solid rgba(198,154,58,.3); border-radius: 8px; background: rgba(198,154,58,.08); color: var(--gold-light); font-family: var(--font-mono); font-size: 22px; text-align: center; }
 .invoice-success-icon { width: 46px; height: 46px; display: grid; place-items: center; margin: 0 auto 12px; border-radius: 50%; background: rgba(156,199,162,.14); border: 1px solid rgba(156,199,162,.38); color: #9CC7A2; font-size: 24px; }
 .invoice-success-number { margin: 12px 0; color: var(--gold-light); font-family: var(--font-mono); font-size: 20px; text-align: center; }
@@ -431,7 +435,7 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="panel">
       <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Payment History</h3><span style="color:var(--ivory-3); font-size:12px;" id="paymentCount"></span></div>
-      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Metal</th><th>Gross Wt</th><th>Purity</th><th>Fine Wt</th><th>Amount</th></tr></thead><tbody id="paymentTbody"></tbody></table></div>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Metal</th><th>Gross Wt</th><th>Purity</th><th>Fine Wt</th><th>Amount</th><th></th></tr></thead><tbody id="paymentTbody"></tbody></table></div>
       <div class="empty-state" id="paymentsEmpty" style="display:none;"><div class="glyph">✦</div>No payments recorded yet.</div>
     </div>
   </section>\n`;
@@ -463,7 +467,7 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="panel">
       <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Purchase History</h3><span style="color:var(--ivory-3); font-size:12px;" id="purchaseCount"></span></div>
-      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Metal</th><th>Weight</th><th>Rate / g</th><th>Amount</th></tr></thead><tbody id="purchaseTbody"></tbody></table></div>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Metal</th><th>Weight</th><th>Rate / g</th><th>Amount</th><th></th></tr></thead><tbody id="purchaseTbody"></tbody></table></div>
       <div class="empty-state" id="purchasesEmpty" style="display:none;"><div class="glyph">✦</div>No old metal purchases recorded yet.</div>
     </div>
   </section>\n`;
@@ -538,6 +542,31 @@ if ('serviceWorker' in navigator) {
     });
   };
   showPinLock();
+  window.orderMode = false;
+  const invoiceTypeField = document.createElement('div');
+  invoiceTypeField.className = 'field';
+  invoiceTypeField.innerHTML = '<label>Invoice type</label><select id="invoiceType"><option value="sale">Ready sale — deduct stock</option><option value="pending">Pending delivery order</option></select>';
+  document.getElementById('inv-date').closest('.field').insertAdjacentElement('afterend', invoiceTypeField);
+  const pendingOrderButton = document.createElement('button');
+  pendingOrderButton.className = 'btn btn-gold';
+  pendingOrderButton.id = 'btnSavePendingOrder';
+  pendingOrderButton.type = 'button';
+  pendingOrderButton.textContent = 'Save Pending Order';
+  pendingOrderButton.style.display = 'none';
+  document.getElementById('btnCompleteSale').insertAdjacentElement('beforebegin', pendingOrderButton);
+  const updateInvoiceType = () => {
+    window.orderMode = document.getElementById('invoiceType').value === 'pending';
+    pendingOrderButton.style.display = window.orderMode ? '' : 'none';
+    document.getElementById('btnCompleteSale').style.display = window.orderMode ? 'none' : '';
+    renderRowsTable(); renderPreview(); setSaleStatus();
+    if (window.orderMode) document.getElementById('saleStatus').textContent = 'Pending delivery order: enter the requested item details. Stock will be selected and deducted only on delivery.';
+  };
+  document.getElementById('invoiceType').addEventListener('change', updateInvoiceType);
+  document.getElementById('btnNewInvoice').addEventListener('click', () => {
+    document.getElementById('invoiceType').value = 'sale';
+    window.orderMode = false;
+    updateInvoiceType();
+  });
   const stockItemInput = document.getElementById('st-item');
   stockItemInput.placeholder = 'e.g. Gold Ring or Silver Chain';
   stockItemInput.closest('.field').querySelector('label').textContent = 'Item (Gold / Silver)';
@@ -663,7 +692,7 @@ if ('serviceWorker' in navigator) {
     document.getElementById('purchaseSilverWeight').textContent = metalWeight('silver').toFixed(3) + ' g';
     document.getElementById('purchaseTotalValue').textContent = money(purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0));
     document.getElementById('purchaseCount').textContent = purchases.length + (purchases.length === 1 ? ' purchase' : ' purchases');
-    document.getElementById('purchaseTbody').innerHTML = purchases.map(purchase => '<tr><td>' + safe(new Date(purchase.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(String(purchase.metal || 'gold').replace(/^./, char => char.toUpperCase())) + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + (Number(purchase.weight) || 0).toFixed(3) + ' g</td><td>' + money(purchase.rate) + '</td><td class="paid-amount">' + money(purchase.amount) + '</td></tr>').join('');
+    document.getElementById('purchaseTbody').innerHTML = purchases.map(purchase => '<tr><td>' + safe(new Date(purchase.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(String(purchase.metal || 'gold').replace(/^./, char => char.toUpperCase())) + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + (Number(purchase.weight) || 0).toFixed(3) + ' g</td><td>' + money(purchase.rate) + '</td><td class="paid-amount">' + money(purchase.amount) + '</td><td><button class="btn btn-ghost btn-sm purchase-edit" data-id="' + safe(purchase.id) + '">Edit</button> <button class="btn btn-ghost btn-sm purchase-delete" data-id="' + safe(purchase.id) + '">Delete</button></td></tr>').join('');
     document.getElementById('purchasesEmpty').style.display = purchases.length ? 'none' : 'block';
   };
   const getPayments = async () => {
@@ -677,7 +706,7 @@ if ('serviceWorker' in navigator) {
     document.getElementById('paymentGoldWeight').textContent = metalWeight('gold').toFixed(3) + ' g';
     document.getElementById('paymentSilverWeight').textContent = metalWeight('silver').toFixed(3) + ' g';
     document.getElementById('paymentCount').textContent = payments.length + (payments.length === 1 ? ' payment' : ' payments');
-    document.getElementById('paymentTbody').innerHTML = payments.map(payment => '<tr><td>' + safe(new Date(payment.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(payment.type === 'metal' ? 'Metal to Metal' : payment.type === 'self-expense' ? 'Self Expense' : 'Amount') + (payment.reason ? '<br><small style="color:var(--ivory-3);">' + safe(payment.reason) + '</small>' : '') + '</td><td>' + safe(payment.metal ? payment.metal.replace(/^./, char => char.toUpperCase()) : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.weight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.purity) || 0).toFixed(2) + '%' : '—') + '</td><td class="paid-amount">' + (payment.type === 'metal' ? (Number(payment.fineWeight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' || !Number(payment.amount) ? '—' : money(payment.amount)) + '</td></tr>').join('');
+    document.getElementById('paymentTbody').innerHTML = payments.map(payment => '<tr><td>' + safe(new Date(payment.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(payment.type === 'metal' ? 'Metal to Metal' : payment.type === 'self-expense' ? 'Self Expense' : 'Amount') + (payment.reason ? '<br><small style="color:var(--ivory-3);">' + safe(payment.reason) + '</small>' : '') + '</td><td>' + safe(payment.metal ? payment.metal.replace(/^./, char => char.toUpperCase()) : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.weight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.purity) || 0).toFixed(2) + '%' : '—') + '</td><td class="paid-amount">' + (payment.type === 'metal' ? (Number(payment.fineWeight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' || !Number(payment.amount) ? '—' : money(payment.amount)) + '</td><td><button class="btn btn-ghost btn-sm payment-edit" data-id="' + safe(payment.id) + '">Edit</button> <button class="btn btn-ghost btn-sm payment-delete" data-id="' + safe(payment.id) + '">Delete</button></td></tr>').join('');
     document.getElementById('paymentsEmpty').style.display = payments.length ? 'none' : 'block';
   };
   const addOldGold = async entry => {
@@ -687,7 +716,113 @@ if ('serviceWorker' in navigator) {
     entries.unshift(entry);
     await originalStorageSet('old-gold-records', JSON.stringify(entries));
   };
+  const transactionModal = document.createElement('div');
+  transactionModal.className = 'modal-backdrop';
+  transactionModal.id = 'transactionModal';
+  document.body.appendChild(transactionModal);
+  let activeTransaction = null;
+  const closeTransactionModal = () => { transactionModal.classList.remove('open'); activeTransaction = null; };
+  const openTransactionEditor = (kind, entry) => {
+    activeTransaction = { kind, id: entry.id };
+    const isPayment = kind === 'payment';
+    const isMetalPayment = isPayment && entry.type === 'metal';
+    const typeOptions = isPayment ? '<div class="field"><label>Payment type</label><select id="transactionType"><option value="amount" ' + (entry.type === 'amount' ? 'selected' : '') + '>Amount</option><option value="self-expense" ' + (entry.type === 'self-expense' ? 'selected' : '') + '>Self Expense</option><option value="metal" ' + (entry.type === 'metal' ? 'selected' : '') + '>Metal to Metal</option></select></div>' : '';
+    transactionModal.innerHTML = '<div class="modal" style="max-width:560px;"><div class="toolbar"><h3 style="margin:0;">Edit ' + (isPayment ? 'Payment' : 'Purchase') + '</h3><button class="btn btn-ghost btn-sm" id="closeTransactionModal">Close</button></div><div class="form-grid">' + typeOptions + '<div class="field transaction-metal"><label>Metal</label><select id="transactionMetal"><option value="gold" ' + (entry.metal === 'gold' ? 'selected' : '') + '>Gold</option><option value="silver" ' + (entry.metal === 'silver' ? 'selected' : '') + '>Silver</option></select></div><div class="field transaction-weight"><label>Weight (g)</label><input id="transactionWeight" type="number" min="0.001" step="0.001" value="' + (Number(entry.weight) || 0) + '"></div><div class="field transaction-purity"><label>Purity (%)</label><input id="transactionPurity" type="number" min="0" max="100" step="0.01" value="' + (Number(entry.purity) || 0) + '"></div><div class="field transaction-rate"><label>Rate per gram (₹)</label><input id="transactionRate" type="number" min="0.01" step="0.01" value="' + (Number(entry.rate) || 0) + '"></div><div class="field transaction-amount"><label>Amount (₹)</label><input id="transactionAmount" type="number" min="0.01" step="0.01" value="' + (Number(entry.amount) || 0) + '"></div><div class="field transaction-reason"><label>Reason (optional)</label><input id="transactionReason" type="text" value="' + safe(entry.reason || '') + '"></div></div><div class="btn-row" style="margin-top:18px;"><button class="btn btn-gold" id="saveTransaction">Save Changes</button><button class="btn btn-ghost" id="cancelTransaction">Cancel</button></div></div>';
+    const updateFields = () => {
+      const type = isPayment ? document.getElementById('transactionType').value : 'purchase';
+      const metal = type === 'metal';
+      transactionModal.querySelectorAll('.transaction-metal, .transaction-weight').forEach(field => { field.style.display = (metal || !isPayment) ? '' : 'none'; });
+      transactionModal.querySelector('.transaction-purity').style.display = metal ? '' : 'none';
+      transactionModal.querySelector('.transaction-rate').style.display = isPayment ? 'none' : '';
+      transactionModal.querySelector('.transaction-amount').style.display = metal || !isPayment ? 'none' : '';
+      transactionModal.querySelector('.transaction-reason').style.display = isPayment ? '' : 'none';
+      if (!isPayment) {
+        const value = (Number(document.getElementById('transactionWeight').value) || 0) * (Number(document.getElementById('transactionRate').value) || 0);
+        document.getElementById('transactionAmount').value = value.toFixed(2);
+      }
+    };
+    if (isPayment) document.getElementById('transactionType').addEventListener('change', updateFields);
+    ['transactionWeight', 'transactionRate'].forEach(id => document.getElementById(id).addEventListener('input', updateFields));
+    document.getElementById('closeTransactionModal').addEventListener('click', closeTransactionModal);
+    document.getElementById('cancelTransaction').addEventListener('click', closeTransactionModal);
+    updateFields();
+    transactionModal.classList.add('open');
+  };
+  const openTransactionDelete = (kind, entry) => {
+    activeTransaction = { kind: kind + '-delete', id: entry.id };
+    transactionModal.innerHTML = '<div class="modal" style="max-width:480px;"><div class="toolbar"><h3 style="margin:0;">Delete ' + (kind === 'payment' ? 'Payment' : 'Purchase') + '</h3><button class="btn btn-ghost btn-sm" id="closeTransactionModal">Close</button></div><p class="void-modal-note">This will permanently remove the entry and reverse its linked old-metal balance, if applicable.</p><div class="btn-row" style="margin-top:18px;"><button class="btn btn-danger" id="confirmTransactionDelete">Delete</button><button class="btn btn-ghost" id="cancelTransaction">Cancel</button></div></div>';
+    document.getElementById('closeTransactionModal').addEventListener('click', closeTransactionModal);
+    document.getElementById('cancelTransaction').addEventListener('click', closeTransactionModal);
+    transactionModal.classList.add('open');
+  };
+  transactionModal.addEventListener('click', async event => {
+    if (!activeTransaction) return;
+    const isDelete = activeTransaction.kind.endsWith('-delete');
+    if ((isDelete && event.target.id !== 'confirmTransactionDelete') || (!isDelete && event.target.id !== 'saveTransaction')) return;
+    const kind = activeTransaction.kind.replace('-delete', '');
+    const id = activeTransaction.id;
+    if (kind === 'payment') {
+      const payments = await getPayments();
+      const payment = payments.find(entry => entry.id === id);
+      if (!payment) { closeTransactionModal(); return; }
+      if (isDelete) {
+        await originalStorageSet('payment-records', JSON.stringify(payments.filter(entry => entry.id !== id)));
+        const oldMetal = await getOldGold();
+        await originalStorageSet('old-gold-records', JSON.stringify(oldMetal.filter(entry => entry.sourceId !== 'payment:' + id)));
+      } else {
+        const type = document.getElementById('transactionType').value;
+        const reason = document.getElementById('transactionReason').value.trim();
+        const oldMetal = await getOldGold();
+        const revisedOldMetal = oldMetal.filter(entry => entry.sourceId !== 'payment:' + id);
+        if (type === 'metal') {
+          const metal = document.getElementById('transactionMetal').value;
+          const weight = Number(document.getElementById('transactionWeight').value);
+          const purity = Number(document.getElementById('transactionPurity').value);
+          const available = revisedOldMetal.filter(entry => entry.metal === metal).reduce((sum, entry) => sum + (Number(entry.weight) || 0), 0);
+          if (!(weight > 0) || !(purity >= 0 && purity <= 100) || weight > available + 0.0001) { toast('Enter a valid metal weight within the available old ' + metal + ' balance of ' + available.toFixed(3) + ' g.'); return; }
+          Object.assign(payment, { type, metal, weight, purity, fineWeight: weight * purity / 100, amount: 0, reason });
+          revisedOldMetal.unshift({ sourceId: 'payment:' + id, metal, source: 'Metal payment', invoice: '—', customer: '—', date: new Date(payment.savedAt).toLocaleDateString('en-GB'), weight: -weight, rate: 0, value: 0, receivedAt: payment.savedAt });
+        } else {
+          const paymentAmount = Number(document.getElementById('transactionAmount').value);
+          if (!(paymentAmount > 0)) { toast('Enter a valid payment amount.'); return; }
+          Object.assign(payment, { type, amount: paymentAmount, reason });
+          delete payment.metal; delete payment.weight; delete payment.purity; delete payment.fineWeight;
+        }
+        await originalStorageSet('payment-records', JSON.stringify(payments));
+        await originalStorageSet('old-gold-records', JSON.stringify(revisedOldMetal));
+      }
+      await renderPayments();
+    } else {
+      const purchases = await getPurchases();
+      const purchase = purchases.find(entry => entry.id === id);
+      if (!purchase) { closeTransactionModal(); return; }
+      if (isDelete) {
+        await originalStorageSet('purchase-records', JSON.stringify(purchases.filter(entry => entry.id !== id)));
+        const oldMetal = await getOldGold();
+        await originalStorageSet('old-gold-records', JSON.stringify(oldMetal.filter(entry => entry.sourceId !== 'purchase:' + id)));
+      } else {
+        const metal = document.getElementById('transactionMetal').value;
+        const weight = Number(document.getElementById('transactionWeight').value);
+        const rate = Number(document.getElementById('transactionRate').value);
+        if (!(weight > 0) || !(rate > 0)) { toast('Enter a valid weight and rate.'); return; }
+        const purchaseAmount = weight * rate;
+        Object.assign(purchase, { metal, weight, rate, amount: purchaseAmount });
+        const oldMetal = await getOldGold();
+        const revisedOldMetal = oldMetal.filter(entry => entry.sourceId !== 'purchase:' + id);
+        revisedOldMetal.unshift({ sourceId: 'purchase:' + id, metal, source: 'Old metal purchase', invoice: '—', customer: '—', date: new Date(purchase.savedAt).toLocaleDateString('en-GB'), weight, rate, value: purchaseAmount, receivedAt: purchase.savedAt });
+        await originalStorageSet('purchase-records', JSON.stringify(purchases));
+        await originalStorageSet('old-gold-records', JSON.stringify(revisedOldMetal));
+      }
+      await renderPurchases();
+    }
+    if (document.getElementById('page-dashboard').classList.contains('active')) await renderDashboard();
+    closeTransactionModal();
+  });
   const dateForRecord = record => {
+    if (record.invoiceDate && /^\d{4}-\d{2}-\d{2}$/.test(record.invoiceDate)) {
+      const invoiceDate = new Date(record.invoiceDate + 'T00:00:00');
+      if (!Number.isNaN(invoiceDate.getTime())) return invoiceDate;
+    }
     if (record.savedAt) {
       const savedDate = new Date(record.savedAt);
       if (!Number.isNaN(savedDate.getTime())) return savedDate;
@@ -705,7 +840,7 @@ if ('serviceWorker' in navigator) {
     startWeek.setDate(startWeek.getDate() - startWeek.getDay());
     const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startYear = new Date(now.getFullYear(), 0, 1);
-    const activeRecords = records.filter(record => record.status !== 'voided');
+    const activeRecords = records.filter(record => record.status !== 'voided' && record.status !== 'pending');
     const salesSince = start => activeRecords.reduce((total, record) => dateForRecord(record) >= start ? total + recordNetTotal(record) : total, 0);
     document.getElementById('dash-today').textContent = money(salesSince(startToday));
     document.getElementById('dash-week').textContent = money(salesSince(startWeek));
@@ -786,11 +921,17 @@ if ('serviceWorker' in navigator) {
     const paper = document.querySelector('#regeneratedInvoiceContent #invoicePaper');
     // Older saved invoice markup may still contain the retired circular seal.
     paper.querySelectorAll('#p-seal, .seal').forEach(element => element.remove());
-    paper.querySelectorAll('.voided-invoice-watermark').forEach(element => element.remove());
+    paper.querySelectorAll('.voided-invoice-watermark, .pending-invoice-watermark').forEach(element => element.remove());
     if (record.status === 'voided') {
       const watermark = document.createElement('div');
       watermark.className = 'voided-invoice-watermark';
       watermark.textContent = 'VOIDED';
+      paper.appendChild(watermark);
+    }
+    if (record.status === 'pending') {
+      const watermark = document.createElement('div');
+      watermark.className = 'pending-invoice-watermark';
+      watermark.textContent = 'PENDING DELIVERY';
       paper.appendChild(watermark);
     }
     const totals = paper.querySelector('#p-totals');
@@ -829,13 +970,13 @@ if ('serviceWorker' in navigator) {
   let activeVoidIndex = null;
   const closeVoidModal = () => { voidModal.classList.remove('open'); activeVoidIndex = null; };
   const openVoidModal = (record, index) => {
-    if (!Array.isArray(record.soldItems) || !record.soldItems.length) {
+    if (record.status !== 'pending' && (!Array.isArray(record.soldItems) || !record.soldItems.length)) {
       alert('This older invoice does not have the stock-line details needed to safely void it.');
       return;
     }
     activeVoidIndex = index;
     document.getElementById('voidInvoiceReason').value = '';
-    document.getElementById('voidInvoiceNote').textContent = 'VJ invoice ' + record.number + ' will be marked void. Sold stock will be restored and linked old-metal exchange/settlement entries will be reversed. This cannot be undone from the app.';
+    document.getElementById('voidInvoiceNote').textContent = record.status === 'pending' ? 'Pending order ' + record.number + ' will be cancelled. No stock has been deducted; linked old-metal exchange/settlement entries will be reversed.' : 'VJ invoice ' + record.number + ' will be marked void. Sold stock will be restored and linked old-metal exchange/settlement entries will be reversed. This cannot be undone from the app.';
     voidModal.classList.add('open');
   };
   document.getElementById('closeVoidInvoice').addEventListener('click', closeVoidModal);
@@ -899,11 +1040,15 @@ if ('serviceWorker' in navigator) {
   const invoiceSuccessModal = document.createElement('div');
   invoiceSuccessModal.id = 'invoiceSuccessModal';
   invoiceSuccessModal.className = 'modal-backdrop';
-  invoiceSuccessModal.innerHTML = '<div class="modal" style="max-width:430px; text-align:center;"><div class="invoice-success-icon">✓</div><h3 style="margin:0;">Invoice generated</h3><p class="void-modal-note">Stock has been updated and the invoice was saved successfully.</p><div class="invoice-success-number" id="generatedInvoiceNumber">—</div><div class="btn-row" style="margin-top:18px; justify-content:center;"><button class="btn btn-gold" id="viewGeneratedInvoice">View Invoice</button><button class="btn btn-ghost" id="closeInvoiceSuccess">Done</button></div></div>';
+  invoiceSuccessModal.innerHTML = '<div class="modal" style="max-width:430px; text-align:center;"><div class="invoice-success-icon">✓</div><h3 id="invoiceSuccessTitle" style="margin:0;">Invoice generated</h3><p class="void-modal-note" id="invoiceSuccessNote">Stock has been updated and the invoice was saved successfully.</p><div class="invoice-success-number" id="generatedInvoiceNumber">—</div><div class="btn-row" style="margin-top:18px; justify-content:center;"><button class="btn btn-gold" id="viewGeneratedInvoice">View Invoice</button><button class="btn btn-ghost" id="closeInvoiceSuccess">Done</button></div></div>';
   document.body.appendChild(invoiceSuccessModal);
   let generatedInvoiceRecord = null;
   const showInvoiceSuccess = record => {
     generatedInvoiceRecord = record;
+    const pending = record.status === 'pending';
+    document.getElementById('invoiceSuccessTitle').textContent = pending ? 'Pending order saved' : 'Invoice generated';
+    document.getElementById('invoiceSuccessNote').textContent = pending ? 'The order was saved successfully. Stock will be selected and deducted only when you deliver it from Records.' : 'Stock has been updated and the invoice was saved successfully.';
+    document.getElementById('viewGeneratedInvoice').textContent = pending ? 'View Pending Invoice' : 'View Invoice';
     document.getElementById('generatedInvoiceNumber').textContent = record.number;
     invoiceSuccessModal.classList.add('open');
   };
@@ -912,6 +1057,201 @@ if ('serviceWorker' in navigator) {
     if (!generatedInvoiceRecord) return;
     invoiceSuccessModal.classList.remove('open');
     reprintInvoice(generatedInvoiceRecord);
+  });
+  const editInvoiceModal = document.createElement('div');
+  editInvoiceModal.id = 'editInvoiceModal';
+  editInvoiceModal.className = 'modal-backdrop';
+  editInvoiceModal.innerHTML = '<div class="modal" style="max-width:980px; max-height:92vh; overflow:auto;"><div class="toolbar"><h3 style="margin:0;">Edit Invoice</h3><button class="btn btn-ghost btn-sm" id="closeEditInvoice">Close</button></div><p class="void-modal-note">Update this active invoice completely. Saving recalculates totals and safely reconciles stock and exchanged metal.</p><div class="form-grid"><div class="field"><label>Invoice date *</label><input id="editInvoiceDate" type="date"></div><div class="field"><label>Customer name *</label><input id="editInvoiceCustomer" type="text"></div><div class="field"><label>Mobile number</label><input id="editInvoiceMobile" type="tel"></div><div class="field"><label>Address</label><input id="editInvoiceAddress" type="text"></div></div><div class="field" style="margin-top:14px;"><label>Terms &amp; conditions</label><textarea id="editInvoiceTerms" style="min-height:70px;"></textarea></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Items</h4><button class="btn btn-ghost btn-sm" id="addEditItem" type="button">+ Add item</button></div><div class="items-table-wrap"><table class="itable"><thead><tr><th>From stock</th><th>Item</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount</th><th></th></tr></thead><tbody id="editInvoiceItems"></tbody></table></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Gold / Silver Exchange</h4><button class="btn btn-ghost btn-sm" id="addEditExchange" type="button">+ Add exchange item</button></div><div id="editInvoiceExchangeRows" class="exchange-rows"></div><div class="form-grid" style="margin-top:18px;"><div class="field"><label>Manual discount (₹)</label><input id="editInvoiceDiscount" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>GST rate</label><select id="editInvoiceGst"><option value="3">3% (CGST + SGST)</option><option value="0">0% (Exempt)</option></select></div><div class="field"><label>Amount paid at invoice (₹)</label><input id="editInvoicePaid" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>Revised total</label><div class="payment-balance" id="editInvoiceTotal">₹0.00</div></div></div><div class="record-info-grid" style="margin:14px 0 0;"><div class="record-info"><b>Items subtotal</b><span id="editInvoiceSubtotal">₹0.00</span></div><div class="record-info"><b>Exchange credit</b><span id="editInvoiceExchange">₹0.00</span></div><div class="record-info"><b>Amount due</b><span class="due-amount" id="editInvoiceDue">₹0.00</span></div></div><div class="btn-row" style="margin-top:20px;"><button class="btn btn-gold" id="saveInvoiceEdit">Save Revised Invoice</button><button class="btn btn-ghost" id="cancelInvoiceEdit">Cancel</button></div></div>';
+  document.body.appendChild(editInvoiceModal);
+  let activeEditInvoiceIndex = null;
+  let editInvoiceState = { items: [], exchanges: [], stock: [], record: null };
+  const closeEditInvoiceModal = () => { editInvoiceModal.classList.remove('open'); activeEditInvoiceIndex = null; };
+  const editMoney = value => money(Number(value) || 0);
+  const editItemAmount = item => (Number(item.net) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
+  const editInitialPaidFor = record => {
+    if (Number.isFinite(Number(record.initialPaid))) return Number(record.initialPaid);
+    const payments = Array.isArray(record.payments) ? record.payments : [];
+    const initialPayment = payments.find(payment => payment.initialPayment) || payments.find(payment => payment.settledAt && record.savedAt && Math.abs(new Date(payment.settledAt) - new Date(record.savedAt)) < 60_000);
+    return initialPayment ? Number(initialPayment.amount) || 0 : Math.max((Number(record.paid) || 0) - payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0), 0);
+  };
+  const editTotals = () => {
+    const subtotal = editInvoiceState.items.reduce((sum, item) => sum + editItemAmount(item), 0);
+    const exchange = editInvoiceState.exchanges.reduce((sum, item) => sum + (Number(item.weight) || 0) * (Number(item.rate) || 0), 0);
+    const discount = Math.max(Number(document.getElementById('editInvoiceDiscount').value) || 0, 0);
+    const gstRate = Math.max(Number(document.getElementById('editInvoiceGst').value) || 0, 0);
+    // Keep the editor consistent with invoice creation: tax applies to the
+    // full item value, while exchange and discount reduce the final payable.
+    const tax = subtotal * gstRate / 100;
+    const total = Math.round(Math.max(subtotal + tax - exchange - discount, 0));
+    const settlementPaid = Math.max((Number(editInvoiceState.record.paid) || 0) - editInitialPaidFor(editInvoiceState.record), 0);
+    const invoicePaid = Math.max(Number(document.getElementById('editInvoicePaid').value) || 0, 0);
+    const due = Math.max(total - invoicePaid - settlementPaid, 0);
+    document.getElementById('editInvoiceSubtotal').textContent = editMoney(subtotal);
+    document.getElementById('editInvoiceExchange').textContent = editMoney(exchange);
+    document.getElementById('editInvoiceTotal').textContent = editMoney(total);
+    document.getElementById('editInvoiceDue').textContent = editMoney(due);
+    return { subtotal, exchange, discount, gstRate, tax, total, invoicePaid, settlementPaid, due };
+  };
+  const renderEditItems = () => {
+    const body = document.getElementById('editInvoiceItems');
+    body.innerHTML = editInvoiceState.items.map((item, index) => {
+      const options = ['<option value="">— select stock item —</option>'].concat(editInvoiceState.stock.filter(stock => (Number(stock.net) || Number(stock.gross) || 0) > 0 || stock.id === item.stockId).map(stock => '<option value="' + safe(stock.id) + '" ' + (stock.id === item.stockId ? 'selected' : '') + '>' + safe(stock.item + ' · ' + stock.purity + ' · ' + (Number(stock.net) || 0).toFixed(3) + ' g') + '</option>')).join('');
+      return '<tr data-edit-item="' + index + '"><td><select class="edit-stock">' + options + '</select></td><td>' + safe(item.name || '—') + '</td><td>' + safe(item.purity || '—') + '</td><td><input class="edit-gross" type="number" min="0" step="0.001" value="' + (Number(item.gross) || 0) + '"></td><td><input class="edit-net" type="number" min="0" step="0.001" value="' + (Number(item.net) || 0) + '"></td><td><input class="edit-rate" type="number" min="0" step="0.01" value="' + (Number(item.rate) || 0) + '"></td><td><input class="edit-making" type="number" min="0" step="0.01" value="' + (Number(item.making) || 0) + '"></td><td class="edit-item-total">' + editMoney(editItemAmount(item)) + '</td><td><button class="btn btn-ghost btn-sm edit-item-remove" type="button">×</button></td></tr>';
+    }).join('') || '<tr><td colspan="9" style="text-align:center; padding:16px;">Add at least one stock item.</td></tr>';
+  };
+  const renderEditExchanges = () => {
+    const container = document.getElementById('editInvoiceExchangeRows');
+    container.innerHTML = editInvoiceState.exchanges.map((entry, index) => '<div class="exchange-row" data-edit-exchange="' + index + '"><div class="field"><label>Metal</label><select class="edit-exchange-metal"><option value="gold" ' + (entry.metal === 'gold' ? 'selected' : '') + '>Gold</option><option value="silver" ' + (entry.metal === 'silver' ? 'selected' : '') + '>Silver</option></select></div><div class="field"><label>Weight (g)</label><input class="edit-exchange-weight" type="number" min="0" step="0.001" value="' + (Number(entry.weight) || 0) + '"></div><div class="field"><label>Rate / gram (₹)</label><input class="edit-exchange-rate" type="number" min="0" step="0.01" value="' + (Number(entry.rate) || 0) + '"></div><div class="field"><label>Value</label><div class="exchange-row-value">' + editMoney((Number(entry.weight) || 0) * (Number(entry.rate) || 0)) + '</div></div><button class="btn btn-ghost btn-sm edit-exchange-remove" type="button">×</button></div>').join('') || '<p class="sub" style="margin:0;">No exchange items added.</p>';
+  };
+  const refreshEditInvoice = () => { renderEditItems(); renderEditExchanges(); editTotals(); };
+  const openEditInvoiceModal = async (record, index) => {
+    activeEditInvoiceIndex = index;
+    const stockResult = await window.storage.get('stock-list');
+    editInvoiceState.stock = stockResult ? JSON.parse(stockResult.value) : [];
+    editInvoiceState.record = record;
+    const exchanges = Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : [];
+    const totalExchange = exchanges.reduce((sum, entry) => sum + (Number(entry.value) || (Number(entry.weight) || 0) * (Number(entry.rate) || 0)), 0);
+    editInvoiceState.items = ((record.status === 'pending' ? record.orderItems : record.soldItems) || []).map((item, itemIndex) => Object.assign({ lineId: item.lineId || ('edit-' + itemIndex), hsn: item.hsn || '' }, item));
+    editInvoiceState.exchanges = exchanges.map(entry => ({ metal: entry.metal === 'silver' ? 'silver' : 'gold', weight: Number(entry.weight) || 0, rate: Number(entry.rate) || 0 }));
+    document.getElementById('editInvoiceDate').value = record.invoiceDate || (record.savedAt ? record.savedAt.slice(0, 10) : '');
+    document.getElementById('editInvoiceCustomer').value = record.customer || '';
+    document.getElementById('editInvoiceMobile').value = record.mobile || '';
+    document.getElementById('editInvoiceAddress').value = record.address || '';
+    const markupPreview = document.createElement('div');
+    markupPreview.innerHTML = record.invoiceMarkup || '';
+    document.getElementById('editInvoiceTerms').value = record.terms || (markupPreview.querySelector('#p-terms') ? markupPreview.querySelector('#p-terms').textContent : '');
+    document.getElementById('editInvoiceDiscount').value = Math.max(Number.isFinite(Number(record.manualDiscount)) ? Number(record.manualDiscount) : amount(record.discount) - totalExchange, 0).toFixed(2);
+    document.getElementById('editInvoiceGst').value = String(Number(record.gstRate) || (amount(record.tax) > 0 ? 3 : 0));
+    document.getElementById('editInvoicePaid').value = editInitialPaidFor(record).toFixed(2);
+    refreshEditInvoice();
+    editInvoiceModal.classList.add('open');
+  };
+  document.getElementById('closeEditInvoice').addEventListener('click', closeEditInvoiceModal);
+  document.getElementById('cancelInvoiceEdit').addEventListener('click', closeEditInvoiceModal);
+  document.getElementById('addEditItem').addEventListener('click', () => { editInvoiceState.items.push({ lineId: 'edit-' + Date.now(), stockId: '', name: '', purity: '', gross: 0, net: 0, rate: 0, making: 0 }); refreshEditInvoice(); });
+  document.getElementById('addEditExchange').addEventListener('click', () => { editInvoiceState.exchanges.push({ metal: 'gold', weight: 0, rate: 0 }); refreshEditInvoice(); });
+  document.getElementById('editInvoiceItems').addEventListener('change', event => {
+    const row = event.target.closest('[data-edit-item]'); if (!row) return;
+    const item = editInvoiceState.items[Number(row.dataset.editItem)];
+    if (event.target.classList.contains('edit-stock')) {
+      const stock = editInvoiceState.stock.find(entry => entry.id === event.target.value);
+      item.stockId = stock ? stock.id : '';
+      item.name = stock ? stock.item : '';
+      item.purity = stock ? stock.purity : '';
+      refreshEditInvoice();
+    }
+  });
+  document.getElementById('editInvoiceItems').addEventListener('input', event => {
+    const row = event.target.closest('[data-edit-item]'); if (!row) return;
+    const item = editInvoiceState.items[Number(row.dataset.editItem)];
+    const property = event.target.classList.contains('edit-gross') ? 'gross' : event.target.classList.contains('edit-net') ? 'net' : event.target.classList.contains('edit-rate') ? 'rate' : event.target.classList.contains('edit-making') ? 'making' : null;
+    if (!property) return;
+    item[property] = Math.max(Number(event.target.value) || 0, 0);
+    row.querySelector('.edit-item-total').textContent = editMoney(editItemAmount(item));
+    editTotals();
+  });
+  document.getElementById('editInvoiceItems').addEventListener('click', event => {
+    const button = event.target.closest('.edit-item-remove'); if (!button) return;
+    editInvoiceState.items.splice(Number(button.closest('[data-edit-item]').dataset.editItem), 1); refreshEditInvoice();
+  });
+  document.getElementById('editInvoiceExchangeRows').addEventListener('input', event => {
+    const row = event.target.closest('[data-edit-exchange]'); if (!row) return;
+    const entry = editInvoiceState.exchanges[Number(row.dataset.editExchange)];
+    if (event.target.classList.contains('edit-exchange-weight')) entry.weight = Math.max(Number(event.target.value) || 0, 0);
+    if (event.target.classList.contains('edit-exchange-rate')) entry.rate = Math.max(Number(event.target.value) || 0, 0);
+    row.querySelector('.exchange-row-value').textContent = editMoney(entry.weight * entry.rate); editTotals();
+  });
+  document.getElementById('editInvoiceExchangeRows').addEventListener('change', event => {
+    const row = event.target.closest('[data-edit-exchange]'); if (!row) return;
+    if (event.target.classList.contains('edit-exchange-metal')) editInvoiceState.exchanges[Number(row.dataset.editExchange)].metal = event.target.value;
+  });
+  document.getElementById('editInvoiceExchangeRows').addEventListener('click', event => {
+    const button = event.target.closest('.edit-exchange-remove'); if (!button) return;
+    editInvoiceState.exchanges.splice(Number(button.closest('[data-edit-exchange]').dataset.editExchange), 1); refreshEditInvoice();
+  });
+  ['editInvoiceDiscount', 'editInvoiceGst', 'editInvoicePaid'].forEach(id => document.getElementById(id).addEventListener('input', editTotals));
+  document.getElementById('saveInvoiceEdit').addEventListener('click', async () => {
+    const records = await getRecords();
+    const record = records[activeEditInvoiceIndex];
+    if (!record || record.status === 'voided') { closeEditInvoiceModal(); return; }
+    const invoiceDate = document.getElementById('editInvoiceDate').value;
+    const customer = document.getElementById('editInvoiceCustomer').value.trim();
+    if (!invoiceDate || !customer) { alert('Invoice date and customer name are required.'); return; }
+    const mobile = document.getElementById('editInvoiceMobile').value.trim();
+    const address = document.getElementById('editInvoiceAddress').value.trim();
+    const terms = document.getElementById('editInvoiceTerms').value.trim();
+    const items = editInvoiceState.items.filter(item => item.stockId);
+    if (!items.length || items.length !== editInvoiceState.items.length || items.some(item => !((Number(item.gross) > 0) || (Number(item.net) > 0)) || !(Number(item.rate) > 0))) { alert('Select a stock item and enter its weight and rate for every item row.'); return; }
+    const totals = editTotals();
+    const displayDate = new Date(invoiceDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const stockResult = await window.storage.get('stock-list');
+    const stockList = stockResult ? JSON.parse(stockResult.value) : [];
+    (record.soldItems || []).forEach(item => {
+      let stock = stockList.find(entry => entry.id === item.stockId);
+      if (!stock) { stock = { id: item.stockId, item: item.name || 'Restored item', purity: item.purity || '', qty: 1, gross: 0, net: 0, added: 'Restored from ' + record.number }; stockList.push(stock); }
+      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0);
+      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0);
+    });
+    const requested = new Map();
+    items.forEach(item => {
+      const requestedItem = requested.get(item.stockId) || { gross: 0, net: 0, name: item.name };
+      requestedItem.gross += Number(item.gross) || 0; requestedItem.net += Number(item.net) || 0; requested.set(item.stockId, requestedItem);
+    });
+    for (const [stockId, requestedItem] of requested) {
+      const stock = stockList.find(entry => entry.id === stockId);
+      if (!stock || requestedItem.gross > (Number(stock.gross) || 0) + 0.0001 || requestedItem.net > (Number(stock.net) || 0) + 0.0001) { alert('Not enough remaining stock weight for "' + requestedItem.name + '".'); return; }
+    }
+    requested.forEach((requestedItem, stockId) => { const stock = stockList.find(entry => entry.id === stockId); stock.gross = Math.max((Number(stock.gross) || 0) - requestedItem.gross, 0); stock.net = Math.max((Number(stock.net) || 0) - requestedItem.net, 0); stock.qty = 1; });
+    const exchanges = editInvoiceState.exchanges.filter(entry => Number(entry.weight) > 0).map(entry => Object.assign({}, entry, { value: Number(entry.weight) * Number(entry.rate) }));
+    const previousInitialPaid = editInitialPaidFor(record);
+    record.invoiceDate = invoiceDate;
+    record.date = displayDate;
+    record.customer = customer;
+    record.mobile = mobile;
+    record.address = address;
+    record.terms = terms;
+    record.soldItems = items.map((item, itemIndex) => Object.assign({}, item, { lineId: item.lineId || ('edit-' + itemIndex) }));
+    if (record.status === 'pending') {
+      record.status = 'completed';
+      record.deliveredAt = new Date().toISOString();
+    }
+    record.items = items.map(item => item.name).join(', ');
+    record.exchanges = exchanges;
+    record.manualDiscount = totals.discount;
+    record.gstRate = totals.gstRate;
+    record.subtotal = editMoney(totals.subtotal);
+    record.discount = editMoney(totals.exchange + totals.discount);
+    record.tax = editMoney(totals.tax);
+    record.total = editMoney(totals.total);
+    record.initialPaid = totals.invoicePaid;
+    record.paid = totals.invoicePaid + Math.max((Number(record.paid) || 0) - previousInitialPaid, 0);
+    record.due = Math.max(totals.total - record.paid, 0);
+    record.payments = Array.isArray(record.payments) ? record.payments : [];
+    const savedInitialPayment = record.payments.find(payment => payment.initialPayment) || record.payments.find(payment => payment.settledAt && record.savedAt && Math.abs(new Date(payment.settledAt) - new Date(record.savedAt)) < 60_000);
+    if (savedInitialPayment) { savedInitialPayment.amount = totals.invoicePaid; savedInitialPayment.initialPayment = true; }
+    else if (totals.invoicePaid > 0) record.payments.push({ method: 'amount', amount: totals.invoicePaid, initialPayment: true, settledAt: record.savedAt || new Date().toISOString() });
+    const preview = document.createElement('div');
+    preview.innerHTML = record.invoiceMarkup || '<div id="invoicePaper"><tbody id="p-items-body"></tbody><div id="p-totals"></div></div>';
+    const paper = preview.querySelector('#invoicePaper');
+    if (paper) {
+      const setText = (selector, value) => { const element = paper.querySelector(selector); if (element) element.textContent = value; };
+      setText('#p-cust-name', customer); setText('#p-cust-address', [address, mobile ? 'Mob: ' + mobile : ''].filter(Boolean).join(' · ')); setText('#p-date', displayDate);
+      setText('#p-terms', terms);
+      const body = paper.querySelector('#p-items-body');
+      if (body) body.innerHTML = items.map((item, itemIndex) => '<tr><td>' + (itemIndex + 1) + '</td><td>' + safe(item.name) + '</td><td class="num">' + safe(item.hsn || '') + '</td><td>' + safe(item.purity) + '</td><td class="num">' + (Number(item.gross) || 0).toFixed(3) + '</td><td class="num">' + (Number(item.net) || 0).toFixed(3) + '</td><td class="num">1</td><td class="num">' + (Number(item.rate) || 0).toFixed(2) + '</td><td class="num">' + (Number(item.making) || 0).toFixed(2) + '%</td><td class="num">' + editItemAmount(item).toFixed(2) + '</td></tr>').join('');
+      const totalsPanel = paper.querySelector('#p-totals');
+      if (totalsPanel) totalsPanel.innerHTML = '<div class="tl"><span>Total</span><b>' + editMoney(totals.subtotal) + '</b></div><div class="tl"><span>Exchange / Discount</span><b>' + editMoney(totals.exchange + totals.discount) + '</b></div><div class="tl"><span>CGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="tl"><span>SGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="gt"><span>Grand Total</span><b>' + editMoney(totals.total) + '</b></div>';
+      const words = paper.querySelector('#p-words'); if (words && typeof numToWords === 'function') words.textContent = totals.total > 0 ? 'Rs. ' + numToWords(totals.total) + ' Only' : '';
+      record.invoiceMarkup = paper.outerHTML;
+    }
+    const oldMetal = await getOldGold();
+    const remainingOldMetal = oldMetal.filter(entry => !String(entry.sourceId || '').startsWith(record.number + ':exchange:'));
+    exchanges.forEach((entry, exchangeIndex) => remainingOldMetal.unshift({ sourceId: record.number + ':exchange:' + entry.metal + ':' + exchangeIndex, metal: entry.metal, source: 'Invoice exchange', invoice: record.number, customer: customer, date: displayDate, weight: entry.weight, rate: entry.rate, value: entry.value, receivedAt: record.savedAt }));
+    await originalStorageSet('stock-list', JSON.stringify(stockList));
+    await originalStorageSet('old-gold-records', JSON.stringify(remainingOldMetal));
+    await originalStorageSet('invoice-records', JSON.stringify(records));
+    closeEditInvoiceModal();
+    await renderRecords();
   });
   const returnModal = document.createElement('div');
   returnModal.id = 'returnInvoiceModal';
@@ -1125,6 +1465,7 @@ if ('serviceWorker' in navigator) {
       const paid = Number(record.paid) || 0;
       const netTotal = recordNetTotal(record);
       const voided = record.status === 'voided';
+      const pending = record.status === 'pending';
       const exchanges = Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : [];
       const exchangeHistory = exchanges.map(exchange => {
         const metal = String(exchange.metal || 'gold').replace(/^./, character => character.toUpperCase());
@@ -1135,8 +1476,8 @@ if ('serviceWorker' in navigator) {
         const itemDetail = payment.weight ? ' · ' + payment.weight + 'g × ₹' + payment.rate + '/g' : '';
         return safe(method + itemDetail + ' — ' + money(payment.amount));
       }).join('<br>') || 'No settlement recorded';
-      return '<tr class="' + (voided ? 'voided-record' : '') + '"><td style="font-family:var(--font-mono);">' + safe(record.number) + (voided ? '<span class="voided-badge">VOIDED</span>' : '') + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + money(netTotal) + '</td><td class="due-amount">' + money(due) + '</td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
-        '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>Items</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Old metal exchange</b>' + exchangeHistory + '</div><div class="record-info"><b>Net invoice total</b><span class="paid-amount">' + money(netTotal) + '</span></div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>Due amount</b><span class="due-amount">' + money(due) + '</span></div>' + (voided ? '<div class="record-info"><b>Void reason</b>' + safe(record.voidReason || '—') + '</div>' : '') + '<div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div>' + (voided ? '<div class="voided-invoice-view"><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">View Voided Invoice</button></div>' : '') + '<div class="record-actions"><div class="field"><label>Settlement type</label><select class="record-method" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" placeholder="Enter received amount" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g)</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" placeholder="0.000" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" placeholder="0.00" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-void" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>Void Invoice</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">Regenerate Invoice</button></div></div></td></tr>';
+      return '<tr class="' + (voided ? 'voided-record' : '') + '"><td style="font-family:var(--font-mono);">' + safe(record.number) + (voided ? '<span class="voided-badge">VOIDED</span>' : pending ? '<span class="pending-badge">PENDING</span>' : '') + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + money(netTotal) + '</td><td class="due-amount">' + money(due) + '</td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
+        '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>' + (pending ? 'Ordered items' : 'Items') + '</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Old metal exchange</b>' + exchangeHistory + '</div><div class="record-info"><b>Net invoice total</b><span class="paid-amount">' + money(netTotal) + '</span></div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>Due amount</b><span class="due-amount">' + money(due) + '</span></div>' + (voided ? '<div class="record-info"><b>Void reason</b>' + safe(record.voidReason || '—') + '</div>' : pending ? '<div class="record-info"><b>Order status</b>Awaiting stock selection and delivery</div>' : '') + '<div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div>' + (voided ? '<div class="voided-invoice-view"><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">View Voided Invoice</button></div>' : '') + '<div class="record-actions"><div class="field"><label>Settlement type</label><select class="record-method" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" placeholder="Enter received amount" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g)</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" placeholder="0.000" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" placeholder="0.00" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-edit" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Deliver Order' : 'Edit Invoice') + '</button><button class="btn btn-ghost btn-sm record-void" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Cancel Order' : 'Void Invoice') + '</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">' + (pending ? 'View Pending Invoice' : 'Regenerate Invoice') + '</button></div></div></td></tr>';
     }).join('');
     document.getElementById('recordsEmpty').style.display = records.length ? 'none' : 'block';
   };
@@ -1297,6 +1638,22 @@ if ('serviceWorker' in navigator) {
     updatePurchaseAmount();
     await renderPurchases();
   });
+  document.getElementById('paymentTbody').addEventListener('click', async event => {
+    const button = event.target.closest('button[data-id]');
+    if (!button) return;
+    const payment = (await getPayments()).find(entry => entry.id === button.dataset.id);
+    if (!payment) return;
+    if (button.classList.contains('payment-edit')) openTransactionEditor('payment', payment);
+    if (button.classList.contains('payment-delete')) openTransactionDelete('payment', payment);
+  });
+  document.getElementById('purchaseTbody').addEventListener('click', async event => {
+    const button = event.target.closest('button[data-id]');
+    if (!button) return;
+    const purchase = (await getPurchases()).find(entry => entry.id === button.dataset.id);
+    if (!purchase) return;
+    if (button.classList.contains('purchase-edit')) openTransactionEditor('purchase', purchase);
+    if (button.classList.contains('purchase-delete')) openTransactionDelete('purchase', purchase);
+  });
   document.getElementById('recordsTbody').addEventListener('change', event => {
     if (!event.target.classList.contains('record-method')) return;
     const index = event.target.dataset.index;
@@ -1330,6 +1687,10 @@ if ('serviceWorker' in navigator) {
     if (!record) return;
     if (button.classList.contains('record-reprint')) {
       reprintInvoice(record);
+      return;
+    }
+    if (button.classList.contains('record-edit')) {
+      openEditInvoiceModal(record, index);
       return;
     }
     if (button.classList.contains('record-void')) {
@@ -1394,28 +1755,58 @@ if ('serviceWorker' in navigator) {
     return result;
   };
 
-  document.getElementById('btnCompleteSale').addEventListener('click', event => {
-    pendingRecord = {
+  const collectInvoiceRecord = status => {
+    const paid = amount(document.getElementById('amount-paid').value);
+    return {
       number: document.getElementById('inv-no').value || '—',
       date: document.getElementById('p-date').textContent || '—',
+      invoiceDate: document.getElementById('inv-date').value || '',
+      status,
       customer: document.getElementById('cust-name').value || 'Walk-in customer',
       mobile: document.getElementById('cust-mobile').value || '',
       address: document.getElementById('cust-address').value || '',
       business: document.getElementById('biz-name').value || 'Vishesh Jewellers',
       gstin: document.getElementById('biz-gstin').value || '',
+      terms: document.getElementById('inv-terms').value || '',
       items: Array.from(document.querySelectorAll('#p-items-body tr')).map(row => row.cells[1] ? row.cells[1].textContent.trim() : '').filter(Boolean).join(', '),
       subtotal: document.getElementById('mini-sub').textContent || '₹0.00',
       discount: document.getElementById('mini-disc').textContent || '₹0.00',
       tax: document.getElementById('mini-gst').textContent || '₹0.00',
       total: document.getElementById('mini-grand').textContent || '₹0.00',
-      soldItems: rows.filter(row => row.stockId).map(row => ({ lineId: row.id, stockId: row.stockId, name: row.name, purity: row.purity, gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0 })),
+      soldItems: rows.filter(row => row.stockId).map(row => ({ lineId: row.id, stockId: row.stockId, name: row.name, hsn: row.hsn || '', purity: row.purity, gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0 })),
       exchanges: getExchangeEntries().filter(exchange => exchange.weight > 0),
-      paid: amount(document.getElementById('amount-paid').value),
-      due: Math.max(amount(document.getElementById('mini-grand').textContent) - amount(document.getElementById('amount-paid').value), 0),
-      payments: amount(document.getElementById('amount-paid').value) > 0 ? [{ method: 'amount', amount: amount(document.getElementById('amount-paid').value), settledAt: new Date().toISOString() }] : [],
+      manualDiscount: Math.max(Number(document.getElementById('invoice-discount').value) || 0, 0),
+      gstRate: Number(document.getElementById('gst-rate').value) * 2 || 0,
+      initialPaid: paid,
+      paid,
+      due: Math.max(amount(document.getElementById('mini-grand').textContent) - paid, 0),
+      payments: paid > 0 ? [{ method: 'amount', amount: paid, initialPayment: true, settledAt: new Date().toISOString() }] : [],
       invoiceMarkup: document.getElementById('invoicePaper').outerHTML,
       savedAt: new Date().toISOString()
     };
+  };
+  document.getElementById('btnSavePendingOrder').addEventListener('click', async () => {
+    const customer = document.getElementById('cust-name').value.trim();
+    const orderItems = rows.filter(row => row.name && ((Number(row.gross) > 0) || (Number(row.net) > 0)) && Number(row.rate) > 0);
+    if (!customer) { toast('Customer name is required for a pending order.'); document.getElementById('cust-name').focus(); return; }
+    if (!orderItems.length) { toast('Enter at least one ordered item with its name, weight, and rate.'); return; }
+    const record = collectInvoiceRecord('pending');
+    record.orderItems = orderItems.map((row, index) => ({ lineId: row.id || ('order-' + index), stockId: '', name: row.name, hsn: row.hsn || '', purity: row.purity || '', gross: Number(row.gross) || 0, net: Number(row.net) || 0, rate: Number(row.rate) || 0, making: Number(row.making) || 0 }));
+    record.soldItems = [];
+    const records = await getRecords();
+    records.unshift(record);
+    await originalStorageSet('invoice-records', JSON.stringify(records));
+    const oldMetal = await getOldGold();
+    record.exchanges.forEach((exchange, index) => {
+      if (Number(exchange.weight) > 0) oldMetal.unshift({ sourceId: record.number + ':exchange:' + exchange.metal + ':' + index, metal: exchange.metal, source: 'Invoice exchange', invoice: record.number, customer: record.customer, date: record.date, weight: Number(exchange.weight), rate: Number(exchange.rate), value: Number(exchange.value), receivedAt: record.savedAt });
+    });
+    await originalStorageSet('old-gold-records', JSON.stringify(oldMetal));
+    if (document.getElementById('page-records').classList.contains('active')) await renderRecords();
+    showInvoiceSuccess(record);
+    document.getElementById('btnNewInvoice').click();
+  });
+  document.getElementById('btnCompleteSale').addEventListener('click', event => {
+    pendingRecord = collectInvoiceRecord('completed');
     setTimeout(async () => {
       if (pendingRecord && document.getElementById('saleStatus').textContent.startsWith('✔ Stock updated')) await savePendingRecord();
       else if (pendingRecord) pendingRecord = null;

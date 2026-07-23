@@ -758,10 +758,11 @@ function computeTotals(){
   const subtotal = rows.reduce((s,r)=>s + rowAmount(r), 0);
   const disc = parseFloat(document.getElementById('exchange-disc').value) || 0;
   const gstPct = parseFloat(document.getElementById('gst-rate').value) || 0;
-  const taxable = Math.max(subtotal - disc, 0);
-  const cgst = taxable * (gstPct/100);
-  const sgst = taxable * (gstPct/100);
-  const rawGrand = taxable + cgst + sgst;
+  // GST is calculated on the complete jewellery value. Exchange credit and
+  // invoice discount are then deducted from the GST-inclusive total.
+  const cgst = subtotal * (gstPct/100);
+  const sgst = subtotal * (gstPct/100);
+  const rawGrand = Math.max(subtotal + cgst + sgst - disc, 0);
   const grand = Math.round(rawGrand);
   const roundOff = grand - rawGrand;
   return { subtotal, disc, cgst, sgst, gstPct, grand, roundOff };
