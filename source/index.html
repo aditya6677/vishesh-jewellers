@@ -648,11 +648,20 @@ function numToWords(num){
 
 /* ================= NAV ================= */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click', async ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('page-'+btn.dataset.page).classList.add('active');
+    if (btn.dataset.page === 'home') {
+      try {
+        const savedStock = await window.storage.get('stock-list');
+        stockList = savedStock ? JSON.parse(savedStock.value) : [];
+        renderRowsTable();
+      } catch (error) {
+        showAppMessage('Could not refresh stock. Please try opening Invoice again.', 'error');
+      }
+    }
   });
 });
 
@@ -1074,6 +1083,7 @@ document.getElementById('btnStockSave').addEventListener('click', async ()=>{
   await storeSet('stock-list', stockList);
   resetStockForm();
   renderStockTable(); renderStockStats();
+  renderRowsTable();
 });
 document.getElementById('btnStockCancel').addEventListener('click', resetStockForm);
 document.getElementById('stockSearch').addEventListener('input', renderStockTable);
