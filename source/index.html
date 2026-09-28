@@ -348,10 +348,10 @@
 
           <div class="row row-2" style="margin-top:16px;">
             <div class="field"><label>Exchange / Old Gold Deduction (₹)</label><input type="number" id="exchange-disc" value="0" step="0.01"></div>
-            <div class="field"><label>GST Rate (CGST + SGST)</label>
+            <div class="field"><label>Tax treatment</label>
               <select id="gst-rate">
-                <option value="1.5">1.5% + 1.5% (Standard 3% Gold)</option>
-                <option value="0">0% (Exempt)</option>
+                <option value="1.5">GST Invoice — 3% (CGST + SGST)</option>
+                <option value="0">Non-GST Invoice — No GST charged</option>
               </select>
             </div>
           </div>
@@ -582,13 +582,34 @@ let rows = []; // current invoice line items
 
 const uid = () => Math.random().toString(36).slice(2,10);
 
-function toast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+function showAppMessage(message, type = 'info'){
+  let dialog = document.getElementById('appMessageDialog');
+  if (!dialog) {
+    const style = document.createElement('style');
+    style.textContent = '#appMessageDialog{width:min(430px,calc(100vw - 32px));box-sizing:border-box;padding:28px;border:1px solid rgba(198,154,58,.4);border-radius:16px;background:#211b13;color:var(--ivory-2);box-shadow:0 24px 80px #0008;text-align:center;}#appMessageDialog::backdrop{background:rgba(0,0,0,.65);backdrop-filter:blur(3px)}#appMessageIcon{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 16px;border-radius:50%;background:rgba(198,154,58,.12);font-size:26px;color:var(--gold-light)}#appMessageDialog[data-type=error] #appMessageIcon{color:#E8A99E;background:rgba(232,169,158,.12)}#appMessageDialog[data-type=success] #appMessageIcon{color:#9CC7A2;background:rgba(156,199,162,.12)}#appMessageTitle{margin:0;color:var(--gold-pale);font-family:var(--font-display);font-size:24px}#appMessageText{margin:14px 0 22px;line-height:1.6;white-space:pre-wrap}';
+    document.head.appendChild(style);
+    dialog = document.createElement('dialog');
+    dialog.id = 'appMessageDialog';
+    dialog.setAttribute('aria-labelledby', 'appMessageTitle');
+    dialog.setAttribute('aria-describedby', 'appMessageText');
+    dialog.innerHTML = '<div id="appMessageIcon" aria-hidden="true"></div><h3 id="appMessageTitle"></h3><p id="appMessageText"></p><form method="dialog"><button class="btn btn-gold" autofocus>OK, got it</button></form>';
+    document.body.appendChild(dialog);
+  }
+  dialog.dataset.type = type;
+  document.getElementById('appMessageTitle').textContent = type === 'error' ? 'Please check' : type === 'success' ? 'Success' : 'Notice';
+  document.getElementById('appMessageIcon').textContent = type === 'error' ? '!' : type === 'success' ? '✓' : 'i';
+  document.getElementById('appMessageText').textContent = String(message);
+  if (!dialog.open) dialog.showModal();
 }
+window.alert = message => showAppMessage(message, 'error');
+function toast(msg){
+  if (msg === 'New invoice started' && document.querySelector('#invoiceSuccessModal.open')) return;
+  const type = /required|enter|select|not enough|only |could not|failed|no items/i.test(msg) ? 'error' : /saved|updated|added|deleted|downloaded|started|recorded/i.test(msg) ? 'success' : 'info';
+  showAppMessage(msg, type);
+}
+window.addEventListener('unhandledrejection', () => {
+  showAppMessage('The operation could not be completed. Please check the saved details before trying again.', 'error');
+});
 
 function fmt(n){
   n = Number(n)||0;
@@ -773,6 +794,7 @@ function renderMiniTotals(){
   document.getElementById('mini-sub').textContent = '₹'+fmt(t.subtotal);
   document.getElementById('mini-disc').textContent = '₹'+fmt(t.disc);
   document.getElementById('mini-gst').textContent = '₹'+fmt(t.cgst + t.sgst);
+  document.getElementById('mini-gst').parentElement.hidden = t.gstPct === 0;
   document.getElementById('mini-grand').textContent = '₹'+fmt(t.grand);
 }
 
@@ -808,11 +830,12 @@ function renderPreview(){
   `).join('') || `<tr><td colspan="10" style="text-align:center; color:#9C8B60; padding:16px 0;">Add items to see them here</td></tr>`;
 
   const t = computeTotals();
+  document.getElementById('p-gstin').textContent = t.gstPct === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (document.getElementById('biz-gstin').value || '—');
   document.getElementById('p-totals').innerHTML = `
     <div class="tl"><span>Total</span><b>₹${fmt(t.subtotal)}</b></div>
     <div class="tl"><span>Exchange / Discount</span><b>₹${fmt(t.disc)}</b></div>
-    <div class="tl"><span>CGST ${t.gstPct}%</span><b>₹${fmt(t.cgst)}</b></div>
-    <div class="tl"><span>SGST ${t.gstPct}%</span><b>₹${fmt(t.sgst)}</b></div>
+    ${t.gstPct > 0 ? `<div class="tl"><span>CGST ${t.gstPct}%</span><b>₹${fmt(t.cgst)}</b></div>
+    <div class="tl"><span>SGST ${t.gstPct}%</span><b>₹${fmt(t.sgst)}</b></div>` : ''}
     <div class="tl"><span>Round Off</span><b>₹${fmt(t.roundOff)}</b></div>
     <div class="gt"><span>Grand Total</span><b>₹${fmt(t.grand)}</b></div>
   `;

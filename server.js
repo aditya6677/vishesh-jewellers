@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createJsonStore } = require('./lib/json-store');
+const { deleteInvoice } = require('./lib/delete-invoice');
 const { applyWeightOnlyStockFlow: applyStockFlow } = require('./lib/stock-flow');
 
 const root = __dirname;
@@ -99,7 +100,7 @@ function applyWeightOnlyStockFlow(html) {
     '  renderStockTable(); renderStockStats();',
     '  saleCompleted = true;',
     '  setSaleStatus();',
-    "  toast('Stock weight updated — sale recorded');",
+    '  // The invoice success modal is displayed after the record is saved.',
     '});',
     '',
     "document.getElementById('btnPrint')"
@@ -481,6 +482,7 @@ if ('serviceWorker' in navigator) {
     <div class="panel">
       <div class="toolbar">
         <div class="search-box"><input type="text" id="recordSearch" placeholder="Search customer name or mobile number…"></div>
+        <label style="display:flex;align-items:center;gap:8px;color:var(--gold-pale);font-size:13px;white-space:nowrap;cursor:pointer;"><input id="recordDueOnly" type="checkbox" style="width:16px;height:16px;accent-color:var(--gold);">Due only</label>
         <span style="color:var(--ivory-3); font-size:12px; opacity:.7;" id="recordCountLabel"></span>
       </div>
       <div class="data-table-wrap">
@@ -1063,6 +1065,8 @@ if ('serviceWorker' in navigator) {
   editInvoiceModal.className = 'modal-backdrop';
   editInvoiceModal.innerHTML = '<div class="modal" style="max-width:980px; max-height:92vh; overflow:auto;"><div class="toolbar"><h3 style="margin:0;">Edit Invoice</h3><button class="btn btn-ghost btn-sm" id="closeEditInvoice">Close</button></div><p class="void-modal-note">Update this active invoice completely. Saving recalculates totals and safely reconciles stock and exchanged metal.</p><div class="form-grid"><div class="field"><label>Invoice date *</label><input id="editInvoiceDate" type="date"></div><div class="field"><label>Customer name *</label><input id="editInvoiceCustomer" type="text"></div><div class="field"><label>Mobile number</label><input id="editInvoiceMobile" type="tel"></div><div class="field"><label>Address</label><input id="editInvoiceAddress" type="text"></div></div><div class="field" style="margin-top:14px;"><label>Terms &amp; conditions</label><textarea id="editInvoiceTerms" style="min-height:70px;"></textarea></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Items</h4><button class="btn btn-ghost btn-sm" id="addEditItem" type="button">+ Add item</button></div><div class="items-table-wrap"><table class="itable"><thead><tr><th>From stock</th><th>Item</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount</th><th></th></tr></thead><tbody id="editInvoiceItems"></tbody></table></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Gold / Silver Exchange</h4><button class="btn btn-ghost btn-sm" id="addEditExchange" type="button">+ Add exchange item</button></div><div id="editInvoiceExchangeRows" class="exchange-rows"></div><div class="form-grid" style="margin-top:18px;"><div class="field"><label>Manual discount (₹)</label><input id="editInvoiceDiscount" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>GST rate</label><select id="editInvoiceGst"><option value="3">3% (CGST + SGST)</option><option value="0">0% (Exempt)</option></select></div><div class="field"><label>Amount paid at invoice (₹)</label><input id="editInvoicePaid" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>Revised total</label><div class="payment-balance" id="editInvoiceTotal">₹0.00</div></div></div><div class="record-info-grid" style="margin:14px 0 0;"><div class="record-info"><b>Items subtotal</b><span id="editInvoiceSubtotal">₹0.00</span></div><div class="record-info"><b>Exchange credit</b><span id="editInvoiceExchange">₹0.00</span></div><div class="record-info"><b>Amount due</b><span class="due-amount" id="editInvoiceDue">₹0.00</span></div></div><div class="btn-row" style="margin-top:20px;"><button class="btn btn-gold" id="saveInvoiceEdit">Save Revised Invoice</button><button class="btn btn-ghost" id="cancelInvoiceEdit">Cancel</button></div></div>';
   document.body.appendChild(editInvoiceModal);
+  document.querySelector('#editInvoiceGst option[value="3"]').textContent = 'GST Invoice — 3%';
+  document.querySelector('#editInvoiceGst option[value="0"]').textContent = 'Non-GST Invoice — No GST charged';
   let activeEditInvoiceIndex = null;
   let editInvoiceState = { items: [], exchanges: [], stock: [], record: null };
   const closeEditInvoiceModal = () => { editInvoiceModal.classList.remove('open'); activeEditInvoiceIndex = null; };
@@ -1121,7 +1125,7 @@ if ('serviceWorker' in navigator) {
     markupPreview.innerHTML = record.invoiceMarkup || '';
     document.getElementById('editInvoiceTerms').value = record.terms || (markupPreview.querySelector('#p-terms') ? markupPreview.querySelector('#p-terms').textContent : '');
     document.getElementById('editInvoiceDiscount').value = Math.max(Number.isFinite(Number(record.manualDiscount)) ? Number(record.manualDiscount) : amount(record.discount) - totalExchange, 0).toFixed(2);
-    document.getElementById('editInvoiceGst').value = String(Number(record.gstRate) || (amount(record.tax) > 0 ? 3 : 0));
+    document.getElementById('editInvoiceGst').value = String(record.gstRate != null ? Number(record.gstRate) : (amount(record.tax) > 0 ? 3 : 0));
     document.getElementById('editInvoicePaid').value = editInitialPaidFor(record).toFixed(2);
     refreshEditInvoice();
     editInvoiceModal.classList.add('open');
@@ -1242,6 +1246,12 @@ if ('serviceWorker' in navigator) {
       const totalsPanel = paper.querySelector('#p-totals');
       if (totalsPanel) totalsPanel.innerHTML = '<div class="tl"><span>Total</span><b>' + editMoney(totals.subtotal) + '</b></div><div class="tl"><span>Exchange / Discount</span><b>' + editMoney(totals.exchange + totals.discount) + '</b></div><div class="tl"><span>CGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="tl"><span>SGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="gt"><span>Grand Total</span><b>' + editMoney(totals.total) + '</b></div>';
       const words = paper.querySelector('#p-words'); if (words && typeof numToWords === 'function') words.textContent = totals.total > 0 ? 'Rs. ' + numToWords(totals.total) + ' Only' : '';
+      setText('#p-gstin', totals.gstRate === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (record.gstin || '—'));
+      if (totals.gstRate === 0 && totalsPanel) {
+        totalsPanel.querySelectorAll('.tl').forEach(line => {
+          if (/^(CGST|SGST)/.test(line.textContent.trim())) line.remove();
+        });
+      }
       record.invoiceMarkup = paper.outerHTML;
     }
     const oldMetal = await getOldGold();
@@ -1453,10 +1463,42 @@ if ('serviceWorker' in navigator) {
       pdf.save('Invoice-' + regeneratedModal.dataset.invoiceNumber + '.pdf');
     } catch (error) { alert('Could not generate the PDF.'); }
   });
+  const deleteRecordDialog = document.createElement('dialog');
+  deleteRecordDialog.style.cssText = 'width:min(460px,90vw);border:1px solid #9a554a;border-radius:14px;padding:26px;background:#211b13;color:#eee1c6;';
+  deleteRecordDialog.innerHTML = '<h3 style="margin-top:0">Delete invoice?</h3><p id="deleteRecordNote" style="line-height:1.6"></p><div class="btn-row"><button class="btn btn-danger" id="confirmRecordDeletion">Delete invoice</button><button class="btn btn-ghost" id="cancelRecordDeletion">Cancel</button></div>';
+  document.body.appendChild(deleteRecordDialog);
+  let deletionNumber = null;
+  document.getElementById('cancelRecordDeletion').onclick = () => deleteRecordDialog.close();
+  document.getElementById('confirmRecordDeletion').onclick = async () => {
+    const button = document.getElementById('confirmRecordDeletion');
+    button.disabled = true;
+    document.getElementById('cancelRecordDeletion').disabled = true;
+    try {
+      const response = await fetch('/api/invoices/' + encodeURIComponent(deletionNumber), { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not delete invoice.');
+      const latestStock = await window.storage.get('stock-list');
+      stockList = latestStock ? JSON.parse(latestStock.value) : [];
+      renderStockTable(); renderStockStats(); renderRowsTable();
+      await renderRecords();
+      deleteRecordDialog.close();
+      showAppMessage('Invoice ' + deletionNumber + ' deleted and its calculations reversed. This deletion cannot be undone from the app.', 'success');
+    } catch (error) {
+      deleteRecordDialog.close();
+      showAppMessage(error.message, 'error');
+    } finally {
+      button.disabled = false;
+      document.getElementById('cancelRecordDeletion').disabled = false;
+    }
+  };
   const renderRecords = async () => {
     const query = (document.getElementById('recordSearch').value || '').trim().toLowerCase();
     const records = await getRecords();
-    const filtered = records.map((record, index) => ({ record, index })).filter(entry => (entry.record.customer + ' ' + entry.record.mobile).toLowerCase().includes(query));
+    const dueOnly = document.getElementById('recordDueOnly').checked;
+    const filtered = records.map((record, index) => ({ record, index })).filter(({ record }) =>
+      (record.customer + ' ' + record.mobile).toLowerCase().includes(query) &&
+      (!dueOnly || (record.status !== 'voided' && Number(record.due) > 0))
+    );
     document.getElementById('recordCountLabel').textContent = filtered.length + ' of ' + records.length + ' shown';
     document.getElementById('recordsTbody').innerHTML = filtered.map(entry => {
       const record = entry.record;
@@ -1479,7 +1521,22 @@ if ('serviceWorker' in navigator) {
       return '<tr class="' + (voided ? 'voided-record' : '') + '"><td style="font-family:var(--font-mono);">' + safe(record.number) + (voided ? '<span class="voided-badge">VOIDED</span>' : pending ? '<span class="pending-badge">PENDING</span>' : '') + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + money(netTotal) + '</td><td class="due-amount">' + money(due) + '</td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
         '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>' + (pending ? 'Ordered items' : 'Items') + '</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Old metal exchange</b>' + exchangeHistory + '</div><div class="record-info"><b>Net invoice total</b><span class="paid-amount">' + money(netTotal) + '</span></div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>Due amount</b><span class="due-amount">' + money(due) + '</span></div>' + (voided ? '<div class="record-info"><b>Void reason</b>' + safe(record.voidReason || '—') + '</div>' : pending ? '<div class="record-info"><b>Order status</b>Awaiting stock selection and delivery</div>' : '') + '<div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div>' + (voided ? '<div class="voided-invoice-view"><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">View Voided Invoice</button></div>' : '') + '<div class="record-actions"><div class="field"><label>Settlement type</label><select class="record-method" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" placeholder="Enter received amount" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g)</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" placeholder="0.000" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" placeholder="0.00" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-edit" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Deliver Order' : 'Edit Invoice') + '</button><button class="btn btn-ghost btn-sm record-void" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Cancel Order' : 'Void Invoice') + '</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">' + (pending ? 'View Pending Invoice' : 'Regenerate Invoice') + '</button></div></div></td></tr>';
     }).join('');
-    document.getElementById('recordsEmpty').style.display = records.length ? 'none' : 'block';
+    filtered.forEach(({ record, index }) => {
+      const card = document.querySelector('[data-detail="' + index + '"] .record-detail-card');
+      const button = document.createElement('button');
+      button.className = 'btn btn-danger btn-sm';
+      button.style.cssText = 'margin-top:14px;color:#E8A99E;border-color:#9a554a;background:rgba(164,44,35,.16)';
+      button.textContent = 'Delete Record';
+      button.onclick = () => {
+        deletionNumber = record.number;
+        document.getElementById('deleteRecordNote').textContent = 'Permanently delete ' + record.number + '? Its sales, payments and dues will be removed, remaining sold weight restored, and linked old-metal entries removed. Already-voided invoices will not restore stock twice. This cannot be undone from the app.';
+        deleteRecordDialog.showModal();
+      };
+      card.appendChild(button);
+    });
+    const emptyState = document.getElementById('recordsEmpty');
+    emptyState.style.display = filtered.length ? 'none' : 'block';
+    emptyState.textContent = !records.length ? 'No completed invoices yet.' : dueOnly ? 'No due records match your filters.' : 'No records match your search.';
   };
   const openRecords = async () => {
     document.querySelectorAll('.tab-btn').forEach(button => button.classList.remove('active'));
@@ -1573,6 +1630,7 @@ if ('serviceWorker' in navigator) {
     } catch (_) { status.textContent = 'This option is available only in the desktop app.'; }
   });
   document.getElementById('recordSearch').addEventListener('input', renderRecords);
+  document.getElementById('recordDueOnly').addEventListener('change', renderRecords);
   const updatePaymentType = () => {
     const paymentType = document.getElementById('paymentType').value;
     const isMetal = paymentType === 'metal';
@@ -1703,7 +1761,7 @@ if ('serviceWorker' in navigator) {
     const weight = Number(document.getElementById('settlement-weight-' + index).value);
     const rate = Number(document.getElementById('settlement-rate-' + index).value);
     const settled = button.classList.contains('record-paid') ? due : method === 'amount' ? Number(settlementInput.value) : weight * rate;
-    if (!settled || settled <= 0 || settled > due) {
+    if (!Number.isFinite(settled) || settled <= 0 || settled > due) {
       alert(method === 'amount' ? 'Enter a valid amount up to the outstanding due of ' + money(due) + '.' : 'Enter a valid weight and price per gram whose value does not exceed the due of ' + money(due) + '.');
       return;
     }
@@ -1718,6 +1776,7 @@ if ('serviceWorker' in navigator) {
       await addOldGold({ sourceId: record.number + ':settlement:' + settledAt, metal: method, source: (method === 'gold' ? 'Gold' : 'Silver') + ' settlement', invoice: record.number, customer: record.customer, date: new Date(settledAt).toLocaleDateString('en-GB'), weight, rate, value: settled, receivedAt: settledAt });
     }
     await renderRecords();
+    showAppMessage('Settlement of ' + money(settled) + ' saved for invoice ' + record.number + '. Remaining due: ' + money(record.due) + '.', 'success');
   });
 
   let pendingRecord = null;
@@ -1825,6 +1884,16 @@ jsonStore.migrate();
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const match = url.pathname.match(/^\/api\/storage\/([^/]+)$/);
+  const invoiceDeletion = url.pathname.match(/^\/api\/invoices\/([^/]+)$/);
+  if (invoiceDeletion && req.method === 'DELETE') {
+    try {
+      const next = deleteInvoice(jsonStore.read(), decodeURIComponent(invoiceDeletion[1]));
+      jsonStore.write(next);
+      return send(res, 200, JSON.stringify({ ok: true }));
+    } catch (error) {
+      return send(res, 400, JSON.stringify({ error: error.message }));
+    }
+  }
 
   if (url.pathname === '/api/version' && req.method === 'GET') {
     return send(res, 200, JSON.stringify({ version: serverVersion }));
