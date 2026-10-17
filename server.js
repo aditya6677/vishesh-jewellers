@@ -1,8 +1,12 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const { createJsonStore } = require('./lib/json-store');
 const { deleteInvoice } = require('./lib/delete-invoice');
+const { calculateDashboard } = require('./lib/dashboard-summary');
+const { buildSystemExport } = require('./lib/excel-export');
+const { parseIbjaRates } = require('./lib/ibja-rates');
 const { applyWeightOnlyStockFlow: applyStockFlow } = require('./lib/stock-flow');
 
 const root = __dirname;
@@ -13,34 +17,51 @@ const host = process.env.HOST || '127.0.0.1';
 const sourceHtml = process.env.SOURCE_HTML || path.join(root, 'source', 'index.html');
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
 const dataFile = path.join(dataDir, 'store.json');
+const backupDir = process.env.BACKUP_DIR || path.join(os.homedir(), 'Documents', 'Vishesh Jewellers Backups');
 const serverVersion = String(Date.now());
 const jsonStore = createJsonStore(dataFile, { encryptionKey: process.env.DATA_ENCRYPTION_KEY });
 // Local fallback for this single-user installation. An environment value overrides it when provided.
 const goldApiKey = process.env.GOLD_API_KEY || 'goldapi-779c2b0275441b53d934d5ec80fa127f-io';
 let liveRatesCache = null;
 
-function send(res, status, body, type = 'application/json; charset=utf-8') {
-  res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
+function send(res, status, body, type = 'application/json; charset=utf-8', headers = {}) {
+  res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', ...headers });
   res.end(body);
 }
 
-async function getLiveMetalRates(forceRefresh = false) {
-  if (!goldApiKey) throw new Error('Live rates are not configured');
-  if (!forceRefresh && liveRatesCache && Date.now() - liveRatesCache.fetchedAt < 60_000) return liveRatesCache.value;
-  const headers = { 'x-access-token': goldApiKey, 'content-type': 'application/json' };
-  const [goldResponse, silverResponse] = await Promise.all([
-    fetch('https://www.goldapi.io/api/XAU/INR', { headers }),
-    fetch('https://www.goldapi.io/api/XAG/INR', { headers })
-  ]);
-  if (!goldResponse.ok || !silverResponse.ok) throw new Error('Live rate provider is unavailable');
-  const [gold, silver] = await Promise.all([goldResponse.json(), silverResponse.json()]);
-  const perGram = rate => Number(rate.price_gram_24k || rate.price_gram || (Number(rate.price) / 31.1034768));
-  const value = {
-    goldPerGram: perGram(gold),
-    silverPerGram: perGram(silver),
-    updatedAt: gold.updatedAt || gold.timestamp || new Date().toISOString()
+function isoWeekStamp(date = new Date()) {
+  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  day.setUTCDate(day.getUTCDate() + 4 - (day.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(day.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((day - yearStart) / 86400000) + 1) / 7);
+  return `${day.getUTCFullYear()}-${String(week).padStart(2, '0')}`;
+}
+
+function writeServerBackup(targetPath) {
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  const backup = {
+    format: 'vishesh-jewellers-encrypted-backup-v1',
+    createdAt: new Date().toISOString(),
+    encryption: 'AES-256-GCM; restore requires the existing app data key',
+    encryptedStore: JSON.parse(fs.readFileSync(dataFile, 'utf8'))
   };
-  if (!Number.isFinite(value.goldPerGram) || !Number.isFinite(value.silverPerGram)) throw new Error('Live rate provider returned invalid data');
+  const tempPath = targetPath + '.tmp';
+  fs.writeFileSync(tempPath, JSON.stringify(backup, null, 2) + '\n', { mode: 0o600 });
+  fs.renameSync(tempPath, targetPath);
+}
+
+function createServerWeeklyBackup() {
+  const target = path.join(backupDir, `Vishesh-Jewellers-Weekly-${isoWeekStamp()}.json`);
+  if (!fs.existsSync(target)) writeServerBackup(target);
+  const weekly = fs.readdirSync(backupDir).filter(name => /^Vishesh-Jewellers-Weekly-\d{4}-\d{2}\.json$/.test(name)).sort();
+  weekly.slice(0, Math.max(0, weekly.length - 12)).forEach(name => fs.unlinkSync(path.join(backupDir, name)));
+}
+
+async function getLiveMetalRates(forceRefresh = false) {
+  if (!forceRefresh && liveRatesCache && Date.now() - liveRatesCache.fetchedAt < 60_000) return liveRatesCache.value;
+  const response = await fetch('https://ibjarates.com/', { signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error('IBJA rates unavailable');
+  const value = parseIbjaRates(await response.text());
   liveRatesCache = { fetchedAt: Date.now(), value };
   return value;
 }
@@ -94,7 +115,6 @@ function applyWeightOnlyStockFlow(html) {
     '    const stock = stockList.find(x=>x.id===stockId);',
     '    stock.gross = Math.max((parseFloat(stock.gross)||0) - requestedWeight.gross, 0);',
     '    stock.net = Math.max((parseFloat(stock.net)||0) - requestedWeight.net, 0);',
-    '    stock.qty = 1;',
     '  });',
     "  await storeSet('stock-list', stockList);",
     '  renderStockTable(); renderStockStats();',
@@ -150,20 +170,12 @@ function injectJsonStorage(html) {
   display: none;
 }
 #page-stocks .row-3:has(#st-qty) {
-  grid-template-columns: 1fr 1fr;
-}
-#page-stocks .field:has(#st-qty) {
-  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 #page-stocks .stat-cards { grid-template-columns: repeat(2, 1fr); }
 #page-dashboard .stat-cards { grid-template-columns: repeat(4, 1fr); }
 #page-stocks .stat-card:nth-child(3) { display: none; }
 #page-stocks .stat-card .val small { display: block; margin-top: 2px; font-family: var(--font-ui); font-size: 12px; font-weight: 500; color: var(--gold-light); }
-#itemsTable th:nth-child(7), #itemsTable td:nth-child(7),
-table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
-#page-stocks .data-table th:nth-child(3), #page-stocks .data-table td:nth-child(3) {
-  display: none;
-}
 #page-stocks .data-table th:nth-child(6), #page-stocks .data-table td:nth-child(6),
 #page-stocks .data-table th:nth-child(7), #page-stocks .data-table td:nth-child(7) {
   display: none;
@@ -173,8 +185,20 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .record-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
 .record-info { font-size: 13px; color: var(--ivory-2); }
 .record-info b { display: block; color: var(--gold); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }
-.due-amount { color: #E8A99E; font-family: var(--font-mono); }
-.paid-amount { color: #9CC7A2; font-family: var(--font-mono); }
+.due-amount { color: #F07878; font-family: var(--font-mono); }
+.paid-amount, .plus-amount { color: #75D69A; font-family: var(--font-mono); }
+.rate-change { display:block; margin-top:4px; font-size:11px; font-family:var(--font-mono); }
+.rate-change-up { color:#75D69A; }
+.rate-change-down { color:#F07878; }
+.rate-change-flat { color:var(--ivory-3); }
+#page-records .record-filter-label { margin: 0; color: var(--ivory-3); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.records-range { display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 14px; }
+.records-range .range-date { display:flex;align-items:center;gap:6px;padding:0 9px;border:1px solid rgba(198,154,58,.22);border-radius:7px;background:rgba(0,0,0,.12); }
+.records-range .range-date label { margin:0;color:var(--ivory-3);font-size:11px;letter-spacing:0;text-transform:none;white-space:nowrap; }
+.records-range input[type=date] { width:128px;min-width:0;padding:7px 0;border:0;border-radius:0;background:transparent;font-size:12px;box-shadow:none; }
+.records-range .btn { min-height:32px;padding:6px 10px;font-size:11px; }
+.records-range .range-caption { color:var(--ivory-3);font-size:11px; }
+@media(max-width:540px) { .records-range .range-date { flex:1 1 140px; } .records-range input[type=date] { flex:1;width:110px; } .records-range .range-caption { flex-basis:100%; } }
 .record-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 .record-actions .field { margin: 0; min-width: 170px; }
 .record-paid:disabled { display: none; }
@@ -220,6 +244,16 @@ table.paper-items th:nth-child(7), table.paper-items td:nth-child(7),
 .snapshot-section { padding: 14px; border: 1px solid rgba(198,154,58,.2); border-radius: 9px; background: rgba(0,0,0,.12); }
 .snapshot-section h4 { margin: 0 0 11px; color: var(--gold-light); font-family: var(--font-display); font-size: 16px; font-weight: 600; }
 .snapshot-section .record-info-grid { grid-template-columns: 1fr; gap: 10px; margin: 0; }
+.dashboard-negative { color: #f07d7d !important; }
+.dashboard-total { font-size:22px; font-family:var(--font-mono);color:#9CC7A2; }
+.dashboard-note { color:var(--ivory-3);font-size:12px;line-height:1.6;margin:14px 0 0; }
+.snapshot-range { display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 16px; }
+.snapshot-range .range-date { display:flex;align-items:center;gap:6px;padding:0 9px;border:1px solid rgba(198,154,58,.22);border-radius:7px;background:rgba(0,0,0,.12); }
+.snapshot-range .range-date label { margin:0;color:var(--ivory-3);font-size:11px;letter-spacing:0;text-transform:none;white-space:nowrap; }
+.snapshot-range input[type=date] { width:128px;min-width:0;padding:7px 0;border:0;border-radius:0;background:transparent;font-size:12px;box-shadow:none; }
+.snapshot-range .btn { min-height:32px;padding:6px 10px;font-size:11px; }
+.snapshot-range .range-caption { color:var(--ivory-3);font-size:11px; }
+@media(max-width:540px) { .snapshot-range .range-date { flex:1 1 140px; } .snapshot-range input[type=date] { flex:1;width:110px; } .snapshot-range .range-caption { flex-basis:100%; } }
 .brand-logo { width: 46px; height: 46px; object-fit: contain; }
 .invoice-logo { width: 72px; height: 72px; object-fit: contain; }
 .live-rates-refresh { min-width: 28px; min-height: 28px; padding: 2px 7px; font-size: 17px; line-height: 1; }
@@ -329,21 +363,21 @@ if ('serviceWorker' in navigator) {
       <h2>Dashboard</h2>
       <p class="sub">A quick view of sales, collections, outstanding payments, and remaining metal stock.</p>
     </div>
-    <div class="stat-cards">
-      <div class="stat-card"><div class="lbl">Today’s Sales</div><div class="val" id="dash-today">₹0.00</div></div>
-      <div class="stat-card"><div class="lbl">This Week</div><div class="val" id="dash-week">₹0.00</div></div>
-      <div class="stat-card"><div class="lbl">This Month</div><div class="val" id="dash-month">₹0.00</div></div>
-      <div class="stat-card"><div class="lbl">This Year</div><div class="val" id="dash-year">₹0.00</div></div>
-    </div>
     <div class="panel" id="liveRatesPanel" style="display:none; margin-bottom:20px;">
       <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Live Market Rates</h3><div style="display:flex; align-items:center; gap:8px;"><span style="color:var(--ivory-3); font-size:11px;" id="liveRatesUpdated"></span><button class="btn btn-ghost btn-sm live-rates-refresh" id="refreshLiveRates" type="button" title="Refresh live rates" aria-label="Refresh live rates">↻</button></div></div>
       <div class="record-info-grid" style="margin-bottom:0;">
-        <div class="record-info"><b>Gold 24K (₹/g)</b><span class="paid-amount" id="liveGoldRate">—</span></div>
-        <div class="record-info"><b>Silver (₹/g)</b><span class="paid-amount" id="liveSilverRate">—</span></div>
+        <div class="record-info"><b>Gold 24K (₹/g)</b><span class="paid-amount" id="liveGoldRate">—</span><small id="liveGoldChange" class="rate-change" hidden></small></div>
+        <div class="record-info"><b>Silver (₹/g)</b><span class="paid-amount" id="liveSilverRate">—</span><small id="liveSilverChange" class="rate-change" hidden></small></div>
       </div>
     </div>
     <div class="panel">
       <h3><span class="dot"></span>Business Snapshot</h3>
+      <form id="dashboardRangeForm" class="snapshot-range">
+        <div class="range-date"><label for="dashboardFrom">From</label><input type="date" id="dashboardFrom"></div>
+        <div class="range-date"><label for="dashboardTo">To</label><input type="date" id="dashboardTo"></div>
+        <button class="btn btn-gold btn-sm" type="submit">Apply</button><button class="btn btn-ghost btn-sm" id="dashboardAllTime" type="button">All time</button>
+        <span id="dashboardRangeLabel" class="range-caption" aria-live="polite">All time</span>
+      </form>
       <div class="snapshot-sections" id="dashboardSnapshot">
         <div class="snapshot-section"><h4>Overall Sales</h4><div class="record-info-grid">
           <div class="record-info"><b>Total Invoices</b><span id="dash-invoices">0</span></div>
@@ -402,6 +436,23 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-gold" id="settingsChooseData" type="button">Choose Data Folder</button>
       <div id="settingsDataStatus" style="min-height:18px; margin-top:10px; color:var(--ivory-3); font-size:12px;"></div>
     </div>
+    <div class="panel" style="margin-top:18px;">
+      <h3><span class="dot"></span>Encrypted Backups</h3>
+      <p class="sub" id="settingsBackupDescription">A backup is created automatically once per week when the app starts. You can also create one whenever you want or restore a previous backup. Weekly backups are saved outside the app installation folder, in Documents → Vishesh Jewellers Backups.</p>
+      <p class="sub" id="settingsBackupNote" style="margin:0 0 14px;">The business data in the backup is encrypted. Restore requires the matching app encryption key.</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-gold" id="settingsCreateBackup" type="button">Create Backup Now</button>
+        <button class="btn" id="settingsRestoreBackup" type="button">Restore Backup…</button>
+        <input id="settingsRestoreFile" type="file" accept="application/json,.json" style="display:none;">
+      </div>
+      <div id="settingsBackupStatus" style="min-height:18px; margin-top:10px; color:var(--ivory-3); font-size:12px;"></div>
+    </div>
+    <div class="panel" style="margin-top:18px;">
+      <h3><span class="dot"></span>Export All Data</h3>
+      <p class="sub">Download a readable Excel workbook with a Business Snapshot dashboard first, followed by separate sheets for invoices, invoice items, exchanges, settlements, returns, stock, item catalog, purchases, payments, and the old-metal ledger. A complete-data sheet is included as a portable reference.</p>
+      <p class="sub" style="margin:0 0 14px;">The Excel file is not encrypted and contains customer details. Store it securely.</p>
+      <button class="btn btn-gold" id="settingsExportData" type="button">↓ Export All Data to Excel</button>
+    </div>
   </section>\n`;
   const paymentsPage = `
   <section class="page" id="page-payments">
@@ -417,17 +468,17 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="panel">
       <h3><span class="dot"></span>Add Payment</h3>
-      <form id="paymentForm">
+      <form id="paymentForm" novalidate>
         <div class="row row-2">
-          <div class="field"><label>Payment type</label><select id="paymentType"><option value="amount">Amount</option><option value="self-expense">Self Expense</option><option value="metal">Metal to Metal</option></select></div>
-          <div class="field" id="paymentAmountField"><label>Amount paid (₹)</label><input type="number" id="paymentAmountInput" min="0.01" step="0.01" placeholder="0.00"></div>
+          <div class="field"><label>Payment type *</label><select id="paymentType" aria-required="true"><option value="amount">Amount</option><option value="self-expense">Self Expense</option><option value="metal">Metal to Metal</option></select></div>
+          <div class="field" id="paymentAmountField"><label>Amount paid (₹) *</label><input type="number" id="paymentAmountInput" min="0.01" step="0.01" aria-required="true" placeholder="0.00"></div>
         </div>
         <div class="field"><label>Reason (optional)</label><input type="text" id="paymentReason" placeholder="e.g. Shop electricity, supplier payment"></div>
         <div id="paymentMetalFields" style="display:none;">
           <div class="row row-3">
-            <div class="field"><label>Metal</label><select id="paymentMetal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
-            <div class="field"><label>Gross weight (g)</label><input type="number" id="paymentWeight" min="0.001" step="0.001" placeholder="0.000"></div>
-            <div class="field"><label>Purity (%)</label><input type="number" id="paymentPurity" min="0" max="100" step="0.01" placeholder="e.g. 40"></div>
+            <div class="field"><label>Metal *</label><select id="paymentMetal" aria-required="true"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
+            <div class="field"><label>Gross weight (g) *</label><input type="number" id="paymentWeight" min="0.001" step="0.001" aria-required="true" placeholder="0.000"></div>
+            <div class="field"><label>Purity (%) *</label><input type="number" id="paymentPurity" min="0.01" max="100" step="0.01" aria-required="true" placeholder="e.g. 40"></div>
           </div>
           <div class="field" style="margin-bottom:0;"><label>Fine metal weight (g)</label><div class="payment-balance" id="paymentFineWeight">0.000 g</div></div>
         </div>
@@ -454,11 +505,11 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="panel">
       <h3><span class="dot"></span>Add Old Metal Purchase</h3>
-      <form id="purchaseForm">
+      <form id="purchaseForm" novalidate>
         <div class="row row-3">
-          <div class="field"><label>Metal</label><select id="purchaseMetal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
-          <div class="field"><label>Weight (g)</label><input type="number" id="purchaseWeight" min="0.001" step="0.001" required placeholder="0.000"></div>
-          <div class="field"><label>Rate per gram (₹)</label><input type="number" id="purchaseRate" min="0.01" step="0.01" required placeholder="0.00"></div>
+          <div class="field"><label>Metal *</label><select id="purchaseMetal" aria-required="true"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
+          <div class="field"><label>Weight (g) *</label><input type="number" id="purchaseWeight" min="0.001" step="0.001" aria-required="true" placeholder="0.000"></div>
+          <div class="field"><label>Rate per gram (₹) *</label><input type="number" id="purchaseRate" min="0.01" step="0.01" aria-required="true" placeholder="0.00"></div>
         </div>
         <div class="row row-2" style="align-items:end;">
           <div class="field" style="margin-bottom:0;"><label>Calculated amount (₹)</label><div class="payment-balance" id="purchaseAmount">₹0.00</div></div>
@@ -477,17 +528,24 @@ if ('serviceWorker' in navigator) {
     <div class="page-head">
       <p class="eyebrow">Sales history</p>
       <h2>Invoice Records</h2>
-      <p class="sub">Every completed invoice is saved here. Search a customer by name or mobile number.</p>
+      <p class="sub">Search by customer, mobile number, or invoice number, then export the matching invoice details as a PDF.</p>
     </div>
     <div class="panel">
       <div class="toolbar">
-        <div class="search-box"><input type="text" id="recordSearch" placeholder="Search customer name or mobile number…"></div>
-        <label style="display:flex;align-items:center;gap:8px;color:var(--gold-pale);font-size:13px;white-space:nowrap;cursor:pointer;"><input id="recordDueOnly" type="checkbox" style="width:16px;height:16px;accent-color:var(--gold);">Due only</label>
+        <div class="search-box"><input type="text" id="recordSearch" placeholder="Search invoice number, customer, or mobile…"></div>
+        <label class="record-filter-label" for="recordStatusFilter">Status</label><select id="recordStatusFilter" aria-label="Filter invoices by status" style="width:auto;min-width:150px;margin:0;"><option value="all">All records</option><option value="due">Due</option><option value="advance">Advance</option><option value="pending">Pending delivery</option><option value="settled">Settled</option><option value="voided">Voided</option></select>
+        <button class="btn btn-ghost btn-sm" id="exportRecordsPdf" type="button">↓ Export PDF</button>
         <span style="color:var(--ivory-3); font-size:12px; opacity:.7;" id="recordCountLabel"></span>
+      </div>
+      <div class="records-range" aria-label="Filter invoice records by date">
+        <div class="range-date"><label for="recordFrom">From</label><input id="recordFrom" type="date" aria-label="Start invoice date"></div>
+        <div class="range-date"><label for="recordTo">To</label><input id="recordTo" type="date" aria-label="End invoice date"></div>
+        <button class="btn btn-ghost btn-sm" id="clearRecordDates" type="button">Clear dates</button>
+        <span class="range-caption">Filters by invoice date</span>
       </div>
       <div class="data-table-wrap">
         <table class="data-table">
-          <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Due</th><th></th></tr></thead>
+          <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Balance</th><th></th></tr></thead>
           <tbody id="recordsTbody"></tbody>
         </table>
       </div>
@@ -497,6 +555,7 @@ if ('serviceWorker' in navigator) {
   const recordsScript = `
 <script>
 (() => {
+  const dashboardSummary = ${calculateDashboard.toString()};
   const safe = value => String(value || '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
   const invoiceNumberInput = document.getElementById('inv-no');
   invoiceNumberInput.disabled = true;
@@ -532,6 +591,11 @@ if ('serviceWorker' in navigator) {
     requestAnimationFrame(() => input.focus());
     document.getElementById('pinLockForm').addEventListener('submit', event => {
       event.preventDefault();
+      if (!input.value.trim()) {
+        document.getElementById('pinLockError').textContent = 'PIN is required.';
+        input.focus();
+        return;
+      }
       if (input.value === PIN_CODE) {
         sessionStorage.setItem(pinSessionKey, 'true');
         document.body.classList.remove('pin-locked');
@@ -558,11 +622,16 @@ if ('serviceWorker' in navigator) {
   document.getElementById('btnCompleteSale').insertAdjacentElement('beforebegin', pendingOrderButton);
   const updateInvoiceType = () => {
     window.orderMode = document.getElementById('invoiceType').value === 'pending';
+    document.querySelector('#itemsTable th:nth-child(2)').textContent = window.orderMode ? 'From Stock (on delivery)' : 'From Stock *';
     pendingOrderButton.style.display = window.orderMode ? '' : 'none';
     document.getElementById('btnCompleteSale').style.display = window.orderMode ? 'none' : '';
     renderRowsTable(); renderPreview(); setSaleStatus();
     if (window.orderMode) document.getElementById('saleStatus').textContent = 'Pending delivery order: enter the requested item details. Stock will be selected and deducted only on delivery.';
   };
+  document.getElementById('invoiceType').setAttribute('aria-required', 'true');
+  document.getElementById('invoiceType').closest('.field').querySelector('label').textContent = 'Invoice type *';
+  document.getElementById('inv-date').required = true;
+  document.getElementById('inv-date').closest('.field').querySelector('label').textContent = 'Date *';
   document.getElementById('invoiceType').addEventListener('change', updateInvoiceType);
   document.getElementById('btnNewInvoice').addEventListener('click', () => {
     document.getElementById('invoiceType').value = 'sale';
@@ -571,7 +640,13 @@ if ('serviceWorker' in navigator) {
   });
   const stockItemInput = document.getElementById('st-item');
   stockItemInput.placeholder = 'e.g. Gold Ring or Silver Chain';
-  stockItemInput.closest('.field').querySelector('label').textContent = 'Item (Gold / Silver)';
+  stockItemInput.required = true;
+  stockItemInput.closest('.field').querySelector('label').textContent = 'Item (Gold / Silver) *';
+  document.getElementById('st-purity').required = true;
+  document.getElementById('st-purity').closest('.field').querySelector('label').textContent = 'Purity *';
+  document.getElementById('st-qty').required = true;
+  document.getElementById('st-gross').required = true;
+  document.getElementById('st-net').required = true;
   const customerNameInput = document.getElementById('cust-name');
   customerNameInput.required = true;
   customerNameInput.closest('.field').querySelector('label').textContent = 'Customer Name *';
@@ -587,10 +662,18 @@ if ('serviceWorker' in navigator) {
   exchangePanel.innerHTML = '<div class="toolbar"><div class="exchange-panel-title" style="margin:0;">Gold / Silver Exchange</div><button class="btn btn-ghost btn-sm" id="addExchangeRow" type="button">+ Add item</button></div><p class="sub" style="margin:0 0 12px;">Add each exchanged gold or silver item separately.</p><div class="exchange-rows" id="exchangeRows"></div><div class="field exchange-total" style="margin-bottom:0;"><label>Total exchange credit (₹)</label><div class="payment-balance" id="exchange-value">₹0.00</div></div>';
   originalExchangeField.parentElement.parentElement.insertBefore(exchangePanel, originalExchangeField.parentElement);
   const exchangeRows = document.getElementById('exchangeRows');
-  const addExchangeRow = (entry = {}) => {
+  const addExchangeRow = (entry = {}, required = false) => {
     const row = document.createElement('div');
     row.className = 'exchange-row';
+    row.dataset.required = required ? 'true' : 'false';
     row.innerHTML = '<div class="field"><label>Metal</label><select class="exchange-row-metal"><option value="gold">Gold</option><option value="silver">Silver</option></select></div><div class="field"><label>Weight (g)</label><input class="exchange-row-weight" type="number" value="' + (Number(entry.weight) || 0) + '" min="0" step="0.001" placeholder="0.000"></div><div class="field"><label>Rate / gram (₹)</label><input class="exchange-row-rate" type="number" value="' + (Number(entry.rate) || 0) + '" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label>Value</label><div class="exchange-row-value">₹0.00</div></div><button class="btn btn-ghost btn-sm exchange-remove" type="button" title="Remove item" aria-label="Remove exchange item">×</button>';
+    if (required) {
+      ['.exchange-row-weight', '.exchange-row-rate'].forEach(selector => {
+        const input = row.querySelector(selector);
+        input.setAttribute('aria-required', 'true');
+        input.closest('.field').querySelector('label').textContent += ' *';
+      });
+    }
     row.querySelector('.exchange-row-metal').value = entry.metal === 'silver' ? 'silver' : 'gold';
     exchangeRows.appendChild(row);
     return row;
@@ -611,7 +694,7 @@ if ('serviceWorker' in navigator) {
     hiddenExchangeInput.value = (value + manualDiscount).toFixed(2);
     hiddenExchangeInput.dispatchEvent(new Event('input', { bubbles: true }));
   };
-  document.getElementById('addExchangeRow').addEventListener('click', () => { addExchangeRow(); updateExchangeValue(); });
+  document.getElementById('addExchangeRow').addEventListener('click', () => { addExchangeRow({}, true); updateExchangeValue(); });
   exchangeRows.addEventListener('input', updateExchangeValue);
   exchangeRows.addEventListener('change', updateExchangeValue);
   exchangeRows.addEventListener('click', event => {
@@ -695,6 +778,7 @@ if ('serviceWorker' in navigator) {
     document.getElementById('purchaseTotalValue').textContent = money(purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0));
     document.getElementById('purchaseCount').textContent = purchases.length + (purchases.length === 1 ? ' purchase' : ' purchases');
     document.getElementById('purchaseTbody').innerHTML = purchases.map(purchase => '<tr><td>' + safe(new Date(purchase.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(String(purchase.metal || 'gold').replace(/^./, char => char.toUpperCase())) + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + (Number(purchase.weight) || 0).toFixed(3) + ' g</td><td>' + money(purchase.rate) + '</td><td class="paid-amount">' + money(purchase.amount) + '</td><td><button class="btn btn-ghost btn-sm purchase-edit" data-id="' + safe(purchase.id) + '">Edit</button> <button class="btn btn-ghost btn-sm purchase-delete" data-id="' + safe(purchase.id) + '">Delete</button></td></tr>').join('');
+    window.refreshTablePagination('purchaseTbody');
     document.getElementById('purchasesEmpty').style.display = purchases.length ? 'none' : 'block';
   };
   const getPayments = async () => {
@@ -709,6 +793,7 @@ if ('serviceWorker' in navigator) {
     document.getElementById('paymentSilverWeight').textContent = metalWeight('silver').toFixed(3) + ' g';
     document.getElementById('paymentCount').textContent = payments.length + (payments.length === 1 ? ' payment' : ' payments');
     document.getElementById('paymentTbody').innerHTML = payments.map(payment => '<tr><td>' + safe(new Date(payment.savedAt).toLocaleDateString('en-GB')) + '</td><td>' + safe(payment.type === 'metal' ? 'Metal to Metal' : payment.type === 'self-expense' ? 'Self Expense' : 'Amount') + (payment.reason ? '<br><small style="color:var(--ivory-3);">' + safe(payment.reason) + '</small>' : '') + '</td><td>' + safe(payment.metal ? payment.metal.replace(/^./, char => char.toUpperCase()) : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.weight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' ? (Number(payment.purity) || 0).toFixed(2) + '%' : '—') + '</td><td class="paid-amount">' + (payment.type === 'metal' ? (Number(payment.fineWeight) || 0).toFixed(3) + ' g' : '—') + '</td><td>' + (payment.type === 'metal' || !Number(payment.amount) ? '—' : money(payment.amount)) + '</td><td><button class="btn btn-ghost btn-sm payment-edit" data-id="' + safe(payment.id) + '">Edit</button> <button class="btn btn-ghost btn-sm payment-delete" data-id="' + safe(payment.id) + '">Delete</button></td></tr>').join('');
+    window.refreshTablePagination('paymentTbody');
     document.getElementById('paymentsEmpty').style.display = payments.length ? 'none' : 'block';
   };
   const addOldGold = async entry => {
@@ -738,6 +823,24 @@ if ('serviceWorker' in navigator) {
       transactionModal.querySelector('.transaction-rate').style.display = isPayment ? 'none' : '';
       transactionModal.querySelector('.transaction-amount').style.display = metal || !isPayment ? 'none' : '';
       transactionModal.querySelector('.transaction-reason').style.display = isPayment ? '' : 'none';
+      const requiredFields = {
+        '.transaction-metal': metal || !isPayment,
+        '.transaction-weight': metal || !isPayment,
+        '.transaction-purity': metal,
+        '.transaction-rate': !isPayment,
+        '.transaction-amount': isPayment && !metal
+      };
+      Object.entries(requiredFields).forEach(([selector, required]) => {
+        const field = transactionModal.querySelector(selector);
+        const label = field.querySelector('label');
+        label.textContent = label.textContent.replace(/ \*$/, '') + (required ? ' *' : '');
+        field.querySelector('input, select').setAttribute('aria-required', String(required));
+      });
+      if (isPayment) {
+        const typeField = document.getElementById('transactionType');
+        typeField.setAttribute('aria-required', 'true');
+        typeField.closest('.field').querySelector('label').textContent = 'Payment type *';
+      }
       if (!isPayment) {
         const value = (Number(document.getElementById('transactionWeight').value) || 0) * (Number(document.getElementById('transactionRate').value) || 0);
         document.getElementById('transactionAmount').value = value.toFixed(2);
@@ -781,12 +884,14 @@ if ('serviceWorker' in navigator) {
           const weight = Number(document.getElementById('transactionWeight').value);
           const purity = Number(document.getElementById('transactionPurity').value);
           const available = revisedOldMetal.filter(entry => entry.metal === metal).reduce((sum, entry) => sum + (Number(entry.weight) || 0), 0);
-          if (!(weight > 0) || !(purity >= 0 && purity <= 100) || weight > available + 0.0001) { toast('Enter a valid metal weight within the available old ' + metal + ' balance of ' + available.toFixed(3) + ' g.'); return; }
+          if (!(weight > 0)) { toast('Gross weight is required and must be greater than 0.'); document.getElementById('transactionWeight').focus(); return; }
+          if (!(purity > 0 && purity <= 100)) { toast('Purity is required and must be greater than 0% and no more than 100%.'); document.getElementById('transactionPurity').focus(); return; }
+          if (weight > available + 0.0001) { toast('Only ' + available.toFixed(3) + ' g of old ' + metal + ' is available for payment.'); document.getElementById('transactionWeight').focus(); return; }
           Object.assign(payment, { type, metal, weight, purity, fineWeight: weight * purity / 100, amount: 0, reason });
           revisedOldMetal.unshift({ sourceId: 'payment:' + id, metal, source: 'Metal payment', invoice: '—', customer: '—', date: new Date(payment.savedAt).toLocaleDateString('en-GB'), weight: -weight, rate: 0, value: 0, receivedAt: payment.savedAt });
         } else {
           const paymentAmount = Number(document.getElementById('transactionAmount').value);
-          if (!(paymentAmount > 0)) { toast('Enter a valid payment amount.'); return; }
+          if (!(paymentAmount > 0)) { toast('Amount is required and must be greater than 0.'); document.getElementById('transactionAmount').focus(); return; }
           Object.assign(payment, { type, amount: paymentAmount, reason });
           delete payment.metal; delete payment.weight; delete payment.purity; delete payment.fineWeight;
         }
@@ -806,7 +911,8 @@ if ('serviceWorker' in navigator) {
         const metal = document.getElementById('transactionMetal').value;
         const weight = Number(document.getElementById('transactionWeight').value);
         const rate = Number(document.getElementById('transactionRate').value);
-        if (!(weight > 0) || !(rate > 0)) { toast('Enter a valid weight and rate.'); return; }
+        if (!(weight > 0)) { toast('Purchase weight is required and must be greater than 0.'); document.getElementById('transactionWeight').focus(); return; }
+        if (!(rate > 0)) { toast('Purchase rate per gram is required and must be greater than 0.'); document.getElementById('transactionRate').focus(); return; }
         const purchaseAmount = weight * rate;
         Object.assign(purchase, { metal, weight, rate, amount: purchaseAmount });
         const oldMetal = await getOldGold();
@@ -833,44 +939,76 @@ if ('serviceWorker' in navigator) {
     return parts.length === 3 ? new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])) : new Date(0);
   };
   const recordNetTotal = record => Math.max(amount(record.total) - (Number(record.returnTotal) || 0), 0);
+  const recordDateKey = record => {
+    const validDateKey = value => {
+      const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(value || ''));
+      if (!match) return '';
+      const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      return date.getFullYear() === Number(match[1]) && date.getMonth() === Number(match[2]) - 1 && date.getDate() === Number(match[3]) ? match[0] : '';
+    };
+    const formatLocalDate = date => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    const invoiceDate = validDateKey(record.invoiceDate);
+    if (invoiceDate) return invoiceDate;
+    const displayDate = String(record.date || '').trim();
+    let match = /^(\\d{1,2})[\\/. -](\\d{1,2})[\\/. -](\\d{4})$/.exec(displayDate);
+    if (match) {
+      const day = String(match[1]).padStart(2, '0');
+      const month = String(match[2]).padStart(2, '0');
+      const parsed = validDateKey(match[3] + '-' + month + '-' + day);
+      if (parsed) return parsed;
+    }
+    match = /^(\\d{1,2})\\s+([a-z]{3,})\\s+(\\d{4})$/i.exec(displayDate);
+    if (match) {
+      const month = new Date(Date.parse(match[2] + ' 1, 2000')).getMonth() + 1;
+      const parsed = validDateKey(match[3] + '-' + String(month).padStart(2, '0') + '-' + String(match[1]).padStart(2, '0'));
+      if (parsed) return parsed;
+    }
+    const savedAt = new Date(record.savedAt || '');
+    return Number.isNaN(savedAt.getTime()) ? '' : formatLocalDate(savedAt);
+  };
+  const recordMatchesFilters = (record, query, statusFilter, from, to) => {
+    if (!(record.number + ' ' + record.customer + ' ' + record.mobile).toLowerCase().includes(query)) return false;
+    const invoiceDate = recordDateKey(record);
+    if ((from || to) && !invoiceDate) return false;
+    if (from && invoiceDate < from) return false;
+    if (to && invoiceDate > to) return false;
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'voided') return record.status === 'voided';
+    if (statusFilter === 'pending') return record.status === 'pending';
+    if (record.status === 'voided' || record.status === 'pending') return false;
+    const due = Math.max(Number(record.due) || 0, 0);
+    const advance = Math.max((Number(record.paid) || 0) - recordNetTotal(record), 0);
+    if (statusFilter === 'due') return due > 0.005;
+    if (statusFilter === 'advance') return advance > 0.005;
+    if (statusFilter === 'settled') return due <= 0.005 && advance <= 0.005;
+    return true;
+  };
+  let dashboardRange = {};
   const renderDashboard = async (forceLiveRates = false) => {
     const records = await getRecords();
-    const now = new Date();
-    const startToday = new Date(now);
-    startToday.setHours(0, 0, 0, 0);
-    const startWeek = new Date(startToday);
-    startWeek.setDate(startWeek.getDate() - startWeek.getDay());
-    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startYear = new Date(now.getFullYear(), 0, 1);
-    const activeRecords = records.filter(record => record.status !== 'voided' && record.status !== 'pending');
-    const salesSince = start => activeRecords.reduce((total, record) => dateForRecord(record) >= start ? total + recordNetTotal(record) : total, 0);
-    document.getElementById('dash-today').textContent = money(salesSince(startToday));
-    document.getElementById('dash-week').textContent = money(salesSince(startWeek));
-    document.getElementById('dash-month').textContent = money(salesSince(startMonth));
-    document.getElementById('dash-year').textContent = money(salesSince(startYear));
     const purchases = await getPurchases();
     const payments = await getPayments();
-    const collected = activeRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0);
-    const purchaseValue = purchases.reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
-    const amountPayments = payments.filter(payment => payment.type === 'amount' || payment.type === 'self-expense').reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
-    document.getElementById('dash-invoices').textContent = activeRecords.length;
-    document.getElementById('dash-collected').textContent = money(collected);
-    document.getElementById('dash-purchases').textContent = money(purchaseValue);
-    document.getElementById('dash-net-collected').textContent = money(collected - purchaseValue);
-    document.getElementById('dash-amount-payments').textContent = money(amountPayments);
-    document.getElementById('dash-final-net-collected').textContent = money(collected - purchaseValue - amountPayments);
-    document.getElementById('dash-due').textContent = money(activeRecords.reduce((total, record) => total + Math.max(Number(record.due) || 0, 0), 0));
-    const todayRecords = activeRecords.filter(record => dateForRecord(record) >= startToday);
-    document.getElementById('dash-today-invoices').textContent = todayRecords.length;
-    const todayPurchaseValue = purchases.filter(purchase => new Date(purchase.savedAt) >= startToday).reduce((total, purchase) => total + (Number(purchase.amount) || 0), 0);
-    const todayAmountPayments = payments.filter(payment => (payment.type === 'amount' || payment.type === 'self-expense') && new Date(payment.savedAt) >= startToday).reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
-    const todayCollected = todayRecords.reduce((total, record) => total + (Number(record.paid) || 0), 0);
-    document.getElementById('dash-today-collected').textContent = money(todayCollected);
-    document.getElementById('dash-today-purchases').textContent = money(todayPurchaseValue);
-    document.getElementById('dash-today-net-collected').textContent = money(todayCollected - todayPurchaseValue);
-    document.getElementById('dash-today-amount-payments').textContent = money(todayAmountPayments);
-    document.getElementById('dash-today-final-net-collected').textContent = money(todayCollected - todayPurchaseValue - todayAmountPayments);
-    document.getElementById('dash-today-due').textContent = money(todayRecords.reduce((total, record) => total + Math.max(Number(record.due) || 0), 0));
+    const ledger = await getOldGold();
+    const summary = dashboardSummary(records, purchases, payments, ledger, dashboardRange);
+    document.getElementById('dashboardRangeLabel').textContent = dashboardRange.from || dashboardRange.to ? (dashboardRange.from || 'Beginning') + ' → ' + (dashboardRange.to || 'Present') : 'All time';
+    const metric = (label, value, unit = 'money', emphasis = false) => '<div class="record-info"><b>' + safe(label) + '</b><span class="' + (emphasis ? 'dashboard-total ' : '') + (value < 0 ? 'dashboard-negative' : '') + '">' + (unit === 'weight' ? value.toFixed(3) + ' g' : unit === 'count' ? value : money(value)) + '</span></div>';
+    const section = (title, content) => '<div class="snapshot-section"><h4>' + title + '</h4><div class="record-info-grid">' + content + '</div></div>';
+    document.getElementById('dashboardSnapshot').innerHTML =
+      section('Gold Sales', metric('Total gold sold · net weight', summary.gold.sold, 'weight') + metric('Gold item amount', summary.gold.sales)) +
+      section('Silver Sales', metric('Total silver sold · net weight', summary.silver.sold, 'weight') + metric('Silver item amount', summary.silver.sales)) +
+      section('Total Sales', metric('Gold + silver item amount', summary.gold.sales + summary.silver.sales) + metric('Final invoice sales', summary.sales) + metric('Completed invoices', summary.invoices, 'count') + metric('Pending orders', summary.pending, 'count')) +
+      section('Old Metal Received', metric('Total old gold received', summary.gold.received, 'weight') + metric('Old gold value', summary.gold.receivedValue) + metric('Total old silver received', summary.silver.received, 'weight') + metric('Old silver value', summary.silver.receivedValue)) +
+      section('Customer Collections', metric('Amount paid by customers', summary.collected) + metric('Outstanding due', summary.due) + metric('Remaining before party payments', summary.beforeParty)) +
+      section('Outgoing Amounts', metric('Payment to party', summary.party) + metric('Old gold / silver purchases', summary.purchases) + metric('Expenses · Self Expense', summary.expenses)) +
+      section('Metal Payments / Melting', metric('Gold gross weight paid', summary.gold.paid, 'weight') + metric('Gold fine weight paid', summary.gold.finePaid, 'weight') + metric('Silver gross weight paid', summary.silver.paid, 'weight') + metric('Silver fine weight paid', summary.silver.finePaid, 'weight')) +
+      section('After Payment', metric('Old gold · closing balance', summary.gold.balance, 'weight', true) + metric('Old silver · closing balance', summary.silver.balance, 'weight', true) + metric('Period amount after payment', summary.afterPayment, 'money', true) + metric('Opening cash', summary.openingCash) + metric('Closing cash', summary.closingCash, 'money', true));
+    let summaryNote = document.getElementById('dashboardSummaryNote');
+    if (!summaryNote) {
+      summaryNote = document.createElement('p'); summaryNote.id = 'dashboardSummaryNote'; summaryNote.className = 'dashboard-note';
+      document.getElementById('dashboardSnapshot').after(summaryNote);
+    }
+    summaryNote.textContent = 'After Payment = customer money received − party payments − old-metal purchases − expenses. Includes pending-order advances; excludes metal settlements from cash. Item amounts include making, before GST and deductions. Old metal received includes purchases, exchange and settlements. Totals cover records stored in this app; previous-period and fine-metal opening balances have not been imported.';
+    summaryNote.textContent += ' Date filters use invoice dates for sales and transaction dates for collections and outgoings. Closing balances include earlier transactions. Due is the current due of invoices in the selected period. Fresh stock and market rates below are current. Historical reports reflect subsequent edits and deletions.';
     const stockResult = await window.storage.get('stock-list');
     const stockList = stockResult ? JSON.parse(stockResult.value) : [];
     const remainingWeight = metal => stockList.reduce((total, stock) => {
@@ -896,6 +1034,9 @@ if ('serviceWorker' in navigator) {
     const oldMetalWeight = metal => oldMetalEntries.filter(entry => String(entry.metal || 'gold').toLowerCase() === metal).reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
     document.getElementById('dash-old-gold').textContent = oldMetalWeight('gold').toFixed(3) + ' g';
     document.getElementById('dash-old-silver').textContent = oldMetalWeight('silver').toFixed(3) + ' g';
+    document.querySelectorAll('#page-dashboard .val, #page-dashboard .record-info > span').forEach(element => {
+      element.classList.toggle('dashboard-negative', amount(element.textContent) < 0);
+    });
     const liveRatesPanel = document.getElementById('liveRatesPanel');
     try {
       const response = await fetch('/api/live-rates' + (forceLiveRates ? '?refresh=1' : ''), { cache: 'no-store' });
@@ -903,8 +1044,20 @@ if ('serviceWorker' in navigator) {
       const liveRates = await response.json();
       document.getElementById('liveGoldRate').textContent = money(liveRates.goldPerGram);
       document.getElementById('liveSilverRate').textContent = money(liveRates.silverPerGram);
-      const updated = Number(liveRates.updatedAt);
-      document.getElementById('liveRatesUpdated').textContent = 'Updated ' + (Number.isFinite(updated) ? new Date(updated * 1000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'just now');
+      const showRateChange = (id, change, previousQuote) => {
+        const element = document.getElementById(id);
+        const percentage = Number(change);
+        if (!previousQuote || !Number.isFinite(percentage)) { element.hidden = true; return; }
+        element.hidden = false;
+        element.className = 'rate-change ' + (percentage > 0.0001 ? 'rate-change-up' : percentage < -0.0001 ? 'rate-change-down' : 'rate-change-flat');
+        element.textContent = (percentage > 0 ? '+' : '') + percentage.toFixed(2) + '% vs ' + previousQuote.quoteDate + ' ' + previousQuote.session;
+      };
+      showRateChange('liveGoldChange', liveRates.goldChangePercent, liveRates.previousQuote);
+      showRateChange('liveSilverChange', liveRates.silverChangePercent, liveRates.previousQuote);
+      document.querySelector('#liveRatesPanel h3').textContent = 'IBJA Benchmark Rates';
+      document.querySelector('#liveGoldRate').previousElementSibling.textContent = 'Gold 999 / 24K (₹/g)';
+      document.querySelector('#liveSilverRate').previousElementSibling.textContent = 'Silver 999 (₹/g)';
+      document.getElementById('liveRatesUpdated').textContent = liveRates.quoteDate + ' · ' + liveRates.session;
       liveRatesPanel.style.display = 'block';
     } catch (_) {
       liveRatesPanel.style.display = 'none';
@@ -967,7 +1120,7 @@ if ('serviceWorker' in navigator) {
   const voidModal = document.createElement('div');
   voidModal.id = 'voidInvoiceModal';
   voidModal.className = 'modal-backdrop';
-  voidModal.innerHTML = '<div class="modal" style="max-width:520px;"><div class="toolbar"><h3 style="margin:0;">Void invoice</h3><button class="btn btn-ghost btn-sm" id="closeVoidInvoice">Close</button></div><p class="void-modal-note" id="voidInvoiceNote"></p><div class="field"><label>Reason for voiding *</label><input id="voidInvoiceReason" type="text" placeholder="e.g. Sale cancelled by customer"></div><div class="btn-row" style="margin-top:18px;"><button class="btn btn-gold" id="confirmVoidInvoice">Void invoice</button><button class="btn btn-ghost" id="cancelVoidInvoice">Cancel</button></div></div>';
+  voidModal.innerHTML = '<div class="modal" style="max-width:520px;"><div class="toolbar"><h3 style="margin:0;">Void invoice</h3><button class="btn btn-ghost btn-sm" id="closeVoidInvoice">Close</button></div><p class="void-modal-note" id="voidInvoiceNote"></p><div class="field"><label>Reason for voiding *</label><input id="voidInvoiceReason" type="text" required aria-required="true" placeholder="e.g. Sale cancelled by customer"></div><div class="btn-row" style="margin-top:18px;"><button class="btn btn-gold" id="confirmVoidInvoice">Void invoice</button><button class="btn btn-ghost" id="cancelVoidInvoice">Cancel</button></div></div>';
   document.body.appendChild(voidModal);
   let activeVoidIndex = null;
   const closeVoidModal = () => { voidModal.classList.remove('open'); activeVoidIndex = null; };
@@ -999,8 +1152,10 @@ if ('serviceWorker' in navigator) {
     }
     record.soldItems.forEach(item => {
       const stock = stockList.find(stockItem => String(stockItem.id) === String(item.stockId));
-      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0);
-      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0);
+      const pcs = Number(item.pcs) || 1;
+      stock.qty = (Number(stock.qty) || 0) + pcs;
+      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0) * pcs;
+      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0) * pcs;
     });
     const oldMetalEntries = await getOldGold();
     const reversals = oldMetalEntries.filter(entry => entry.invoice === record.number && ['Invoice exchange', 'Gold settlement', 'Silver settlement'].includes(entry.source));
@@ -1063,7 +1218,7 @@ if ('serviceWorker' in navigator) {
   const editInvoiceModal = document.createElement('div');
   editInvoiceModal.id = 'editInvoiceModal';
   editInvoiceModal.className = 'modal-backdrop';
-  editInvoiceModal.innerHTML = '<div class="modal" style="max-width:980px; max-height:92vh; overflow:auto;"><div class="toolbar"><h3 style="margin:0;">Edit Invoice</h3><button class="btn btn-ghost btn-sm" id="closeEditInvoice">Close</button></div><p class="void-modal-note">Update this active invoice completely. Saving recalculates totals and safely reconciles stock and exchanged metal.</p><div class="form-grid"><div class="field"><label>Invoice date *</label><input id="editInvoiceDate" type="date"></div><div class="field"><label>Customer name *</label><input id="editInvoiceCustomer" type="text"></div><div class="field"><label>Mobile number</label><input id="editInvoiceMobile" type="tel"></div><div class="field"><label>Address</label><input id="editInvoiceAddress" type="text"></div></div><div class="field" style="margin-top:14px;"><label>Terms &amp; conditions</label><textarea id="editInvoiceTerms" style="min-height:70px;"></textarea></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Items</h4><button class="btn btn-ghost btn-sm" id="addEditItem" type="button">+ Add item</button></div><div class="items-table-wrap"><table class="itable"><thead><tr><th>From stock</th><th>Item</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount</th><th></th></tr></thead><tbody id="editInvoiceItems"></tbody></table></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Gold / Silver Exchange</h4><button class="btn btn-ghost btn-sm" id="addEditExchange" type="button">+ Add exchange item</button></div><div id="editInvoiceExchangeRows" class="exchange-rows"></div><div class="form-grid" style="margin-top:18px;"><div class="field"><label>Manual discount (₹)</label><input id="editInvoiceDiscount" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>GST rate</label><select id="editInvoiceGst"><option value="3">3% (CGST + SGST)</option><option value="0">0% (Exempt)</option></select></div><div class="field"><label>Amount paid at invoice (₹)</label><input id="editInvoicePaid" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>Revised total</label><div class="payment-balance" id="editInvoiceTotal">₹0.00</div></div></div><div class="record-info-grid" style="margin:14px 0 0;"><div class="record-info"><b>Items subtotal</b><span id="editInvoiceSubtotal">₹0.00</span></div><div class="record-info"><b>Exchange credit</b><span id="editInvoiceExchange">₹0.00</span></div><div class="record-info"><b>Amount due</b><span class="due-amount" id="editInvoiceDue">₹0.00</span></div></div><div class="btn-row" style="margin-top:20px;"><button class="btn btn-gold" id="saveInvoiceEdit">Save Revised Invoice</button><button class="btn btn-ghost" id="cancelInvoiceEdit">Cancel</button></div></div>';
+  editInvoiceModal.innerHTML = '<div class="modal" style="max-width:980px; max-height:92vh; overflow:auto;"><div class="toolbar"><h3 style="margin:0;">Edit Invoice</h3><button class="btn btn-ghost btn-sm" id="closeEditInvoice">Close</button></div><p class="void-modal-note">Update this active invoice completely. Saving recalculates totals and safely reconciles stock and exchanged metal.</p><div class="form-grid"><div class="field"><label>Invoice date *</label><input id="editInvoiceDate" type="date"></div><div class="field"><label>Customer name *</label><input id="editInvoiceCustomer" type="text"></div><div class="field"><label>Mobile number</label><input id="editInvoiceMobile" type="tel"></div><div class="field"><label>Address</label><input id="editInvoiceAddress" type="text"></div></div><div class="field" style="margin-top:14px;"><label>Terms &amp; conditions</label><textarea id="editInvoiceTerms" style="min-height:70px;"></textarea></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Items</h4><button class="btn btn-ghost btn-sm" id="addEditItem" type="button">+ Add item</button></div><div class="items-table-wrap"><table class="itable"><thead><tr><th>From stock</th><th>Item</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th><th>Pcs</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount</th><th></th></tr></thead><tbody id="editInvoiceItems"></tbody></table></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Gold / Silver Exchange</h4><button class="btn btn-ghost btn-sm" id="addEditExchange" type="button">+ Add exchange item</button></div><div id="editInvoiceExchangeRows" class="exchange-rows"></div><div class="form-grid" style="margin-top:18px;"><div class="field"><label>Manual discount (₹)</label><input id="editInvoiceDiscount" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>GST rate</label><select id="editInvoiceGst"><option value="3">3% (CGST + SGST)</option><option value="0">0% (Exempt)</option></select></div><div class="field"><label>Amount paid at invoice (₹)</label><input id="editInvoicePaid" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>Revised total</label><div class="payment-balance" id="editInvoiceTotal">₹0.00</div></div></div><div class="record-info-grid" style="margin:14px 0 0;"><div class="record-info"><b>Items subtotal</b><span id="editInvoiceSubtotal">₹0.00</span></div><div class="record-info"><b>Exchange credit</b><span id="editInvoiceExchange">₹0.00</span></div><div class="record-info"><b>Amount due</b><span class="due-amount" id="editInvoiceDue">₹0.00</span></div></div><div class="btn-row" style="margin-top:20px;"><button class="btn btn-gold" id="saveInvoiceEdit">Save Revised Invoice</button><button class="btn btn-ghost" id="cancelInvoiceEdit">Cancel</button></div></div>';
   document.body.appendChild(editInvoiceModal);
   document.querySelector('#editInvoiceGst option[value="3"]').textContent = 'GST Invoice — 3%';
   document.querySelector('#editInvoiceGst option[value="0"]').textContent = 'Non-GST Invoice — No GST charged';
@@ -1071,7 +1226,7 @@ if ('serviceWorker' in navigator) {
   let editInvoiceState = { items: [], exchanges: [], stock: [], record: null };
   const closeEditInvoiceModal = () => { editInvoiceModal.classList.remove('open'); activeEditInvoiceIndex = null; };
   const editMoney = value => money(Number(value) || 0);
-  const editItemAmount = item => (Number(item.net) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
+  const editItemAmount = item => (Number(item.net) || 0) * (Number(item.pcs) || 1) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
   const editInitialPaidFor = record => {
     if (Number.isFinite(Number(record.initialPaid))) return Number(record.initialPaid);
     const payments = Array.isArray(record.payments) ? record.payments : [];
@@ -1099,13 +1254,13 @@ if ('serviceWorker' in navigator) {
   const renderEditItems = () => {
     const body = document.getElementById('editInvoiceItems');
     body.innerHTML = editInvoiceState.items.map((item, index) => {
-      const options = ['<option value="">— select stock item —</option>'].concat(editInvoiceState.stock.filter(stock => (Number(stock.net) || Number(stock.gross) || 0) > 0 || stock.id === item.stockId).map(stock => '<option value="' + safe(stock.id) + '" ' + (stock.id === item.stockId ? 'selected' : '') + '>' + safe(stock.item + ' · ' + stock.purity + ' · ' + (Number(stock.net) || 0).toFixed(3) + ' g') + '</option>')).join('');
-      return '<tr data-edit-item="' + index + '"><td><select class="edit-stock">' + options + '</select></td><td>' + safe(item.name || '—') + '</td><td>' + safe(item.purity || '—') + '</td><td><input class="edit-gross" type="number" min="0" step="0.001" value="' + (Number(item.gross) || 0) + '"></td><td><input class="edit-net" type="number" min="0" step="0.001" value="' + (Number(item.net) || 0) + '"></td><td><input class="edit-rate" type="number" min="0" step="0.01" value="' + (Number(item.rate) || 0) + '"></td><td><input class="edit-making" type="number" min="0" step="0.01" value="' + (Number(item.making) || 0) + '"></td><td class="edit-item-total">' + editMoney(editItemAmount(item)) + '</td><td><button class="btn btn-ghost btn-sm edit-item-remove" type="button">×</button></td></tr>';
+      const options = ['<option value="">— select stock item —</option>'].concat(editInvoiceState.stock.filter(stock => (Number(stock.qty) > 0 && (Number(stock.net) || Number(stock.gross) || 0) > 0) || stock.id === item.stockId).map(stock => '<option value="' + safe(stock.id) + '" ' + (stock.id === item.stockId ? 'selected' : '') + '>' + safe(stock.item + ' · ' + stock.purity + ' · ' + (Number(stock.qty) || 0) + ' pcs · ' + (Number(stock.net) || 0).toFixed(3) + ' g') + '</option>')).join('');
+      return '<tr data-edit-item="' + index + '"><td><select class="edit-stock">' + options + '</select></td><td>' + safe(item.name || '—') + '</td><td>' + safe(item.purity || '—') + '</td><td><input class="edit-gross" type="number" min="0" step="0.001" value="' + (Number(item.gross) || 0) + '"></td><td><input class="edit-net" type="number" min="0" step="0.001" value="' + (Number(item.net) || 0) + '"></td><td><input class="edit-pcs" type="number" min="1" step="1" value="' + (Number(item.pcs) || 1) + '"></td><td><input class="edit-rate" type="number" min="0" step="0.01" value="' + (Number(item.rate) || 0) + '"></td><td><input class="edit-making" type="number" min="0" step="0.01" value="' + (Number(item.making) || 0) + '"></td><td class="edit-item-total">' + editMoney(editItemAmount(item)) + '</td><td><button class="btn btn-ghost btn-sm edit-item-remove" type="button">×</button></td></tr>';
     }).join('') || '<tr><td colspan="9" style="text-align:center; padding:16px;">Add at least one stock item.</td></tr>';
   };
   const renderEditExchanges = () => {
     const container = document.getElementById('editInvoiceExchangeRows');
-    container.innerHTML = editInvoiceState.exchanges.map((entry, index) => '<div class="exchange-row" data-edit-exchange="' + index + '"><div class="field"><label>Metal</label><select class="edit-exchange-metal"><option value="gold" ' + (entry.metal === 'gold' ? 'selected' : '') + '>Gold</option><option value="silver" ' + (entry.metal === 'silver' ? 'selected' : '') + '>Silver</option></select></div><div class="field"><label>Weight (g)</label><input class="edit-exchange-weight" type="number" min="0" step="0.001" value="' + (Number(entry.weight) || 0) + '"></div><div class="field"><label>Rate / gram (₹)</label><input class="edit-exchange-rate" type="number" min="0" step="0.01" value="' + (Number(entry.rate) || 0) + '"></div><div class="field"><label>Value</label><div class="exchange-row-value">' + editMoney((Number(entry.weight) || 0) * (Number(entry.rate) || 0)) + '</div></div><button class="btn btn-ghost btn-sm edit-exchange-remove" type="button">×</button></div>').join('') || '<p class="sub" style="margin:0;">No exchange items added.</p>';
+    container.innerHTML = editInvoiceState.exchanges.map((entry, index) => '<div class="exchange-row" data-edit-exchange="' + index + '"><div class="field"><label>Metal *</label><select class="edit-exchange-metal"><option value="gold" ' + (entry.metal === 'gold' ? 'selected' : '') + '>Gold</option><option value="silver" ' + (entry.metal === 'silver' ? 'selected' : '') + '>Silver</option></select></div><div class="field"><label>Weight (g) *</label><input class="edit-exchange-weight" type="number" min="0" step="0.001" value="' + (Number(entry.weight) || 0) + '"></div><div class="field"><label>Rate / gram (₹) *</label><input class="edit-exchange-rate" type="number" min="0" step="0.01" value="' + (Number(entry.rate) || 0) + '"></div><div class="field"><label>Value</label><div class="exchange-row-value">' + editMoney((Number(entry.weight) || 0) * (Number(entry.rate) || 0)) + '</div></div><button class="btn btn-ghost btn-sm edit-exchange-remove" type="button">×</button></div>').join('') || '<p class="sub" style="margin:0;">No exchange items added.</p>';
   };
   const refreshEditInvoice = () => { renderEditItems(); renderEditExchanges(); editTotals(); };
   const openEditInvoiceModal = async (record, index) => {
@@ -1132,8 +1287,8 @@ if ('serviceWorker' in navigator) {
   };
   document.getElementById('closeEditInvoice').addEventListener('click', closeEditInvoiceModal);
   document.getElementById('cancelInvoiceEdit').addEventListener('click', closeEditInvoiceModal);
-  document.getElementById('addEditItem').addEventListener('click', () => { editInvoiceState.items.push({ lineId: 'edit-' + Date.now(), stockId: '', name: '', purity: '', gross: 0, net: 0, rate: 0, making: 0 }); refreshEditInvoice(); });
-  document.getElementById('addEditExchange').addEventListener('click', () => { editInvoiceState.exchanges.push({ metal: 'gold', weight: 0, rate: 0 }); refreshEditInvoice(); });
+  document.getElementById('addEditItem').addEventListener('click', () => { editInvoiceState.items.push({ lineId: 'edit-' + Date.now(), stockId: '', name: '', purity: '', gross: 0, net: 0, pcs: 1, rate: 0, making: 0 }); refreshEditInvoice(); });
+  document.getElementById('addEditExchange').addEventListener('click', () => { editInvoiceState.exchanges.push({ metal: 'gold', weight: 0, rate: 0, required: true }); refreshEditInvoice(); });
   document.getElementById('editInvoiceItems').addEventListener('change', event => {
     const row = event.target.closest('[data-edit-item]'); if (!row) return;
     const item = editInvoiceState.items[Number(row.dataset.editItem)];
@@ -1148,9 +1303,9 @@ if ('serviceWorker' in navigator) {
   document.getElementById('editInvoiceItems').addEventListener('input', event => {
     const row = event.target.closest('[data-edit-item]'); if (!row) return;
     const item = editInvoiceState.items[Number(row.dataset.editItem)];
-    const property = event.target.classList.contains('edit-gross') ? 'gross' : event.target.classList.contains('edit-net') ? 'net' : event.target.classList.contains('edit-rate') ? 'rate' : event.target.classList.contains('edit-making') ? 'making' : null;
+    const property = event.target.classList.contains('edit-gross') ? 'gross' : event.target.classList.contains('edit-net') ? 'net' : event.target.classList.contains('edit-pcs') ? 'pcs' : event.target.classList.contains('edit-rate') ? 'rate' : event.target.classList.contains('edit-making') ? 'making' : null;
     if (!property) return;
-    item[property] = Math.max(Number(event.target.value) || 0, 0);
+    item[property] = property === 'pcs' ? Math.max(parseInt(event.target.value, 10) || 1, 1) : Math.max(Number(event.target.value) || 0, 0);
     row.querySelector('.edit-item-total').textContent = editMoney(editItemAmount(item));
     editTotals();
   });
@@ -1180,12 +1335,15 @@ if ('serviceWorker' in navigator) {
     if (!record || record.status === 'voided') { closeEditInvoiceModal(); return; }
     const invoiceDate = document.getElementById('editInvoiceDate').value;
     const customer = document.getElementById('editInvoiceCustomer').value.trim();
-    if (!invoiceDate || !customer) { alert('Invoice date and customer name are required.'); return; }
+    if (!invoiceDate) { alert('Invoice date is required.'); document.getElementById('editInvoiceDate').focus(); return; }
+    if (!customer) { alert('Customer name is required.'); document.getElementById('editInvoiceCustomer').focus(); return; }
     const mobile = document.getElementById('editInvoiceMobile').value.trim();
     const address = document.getElementById('editInvoiceAddress').value.trim();
     const terms = document.getElementById('editInvoiceTerms').value.trim();
     const items = editInvoiceState.items.filter(item => item.stockId);
-    if (!items.length || items.length !== editInvoiceState.items.length || items.some(item => !((Number(item.gross) > 0) || (Number(item.net) > 0)) || !(Number(item.rate) > 0))) { alert('Select a stock item and enter its weight and rate for every item row.'); return; }
+    if (!items.length || items.length !== editInvoiceState.items.length || items.some(item => !(Number(item.gross) > 0) || !(Number(item.net) > 0) || !(Number(item.rate) > 0) || !Number.isInteger(Number(item.pcs)) || Number(item.pcs) < 1)) { alert('Select a stock item and enter its quantity, gross weight, net weight, and rate for every item row.'); return; }
+    const incompleteExchange = editInvoiceState.exchanges.find(entry => (entry.required && (!(Number(entry.weight) > 0) || !(Number(entry.rate) > 0))) || ((Number(entry.weight) > 0 || Number(entry.rate) > 0) && (!(Number(entry.weight) > 0) || !(Number(entry.rate) > 0))));
+    if (incompleteExchange) { alert('Complete both weight and rate for each exchange item, or remove the empty row.'); return; }
     const totals = editTotals();
     const displayDate = new Date(invoiceDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const stockResult = await window.storage.get('stock-list');
@@ -1193,19 +1351,21 @@ if ('serviceWorker' in navigator) {
     (record.soldItems || []).forEach(item => {
       let stock = stockList.find(entry => entry.id === item.stockId);
       if (!stock) { stock = { id: item.stockId, item: item.name || 'Restored item', purity: item.purity || '', qty: 1, gross: 0, net: 0, added: 'Restored from ' + record.number }; stockList.push(stock); }
-      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0);
-      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0);
+      stock.qty = (Number(stock.qty) || 0) + (Number(item.pcs) || 1);
+      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0) * (Number(item.pcs) || 1);
+      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0) * (Number(item.pcs) || 1);
     });
     const requested = new Map();
     items.forEach(item => {
-      const requestedItem = requested.get(item.stockId) || { gross: 0, net: 0, name: item.name };
-      requestedItem.gross += Number(item.gross) || 0; requestedItem.net += Number(item.net) || 0; requested.set(item.stockId, requestedItem);
+      const requestedItem = requested.get(item.stockId) || { gross: 0, net: 0, pcs: 0, name: item.name };
+      const pcs = Number(item.pcs) || 1;
+      requestedItem.pcs += pcs; requestedItem.gross += (Number(item.gross) || 0) * pcs; requestedItem.net += (Number(item.net) || 0) * pcs; requested.set(item.stockId, requestedItem);
     });
     for (const [stockId, requestedItem] of requested) {
       const stock = stockList.find(entry => entry.id === stockId);
-      if (!stock || requestedItem.gross > (Number(stock.gross) || 0) + 0.0001 || requestedItem.net > (Number(stock.net) || 0) + 0.0001) { alert('Not enough remaining stock weight for "' + requestedItem.name + '".'); return; }
+      if (!stock || requestedItem.pcs > (Number(stock.qty) || 0) || requestedItem.gross > (Number(stock.gross) || 0) + 0.0001 || requestedItem.net > (Number(stock.net) || 0) + 0.0001) { alert('Not enough remaining stock quantity or weight for "' + requestedItem.name + '".'); return; }
     }
-    requested.forEach((requestedItem, stockId) => { const stock = stockList.find(entry => entry.id === stockId); stock.gross = Math.max((Number(stock.gross) || 0) - requestedItem.gross, 0); stock.net = Math.max((Number(stock.net) || 0) - requestedItem.net, 0); stock.qty = 1; });
+    requested.forEach((requestedItem, stockId) => { const stock = stockList.find(entry => entry.id === stockId); stock.qty = Math.max((Number(stock.qty) || 0) - requestedItem.pcs, 0); stock.gross = Math.max((Number(stock.gross) || 0) - requestedItem.gross, 0); stock.net = Math.max((Number(stock.net) || 0) - requestedItem.net, 0); });
     const exchanges = editInvoiceState.exchanges.filter(entry => Number(entry.weight) > 0).map(entry => Object.assign({}, entry, { value: Number(entry.weight) * Number(entry.rate) }));
     const previousInitialPaid = editInitialPaidFor(record);
     record.invoiceDate = invoiceDate;
@@ -1242,7 +1402,7 @@ if ('serviceWorker' in navigator) {
       setText('#p-cust-name', customer); setText('#p-cust-address', [address, mobile ? 'Mob: ' + mobile : ''].filter(Boolean).join(' · ')); setText('#p-date', displayDate);
       setText('#p-terms', terms);
       const body = paper.querySelector('#p-items-body');
-      if (body) body.innerHTML = items.map((item, itemIndex) => '<tr><td>' + (itemIndex + 1) + '</td><td>' + safe(item.name) + '</td><td class="num">' + safe(item.hsn || '') + '</td><td>' + safe(item.purity) + '</td><td class="num">' + (Number(item.gross) || 0).toFixed(3) + '</td><td class="num">' + (Number(item.net) || 0).toFixed(3) + '</td><td class="num">1</td><td class="num">' + (Number(item.rate) || 0).toFixed(2) + '</td><td class="num">' + (Number(item.making) || 0).toFixed(2) + '%</td><td class="num">' + editItemAmount(item).toFixed(2) + '</td></tr>').join('');
+      if (body) body.innerHTML = items.map((item, itemIndex) => { const pcs = Number(item.pcs) || 1; return '<tr><td>' + (itemIndex + 1) + '</td><td>' + safe(item.name) + '</td><td class="num">' + safe(item.hsn || '') + '</td><td>' + safe(item.purity) + '</td><td class="num">' + ((Number(item.gross) || 0) * pcs).toFixed(3) + '</td><td class="num">' + ((Number(item.net) || 0) * pcs).toFixed(3) + '</td><td class="num">' + pcs + '</td><td class="num">' + (Number(item.rate) || 0).toFixed(2) + '</td><td class="num">' + (Number(item.making) || 0).toFixed(2) + '%</td><td class="num">' + editItemAmount(item).toFixed(2) + '</td></tr>'; }).join('');
       const totalsPanel = paper.querySelector('#p-totals');
       if (totalsPanel) totalsPanel.innerHTML = '<div class="tl"><span>Total</span><b>' + editMoney(totals.subtotal) + '</b></div><div class="tl"><span>Exchange / Discount</span><b>' + editMoney(totals.exchange + totals.discount) + '</b></div><div class="tl"><span>CGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="tl"><span>SGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="gt"><span>Grand Total</span><b>' + editMoney(totals.total) + '</b></div>';
       const words = paper.querySelector('#p-words'); if (words && typeof numToWords === 'function') words.textContent = totals.total > 0 ? 'Rs. ' + numToWords(totals.total) + ' Only' : '';
@@ -1450,7 +1610,7 @@ if ('serviceWorker' in navigator) {
     const paper = document.querySelector('#regeneratedInvoiceContent #invoicePaper');
     const printWindow = window.open('', '_blank');
     if (!printWindow) { alert('Please allow pop-ups to print the invoice.'); return; }
-    printWindow.document.write('<!doctype html><html><head><title>Invoice ' + safe(regeneratedModal.dataset.invoiceNumber) + '</title>' + document.querySelector('style').outerHTML + '<style>body{background:#fff;padding:24px}#invoicePaper{max-width:800px;margin:auto}</style></head><body>' + paper.outerHTML + '</body></html>');
+    printWindow.document.write('<!doctype html><html><head><title>Invoice ' + safe(regeneratedModal.dataset.invoiceNumber) + '</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">' + document.querySelector('style').outerHTML + '<style>body{background:#fff;padding:24px}#invoicePaper{max-width:800px;margin:auto}</style></head><body>' + paper.outerHTML + '</body></html>');
     printWindow.document.close();
   });
   document.getElementById('downloadRegeneratedInvoice').addEventListener('click', async () => {
@@ -1494,11 +1654,10 @@ if ('serviceWorker' in navigator) {
   const renderRecords = async () => {
     const query = (document.getElementById('recordSearch').value || '').trim().toLowerCase();
     const records = await getRecords();
-    const dueOnly = document.getElementById('recordDueOnly').checked;
-    const filtered = records.map((record, index) => ({ record, index })).filter(({ record }) =>
-      (record.customer + ' ' + record.mobile).toLowerCase().includes(query) &&
-      (!dueOnly || (record.status !== 'voided' && Number(record.due) > 0))
-    );
+    const statusFilter = document.getElementById('recordStatusFilter').value;
+    const from = document.getElementById('recordFrom').value;
+    const to = document.getElementById('recordTo').value;
+    const filtered = records.map((record, index) => ({ record, index })).filter(({ record }) => recordMatchesFilters(record, query, statusFilter, from, to));
     document.getElementById('recordCountLabel').textContent = filtered.length + ' of ' + records.length + ' shown';
     document.getElementById('recordsTbody').innerHTML = filtered.map(entry => {
       const record = entry.record;
@@ -1506,6 +1665,10 @@ if ('serviceWorker' in navigator) {
       const due = Number(record.due) || 0;
       const paid = Number(record.paid) || 0;
       const netTotal = recordNetTotal(record);
+      const plus = due <= 0 ? Math.max(paid - netTotal, 0) : 0;
+      const balanceLabel = plus > 0 ? 'Plus amount' : 'Amount due';
+      const balanceValue = plus > 0 ? plus : due;
+      const balanceClass = plus > 0 ? 'plus-amount' : 'due-amount';
       const voided = record.status === 'voided';
       const pending = record.status === 'pending';
       const exchanges = Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : [];
@@ -1518,9 +1681,10 @@ if ('serviceWorker' in navigator) {
         const itemDetail = payment.weight ? ' · ' + payment.weight + 'g × ₹' + payment.rate + '/g' : '';
         return safe(method + itemDetail + ' — ' + money(payment.amount));
       }).join('<br>') || 'No settlement recorded';
-      return '<tr class="' + (voided ? 'voided-record' : '') + '"><td style="font-family:var(--font-mono);">' + safe(record.number) + (voided ? '<span class="voided-badge">VOIDED</span>' : pending ? '<span class="pending-badge">PENDING</span>' : '') + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + money(netTotal) + '</td><td class="due-amount">' + money(due) + '</td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
-        '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>' + (pending ? 'Ordered items' : 'Items') + '</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Old metal exchange</b>' + exchangeHistory + '</div><div class="record-info"><b>Net invoice total</b><span class="paid-amount">' + money(netTotal) + '</span></div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>Due amount</b><span class="due-amount">' + money(due) + '</span></div>' + (voided ? '<div class="record-info"><b>Void reason</b>' + safe(record.voidReason || '—') + '</div>' : pending ? '<div class="record-info"><b>Order status</b>Awaiting stock selection and delivery</div>' : '') + '<div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div>' + (voided ? '<div class="voided-invoice-view"><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">View Voided Invoice</button></div>' : '') + '<div class="record-actions"><div class="field"><label>Settlement type</label><select class="record-method" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" placeholder="Enter received amount" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g)</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" placeholder="0.000" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹)</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" placeholder="0.00" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-edit" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Deliver Order' : 'Edit Invoice') + '</button><button class="btn btn-ghost btn-sm record-void" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Cancel Order' : 'Void Invoice') + '</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">' + (pending ? 'View Pending Invoice' : 'Regenerate Invoice') + '</button></div></div></td></tr>';
+      return '<tr class="' + (voided ? 'voided-record' : '') + '"><td style="font-family:var(--font-mono);">' + safe(record.number) + (voided ? '<span class="voided-badge">VOIDED</span>' : pending ? '<span class="pending-badge">PENDING</span>' : '') + '</td><td>' + safe(record.date) + '</td><td>' + safe(record.customer || 'Walk-in customer') + '</td><td>' + safe(record.mobile || '—') + '</td><td style="font-family:var(--font-mono); color:var(--gold-pale);">' + money(netTotal) + '</td><td><span class="' + balanceClass + '">' + (plus > 0 ? '+' : '') + money(balanceValue) + '</span></td><td><button class="btn btn-ghost btn-sm record-toggle" data-index="' + index + '">Details</button></td></tr>' +
+        '<tr class="record-detail" data-detail="' + index + '" style="display:none;"><td colspan="7"><div class="record-detail-card"><div class="record-info-grid"><div class="record-info"><b>Customer address</b>' + safe(record.address || '—') + '</div><div class="record-info"><b>' + (pending ? 'Ordered items' : 'Items') + '</b>' + safe(record.items || '—') + '</div><div class="record-info"><b>Old metal exchange</b>' + exchangeHistory + '</div><div class="record-info"><b>Net invoice total</b><span class="paid-amount">' + money(netTotal) + '</span></div><div class="record-info"><b>Paid</b><span class="paid-amount">' + money(paid) + '</span></div><div class="record-info"><b>' + balanceLabel + '</b><span class="' + balanceClass + '">' + (plus > 0 ? '+' : '') + money(balanceValue) + '</span></div>' + (voided ? '<div class="record-info"><b>Void reason</b>' + safe(record.voidReason || '—') + '</div>' : pending ? '<div class="record-info"><b>Order status</b>Awaiting stock selection and delivery</div>' : '') + '<div class="record-info"><b>Payment / settlement history</b>' + settlementHistory + '</div></div>' + (voided ? '<div class="voided-invoice-view"><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">View Voided Invoice</button></div>' : '') + '<div class="record-actions"><div class="field"><label>Settlement type *</label><select class="record-method" data-index="' + index + '" aria-required="' + (due > 0 && !voided) + '" ' + (due <= 0 || voided ? 'disabled' : '') + '><option value="amount">Amount / Cash</option><option value="gold">Gold item</option><option value="silver">Silver item</option></select></div><div class="field" data-amount-field="' + index + '"><label>Settle amount (₹) *</label><input type="number" min="0.01" step="0.01" id="settlement-' + index + '" aria-required="' + (due > 0 && !voided) + '" placeholder="Enter received amount" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Weight (g) *</label><input type="number" min="0.001" step="0.001" id="settlement-weight-' + index + '" aria-required="false" placeholder="0.000" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Price per gram (₹) *</label><input type="number" min="0.01" step="0.01" id="settlement-rate-' + index + '" aria-required="false" placeholder="0.00" ' + (due <= 0 || voided ? 'disabled' : '') + '></div><div class="field" data-item-field="' + index + '" style="display:none;"><label>Calculated settlement (₹)</label><div class="payment-balance" id="settlement-value-' + index + '">₹0.00</div></div><button class="btn btn-gold btn-sm record-settle" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Settle Amount</button><button class="btn btn-ghost btn-sm record-paid" data-index="' + index + '" ' + (due <= 0 || voided ? 'disabled' : '') + '>Mark Fully Paid</button><button class="btn btn-ghost btn-sm record-edit" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Deliver Order' : 'Edit Invoice') + '</button><button class="btn btn-ghost btn-sm record-void" data-index="' + index + '" ' + (voided ? 'disabled' : '') + '>' + (pending ? 'Cancel Order' : 'Void Invoice') + '</button><button class="btn btn-ghost btn-sm record-reprint" data-index="' + index + '">' + (pending ? 'View Pending Invoice' : 'Regenerate Invoice') + '</button></div></div></td></tr>';
     }).join('');
+    window.refreshTablePagination('recordsTbody');
     filtered.forEach(({ record, index }) => {
       const card = document.querySelector('[data-detail="' + index + '"] .record-detail-card');
       const button = document.createElement('button');
@@ -1536,8 +1700,78 @@ if ('serviceWorker' in navigator) {
     });
     const emptyState = document.getElementById('recordsEmpty');
     emptyState.style.display = filtered.length ? 'none' : 'block';
-    emptyState.textContent = !records.length ? 'No completed invoices yet.' : dueOnly ? 'No due records match your filters.' : 'No records match your search.';
+    const statusLabel = document.getElementById('recordStatusFilter').selectedOptions[0].textContent.toLowerCase();
+    emptyState.textContent = !records.length ? 'No invoices recorded yet.' : statusFilter !== 'all' ? 'No ' + statusLabel + ' records match your filters.' : 'No records match your filters.';
   };
+  document.getElementById('exportRecordsPdf').addEventListener('click', async () => {
+    const query = (document.getElementById('recordSearch').value || '').trim().toLowerCase();
+    const statusFilter = document.getElementById('recordStatusFilter').value;
+    const from = document.getElementById('recordFrom').value;
+    const to = document.getElementById('recordTo').value;
+    if (from && to && from > to) { showAppMessage('From date must be on or before To date.', 'error'); return; }
+    const allRecords = await getRecords();
+    const rows = allRecords.filter(record => recordMatchesFilters(record, query, statusFilter, from, to));
+    if (!rows.length) { showAppMessage('No invoices match the current search, status, and date filters.', 'error'); return; }
+    if (!window.jspdf || !window.jspdf.jsPDF) { showAppMessage('PDF export is unavailable. Check your internet connection and try again.', 'error'); return; }
+    try {
+      const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pdfMoney = value => money(value).replace('₹', 'INR ');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 24;
+      const columns = [
+        { title: 'Invoice', width: 62 }, { title: 'Date', width: 48 }, { title: 'Customer / Mobile', width: 100 },
+        { title: 'Items', width: 145 }, { title: 'Exchange & settlements', width: 145 },
+        { title: 'Total', width: 66 }, { title: 'Paid', width: 66 }, { title: 'Balance', width: 98 }, { title: 'Status', width: 55 }
+      ];
+      const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+      const scale = Math.min(1, (pageWidth - margin * 2) / tableWidth);
+      columns.forEach(column => { column.width *= scale; });
+      const lineHeight = 8;
+      let y = 64;
+      const drawHeader = () => {
+        let x = margin;
+        pdf.setFillColor(48, 39, 25); pdf.setTextColor(255, 246, 221); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7);
+        columns.forEach(column => { pdf.rect(x, y, column.width, 22, 'F'); pdf.text(column.title, x + 3, y + 14, { maxWidth: column.width - 6 }); x += column.width; });
+        y += 22;
+      };
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(15); pdf.setTextColor(60, 45, 20);
+      pdf.text('Vishesh Jewellers - Invoice Records', margin, 28);
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(100, 90, 75);
+      pdf.text(rows.length + ' invoice' + (rows.length === 1 ? '' : 's') + (query ? ' | Search: ' + query : '') + ' | Status: ' + document.getElementById('recordStatusFilter').selectedOptions[0].textContent + (from || to ? ' | Invoice dates: ' + (from || 'Beginning') + ' to ' + (to || 'Present') : '') + ' | Generated: ' + new Date().toLocaleString('en-IN'), margin, 42, { maxWidth: pageWidth - margin * 2 });
+      drawHeader();
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6.5); pdf.setTextColor(45, 40, 32);
+      for (const record of rows) {
+        const netTotal = recordNetTotal(record);
+        const paid = Number(record.paid) || 0;
+        const due = Math.max(Number(record.due) || 0, 0);
+        const advance = due <= 0 ? Math.max(paid - netTotal, 0) : 0;
+        const balance = due > 0.005 ? 'Due ' + pdfMoney(due) : advance > 0.005 ? 'Advance +' + pdfMoney(advance) : 'Settled';
+        const exchanges = (Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : []).map(exchange => String(exchange.metal || 'Gold') + ' ' + Number(exchange.weight || 0).toFixed(3) + 'g x ' + pdfMoney(exchange.rate) + ' = ' + pdfMoney(exchange.value));
+        const settlements = (record.payments || []).map(payment => String(payment.method || 'Amount') + ' ' + (payment.weight ? Number(payment.weight) + 'g x ' + pdfMoney(payment.rate) + ' = ' : '') + pdfMoney(payment.amount));
+        const returns = (record.returns || []).map(entry => 'Return: ' + String(entry.noteNumber || '') + ' ' + String(entry.reason || '') + ' ' + pdfMoney(entry.amount || entry.cashRefund || 0));
+        const customer = (record.customer || 'Walk-in') + '\\n' + (record.mobile || '');
+        const adjustmentDetails = [...exchanges.map(value => 'Exchange: ' + value), ...settlements.map(value => 'Payment: ' + value), ...returns].join('\\n') || '-';
+        const contents = [record.number || '-', record.date || '-', customer, record.items || '-', adjustmentDetails, pdfMoney(netTotal), pdfMoney(paid), balance, record.status === 'voided' ? 'Voided' : record.status === 'pending' ? 'Pending delivery' : due > 0.005 ? 'Due' : advance > 0.005 ? 'Advance' : 'Settled'];
+        const wrapped = contents.map((value, index) => pdf.splitTextToSize(String(value), columns[index].width - 6));
+        const rowHeight = Math.max(24, ...wrapped.map(lines => lines.length * lineHeight + 8));
+        if (y + rowHeight > pdf.internal.pageSize.getHeight() - margin) { pdf.addPage(); y = margin; drawHeader(); }
+        let x = margin;
+        pdf.setDrawColor(210, 201, 182); pdf.setLineWidth(.35);
+        wrapped.forEach((lines, index) => {
+          pdf.rect(x, y, columns[index].width, rowHeight);
+          pdf.text(lines, x + 3, y + 11, { maxWidth: columns[index].width - 6 });
+          x += columns[index].width;
+        });
+        y += rowHeight;
+      }
+      const filename = query ? 'Invoices-' + query.replace(/[^a-z0-9-]+/gi, '-') + '.pdf' : 'Invoice-Records.pdf';
+      pdf.save(filename);
+      showAppMessage(rows.length === 1 ? 'Invoice PDF downloaded.' : rows.length + ' invoice records exported to PDF.', 'success');
+    } catch (error) {
+      console.error('Records PDF export failed:', error);
+      showAppMessage('Could not generate the records PDF. Please try again.', 'error');
+    }
+  });
   const openRecords = async () => {
     document.querySelectorAll('.tab-btn').forEach(button => button.classList.remove('active'));
     document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
@@ -1577,7 +1811,21 @@ if ('serviceWorker' in navigator) {
       const location = await response.json();
       document.getElementById('settingsDataPath').textContent = location.path;
       document.getElementById('settingsChooseData').disabled = !location.desktop;
+      document.getElementById('settingsCreateBackup').disabled = false;
+      document.getElementById('settingsRestoreBackup').disabled = false;
+      document.getElementById('settingsCreateBackup').textContent = location.desktop ? 'Create Backup Now' : 'Download Encrypted Backup';
       status.textContent = location.desktop ? '' : 'Changing the data folder is available in the desktop app.';
+      document.getElementById('settingsBackupDescription').textContent = location.desktop
+        ? 'A backup is created automatically once per week when the desktop app starts. Create one manually or restore one at any time. Weekly backups are saved in Documents → Vishesh Jewellers Backups.'
+        : 'A backup is created automatically once per week when the local server starts. Download one whenever you want, or restore a downloaded backup. Weekly snapshots are saved in Documents → Vishesh Jewellers Backups.';
+      document.getElementById('settingsBackupNote').textContent = location.desktop
+        ? 'The business data is encrypted, and the backup includes a key protected by this computer’s secure storage. Restore is intended for the same computer and OS account; it cannot be moved to another computer.'
+        : 'The downloaded business data is encrypted. Restoring requires the matching app data key, so keep the original data folder and its key file together. This backup is not portable to another computer.';
+      const backupResponse = await fetch('/api/backup-status', { cache: 'no-store' });
+      const backup = await backupResponse.json();
+      document.getElementById('settingsBackupStatus').textContent = backup.latest
+        ? 'Latest backup: ' + backup.latest
+        : 'No automatic backup has been created yet.';
     } catch (_) { status.textContent = 'Could not load the current data location.'; }
   };
   const updatePurchaseAmount = () => {
@@ -1585,6 +1833,17 @@ if ('serviceWorker' in navigator) {
     document.getElementById('purchaseAmount').textContent = money(amount);
   };
   document.getElementById('refreshLiveRates').addEventListener('click', () => renderDashboard(true));
+  document.getElementById('dashboardRangeForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const from = document.getElementById('dashboardFrom').value;
+    const to = document.getElementById('dashboardTo').value;
+    if (from && to && from > to) { showAppMessage('From date must be on or before To date.', 'error'); return; }
+    dashboardRange = { from, to };
+    await renderDashboard();
+  });
+  document.getElementById('dashboardAllTime').addEventListener('click', async () => {
+    document.getElementById('dashboardRangeForm').reset(); dashboardRange = {}; await renderDashboard();
+  });
   const invoiceTab = document.querySelector('.tab-btn[data-page="home"]');
   invoiceTab.textContent = 'Invoice';
   const dashboardTab = document.createElement('button');
@@ -1629,14 +1888,129 @@ if ('serviceWorker' in navigator) {
       status.textContent = 'Choose a folder in the system dialog. The app will restart after confirmation.';
     } catch (_) { status.textContent = 'This option is available only in the desktop app.'; }
   });
-  document.getElementById('recordSearch').addEventListener('input', renderRecords);
-  document.getElementById('recordDueOnly').addEventListener('change', renderRecords);
+  const requestBackupAction = async (action, message) => {
+    const status = document.getElementById('settingsBackupStatus');
+    try {
+      const locationResponse = await fetch('/api/data-location', { cache: 'no-store' });
+      const location = await locationResponse.json();
+      if (!location.desktop && action === 'create') {
+        const response = await fetch('/api/backup/download', { cache: 'no-store' });
+        if (!response.ok) {
+          let error = 'Could not create the encrypted backup.';
+          try { error = (await response.json()).error || error; } catch (_) {}
+          throw new Error(error);
+        }
+        const file = await response.blob();
+        const downloadUrl = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = 'Vishesh-Jewellers-Backup-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        status.textContent = 'Encrypted JSON backup downloaded.';
+        showAppMessage('Your encrypted JSON backup has been downloaded. Keep the app data key with your data folder; this backup is restorable with that same key.', 'success');
+        return;
+      }
+      if (!location.desktop && action === 'restore') {
+        document.getElementById('settingsRestoreFile').click();
+        return;
+      }
+      const response = await fetch('/api/backup/' + action, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'This option is available only in the desktop app.');
+      status.textContent = message;
+    } catch (error) {
+      status.textContent = error.message || 'Could not start the backup action.';
+      showAppMessage(status.textContent, 'error');
+    }
+  };
+  document.getElementById('settingsCreateBackup').addEventListener('click', () => requestBackupAction('create', 'Choose where to save the encrypted backup.'));
+  document.getElementById('settingsRestoreBackup').addEventListener('click', () => requestBackupAction('restore', 'Select a backup file in the system dialog. Current data will be backed up before restoring.'));
+  document.getElementById('settingsRestoreFile').addEventListener('change', async event => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const status = document.getElementById('settingsBackupStatus');
+    try {
+      const response = await fetch('/api/backup/restore', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: await file.text()
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not restore this backup.');
+      status.textContent = 'Backup restored. Reloading the app…';
+      showAppMessage('Backup restored successfully. The app will reload with the recovered data.', 'success');
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (error) {
+      status.textContent = error.message || 'Could not restore this backup.';
+      showAppMessage(status.textContent, 'error');
+    } finally { event.target.value = ''; }
+  });
+  document.getElementById('settingsExportData').addEventListener('click', async event => {
+    const button = event.currentTarget;
+    const status = document.getElementById('settingsDataStatus');
+    button.disabled = true;
+    status.textContent = 'Preparing the Excel workbook…';
+    try {
+      const response = await fetch('/api/export.xlsx', { cache: 'no-store' });
+      if (!response.ok) {
+        let message = 'Could not export the saved data. Please try again.';
+        try { message = (await response.json()).error || message; } catch (_) {}
+        throw new Error(message);
+      }
+      const file = await response.blob();
+      const downloadUrl = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = 'Vishesh-Jewellers-Data-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      status.textContent = 'Excel export downloaded.';
+      showAppMessage('Your Excel data export is ready. It includes the readable report sheets and complete saved-data reference.', 'success');
+    } catch (error) {
+      status.textContent = error.message || 'Could not export the saved data.';
+      showAppMessage(status.textContent, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+  document.getElementById('recordSearch').addEventListener('input', () => { window._tablePaginationState.recordsTbody.page = 1; renderRecords(); });
+  document.getElementById('recordStatusFilter').addEventListener('change', () => { window._tablePaginationState.recordsTbody.page = 1; renderRecords(); });
+  const updateRecordDateRange = event => {
+    const fromInput = document.getElementById('recordFrom');
+    const toInput = document.getElementById('recordTo');
+    if (fromInput.value && toInput.value && fromInput.value > toInput.value) {
+      showAppMessage('From date must be on or before To date.', 'error');
+      if (event.target === fromInput) fromInput.value = '';
+      else toInput.value = '';
+    }
+    fromInput.max = toInput.value;
+    toInput.min = fromInput.value;
+    window._tablePaginationState.recordsTbody.page = 1;
+    renderRecords();
+  };
+  document.getElementById('recordFrom').addEventListener('change', updateRecordDateRange);
+  document.getElementById('recordTo').addEventListener('change', updateRecordDateRange);
+  document.getElementById('clearRecordDates').addEventListener('click', () => {
+    document.getElementById('recordFrom').value = '';
+    document.getElementById('recordTo').value = '';
+    document.getElementById('recordFrom').removeAttribute('max');
+    document.getElementById('recordTo').removeAttribute('min');
+    window._tablePaginationState.recordsTbody.page = 1;
+    renderRecords();
+  });
   const updatePaymentType = () => {
     const paymentType = document.getElementById('paymentType').value;
     const isMetal = paymentType === 'metal';
     document.getElementById('paymentAmountField').style.display = isMetal ? 'none' : 'block';
     document.getElementById('paymentMetalFields').style.display = isMetal ? 'block' : 'none';
-    document.querySelector('#paymentAmountField label').textContent = paymentType === 'self-expense' ? 'Self expense amount (₹)' : 'Amount paid (₹)';
+    document.querySelector('#paymentAmountField label').textContent = paymentType === 'self-expense' ? 'Self expense amount (₹) *' : 'Amount paid (₹) *';
+    document.getElementById('paymentAmountInput').setAttribute('aria-required', String(!isMetal));
+    ['paymentMetal', 'paymentWeight', 'paymentPurity'].forEach(id => document.getElementById(id).setAttribute('aria-required', String(isMetal)));
   };
   const updateFineWeight = () => {
     const weight = Math.max(Number(document.getElementById('paymentWeight').value) || 0, 0);
@@ -1653,7 +2027,7 @@ if ('serviceWorker' in navigator) {
     const reason = document.getElementById('paymentReason').value.trim();
     if (type === 'amount' || type === 'self-expense') {
       const amountPaid = Number(document.getElementById('paymentAmountInput').value);
-      if (!(amountPaid > 0)) return;
+      if (!(amountPaid > 0)) { toast('Amount is required and must be greater than 0.'); document.getElementById('paymentAmountInput').focus(); return; }
       payments.unshift({ id: Date.now().toString(), type, amount: amountPaid, reason, savedAt });
       await originalStorageSet('payment-records', JSON.stringify(payments));
       document.getElementById('paymentAmountInput').value = '';
@@ -1661,7 +2035,8 @@ if ('serviceWorker' in navigator) {
       const metal = document.getElementById('paymentMetal').value;
       const weight = Number(document.getElementById('paymentWeight').value);
       const purity = Number(document.getElementById('paymentPurity').value);
-      if (!(weight > 0) || !(purity >= 0 && purity <= 100)) return;
+      if (!(weight > 0)) { toast('Gross weight is required and must be greater than 0.'); document.getElementById('paymentWeight').focus(); return; }
+      if (!(purity > 0 && purity <= 100)) { toast('Purity is required and must be greater than 0% and no more than 100%.'); document.getElementById('paymentPurity').focus(); return; }
       const oldMetalEntries = await getOldGold();
       const balance = oldMetalEntries.filter(entry => entry.metal === metal).reduce((total, entry) => total + (Number(entry.weight) || 0), 0);
       if (weight > balance) { alert('Only ' + balance.toFixed(3) + ' g of old ' + metal + ' is available for payment.'); return; }
@@ -1685,7 +2060,8 @@ if ('serviceWorker' in navigator) {
     const metal = document.getElementById('purchaseMetal').value;
     const weight = Number(document.getElementById('purchaseWeight').value);
     const rate = Number(document.getElementById('purchaseRate').value);
-    if (!(weight > 0) || !(rate > 0)) return;
+    if (!(weight > 0)) { toast('Purchase weight is required and must be greater than 0.'); document.getElementById('purchaseWeight').focus(); return; }
+    if (!(rate > 0)) { toast('Purchase rate per gram is required and must be greater than 0.'); document.getElementById('purchaseRate').focus(); return; }
     const purchases = await getPurchases();
     const purchase = { id: Date.now().toString(), metal, weight, rate, amount: weight * rate, savedAt: new Date().toISOString() };
     purchases.unshift(purchase);
@@ -1718,6 +2094,9 @@ if ('serviceWorker' in navigator) {
     const isItem = event.target.value === 'gold' || event.target.value === 'silver';
     document.querySelector('[data-amount-field="' + index + '"]').style.display = isItem ? 'none' : 'block';
     document.querySelectorAll('[data-item-field="' + index + '"]').forEach(field => { field.style.display = isItem ? 'block' : 'none'; });
+    document.getElementById('settlement-' + index).setAttribute('aria-required', String(!isItem));
+    document.getElementById('settlement-weight-' + index).setAttribute('aria-required', String(isItem));
+    document.getElementById('settlement-rate-' + index).setAttribute('aria-required', String(isItem));
     const button = document.querySelector('.record-settle[data-index="' + index + '"]');
     button.textContent = isItem ? 'Settle ' + (event.target.value === 'gold' ? 'Gold' : 'Silver') : 'Settle Amount';
   });
@@ -1846,11 +2225,25 @@ if ('serviceWorker' in navigator) {
   };
   document.getElementById('btnSavePendingOrder').addEventListener('click', async () => {
     const customer = document.getElementById('cust-name').value.trim();
-    const orderItems = rows.filter(row => row.name && ((Number(row.gross) > 0) || (Number(row.net) > 0)) && Number(row.rate) > 0);
+    const enteredOrderItems = rows.filter(row => String(row.name || '').trim() || row.gross !== '' || row.net !== '' || row.rate !== '');
     if (!customer) { toast('Customer name is required for a pending order.'); document.getElementById('cust-name').focus(); return; }
-    if (!orderItems.length) { toast('Enter at least one ordered item with its name, weight, and rate.'); return; }
+    if (!document.getElementById('inv-date').value) { toast('Invoice date is required for a pending order.'); document.getElementById('inv-date').focus(); return; }
+    if (!enteredOrderItems.length) { toast('Add at least one ordered item.'); return; }
+    for (const row of enteredOrderItems) {
+      const rowElement = Array.from(document.querySelectorAll('#itemsTbody tr')).find(element => element.dataset.id === row.id);
+      const required = [
+        [row.name, '.f-name', 'Item name'],
+        [Number(row.gross) > 0, '.f-gross', 'Gross weight'],
+        [Number(row.net) > 0, '.f-net', 'Net weight'],
+        [Number.isInteger(Number(row.pcs)) && Number(row.pcs) >= 1, '.f-pcs', 'Quantity (Pcs)'],
+        [Number(row.rate) > 0, '.f-rate', 'Rate per gram']
+      ].find(([valid]) => !valid);
+      if (required) { toast(required[2] + ' is required for every pending-order item.'); if (rowElement) rowElement.querySelector(required[1]).focus(); return; }
+      if (Number(row.net) > Number(row.gross)) { toast('Net weight cannot be greater than gross weight.'); if (rowElement) rowElement.querySelector('.f-net').focus(); return; }
+    }
+    const orderItems = enteredOrderItems;
     const record = collectInvoiceRecord('pending');
-    record.orderItems = orderItems.map((row, index) => ({ lineId: row.id || ('order-' + index), stockId: '', name: row.name, hsn: row.hsn || '', purity: row.purity || '', gross: Number(row.gross) || 0, net: Number(row.net) || 0, rate: Number(row.rate) || 0, making: Number(row.making) || 0 }));
+    record.orderItems = orderItems.map((row, index) => ({ lineId: row.id || ('order-' + index), stockId: '', name: row.name, hsn: row.hsn || '', purity: row.purity || '', gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0 }));
     record.soldItems = [];
     const records = await getRecords();
     records.unshift(record);
@@ -1881,10 +2274,29 @@ if ('serviceWorker' in navigator) {
 }
 
 jsonStore.migrate();
+if (!process.send) {
+  try { createServerWeeklyBackup(); } catch (error) { console.error('Weekly encrypted backup failed:', error.message); }
+}
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const match = url.pathname.match(/^\/api\/storage\/([^/]+)$/);
   const invoiceDeletion = url.pathname.match(/^\/api\/invoices\/([^/]+)$/);
+  if (url.pathname === '/api/export.xlsx' && req.method === 'GET') {
+    try {
+      const workbook = buildSystemExport(jsonStore.read());
+      const filename = 'Vishesh-Jewellers-Data-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+      res.writeHead(200, {
+        'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'content-disposition': 'attachment; filename="' + filename + '"',
+        'content-length': workbook.length,
+        'cache-control': 'no-store'
+      });
+      return res.end(workbook);
+    } catch (error) {
+      console.error('System data export failed:', error);
+      return send(res, 500, JSON.stringify({ error: 'Could not export the saved data. Please try again.' }));
+    }
+  }
   if (invoiceDeletion && req.method === 'DELETE') {
     try {
       const next = deleteInvoice(jsonStore.read(), decodeURIComponent(invoiceDeletion[1]));
@@ -1907,6 +2319,78 @@ const server = http.createServer((req, res) => {
     if (!process.send) return send(res, 400, JSON.stringify({ error: 'Desktop app required' }));
     process.send({ type: 'choose-data-location' });
     return send(res, 202, JSON.stringify({ ok: true }));
+  }
+
+  if (url.pathname === '/api/backup-status' && req.method === 'GET') {
+    try {
+      const names = fs.existsSync(backupDir)
+        ? fs.readdirSync(backupDir).filter(name => /^Vishesh-Jewellers-(Weekly|Backup|Before-Restore)-.*\.json$/.test(name))
+        : [];
+      names.sort((a, b) => fs.statSync(path.join(backupDir, b)).mtimeMs - fs.statSync(path.join(backupDir, a)).mtimeMs);
+      return send(res, 200, JSON.stringify({ desktop: Boolean(process.send), latest: names[0] || null }));
+    } catch (_) { return send(res, 200, JSON.stringify({ desktop: Boolean(process.send), latest: null })); }
+  }
+
+  if (url.pathname === '/api/backup/download' && req.method === 'GET') {
+    if (process.send) return send(res, 400, JSON.stringify({ error: 'Use the desktop backup dialog.' }));
+    try {
+      const payload = {
+        format: 'vishesh-jewellers-encrypted-backup-v1',
+        createdAt: new Date().toISOString(),
+        encryption: 'AES-256-GCM; restore requires the existing app data key',
+        encryptedStore: JSON.parse(fs.readFileSync(dataFile, 'utf8'))
+      };
+      const filename = 'Vishesh-Jewellers-Backup-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+      return send(res, 200, JSON.stringify(payload, null, 2), 'application/json; charset=utf-8', {
+        'content-disposition': 'attachment; filename="' + filename + '"'
+      });
+    } catch (error) { return send(res, 500, JSON.stringify({ error: error.message || 'Could not create the encrypted backup.' })); }
+  }
+
+  if (url.pathname === '/api/backup/create' && req.method === 'POST') {
+    if (!process.send) return send(res, 400, JSON.stringify({ error: 'Backup is available in the desktop app.' }));
+    process.send({ type: 'create-backup' });
+    return send(res, 202, JSON.stringify({ ok: true }));
+  }
+
+  if (url.pathname === '/api/backup/restore' && req.method === 'POST') {
+    if (process.send) {
+      process.send({ type: 'restore-backup' });
+      return send(res, 202, JSON.stringify({ ok: true }));
+    }
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 50_000_000) {
+        send(res, 413, JSON.stringify({ error: 'Backup file is too large (maximum 50 MB).' }));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      let tempPath;
+      try {
+        const backup = JSON.parse(body);
+        const encryptedStore = backup?.encryptedStore;
+        if (!['vishesh-jewellers-encrypted-backup-v1', 'vishesh-jewellers-backup-v1'].includes(backup?.format) ||
+            encryptedStore?.format !== 'vishesh-jewellers-encrypted-v1' || encryptedStore?.algorithm !== 'aes-256-gcm') {
+          throw new Error('This is not a supported Vishesh Jewellers encrypted backup.');
+        }
+        tempPath = dataFile + '.restore-tmp';
+        fs.writeFileSync(tempPath, JSON.stringify(encryptedStore, null, 2) + '\n', { mode: 0o600 });
+        createJsonStore(tempPath, { encryptionKey: process.env.DATA_ENCRYPTION_KEY }).read();
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        writeServerBackup(path.join(backupDir, 'Vishesh-Jewellers-Before-Restore-' + stamp + '.json'));
+        const previousPath = dataFile + '.before-restore-' + stamp;
+        fs.renameSync(dataFile, previousPath);
+        try { fs.renameSync(tempPath, dataFile); }
+        catch (error) { fs.renameSync(previousPath, dataFile); throw error; }
+        return send(res, 200, JSON.stringify({ ok: true }));
+      } catch (error) {
+        if (tempPath && fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        return send(res, 400, JSON.stringify({ error: error.message || 'Could not restore this backup.' }));
+      }
+    });
+    return;
   }
 
   if (url.pathname === '/api/live-rates' && req.method === 'GET') {

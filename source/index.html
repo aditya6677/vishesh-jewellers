@@ -222,6 +222,12 @@
   .search-box{position:relative; flex:1; min-width:220px; max-width:340px;}
   .search-box input{padding-left:32px;}
   .search-box::before{content:"⚲"; position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--gold);}
+  .table-pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:12px;color:var(--ivory-3);font-size:12px;}
+  .table-pagination select{width:auto;min-width:68px;margin:0;padding:7px 25px 7px 9px;font-size:12px;}
+  .table-pagination .page-range{margin-right:auto;}
+  .table-pagination .page-nav{display:flex;gap:6px;}
+  .table-pagination .page-nav .btn{min-width:34px;min-height:32px;padding:5px 9px;}
+  .table-pagination .btn:disabled{opacity:.4;cursor:not-allowed;}
 
   .data-table-wrap{overflow-x:auto;}
   table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
@@ -258,9 +264,46 @@
   ::-webkit-scrollbar-thumb{background:rgba(198,154,58,0.4); border-radius:8px;}
 
   @media print{
+    @page{size:A4 portrait;margin:12mm;}
+    html,body{width:100%;min-height:0;margin:0!important;padding:0!important;background:#fff!important;}
+    body{color:#29251f!important;font-family:'Jost','Helvetica Neue',Arial,sans-serif!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     body *{visibility:hidden;}
-    #invoicePaper, #invoicePaper *{visibility:visible;}
-    #invoicePaper{position:absolute; top:0; left:0; width:100%; box-shadow:none;}
+    #invoicePaper,#invoicePaper *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    #invoicePaper{
+      position:absolute;top:0;left:0;width:100%;max-width:none;margin:0;padding:11mm 10mm 9mm;
+      overflow:visible;border:1px solid #d8c58f;border-radius:2mm;box-shadow:none;
+      background:#fffdf8!important;color:#29251f!important;font-family:'Jost','Helvetica Neue',Arial,sans-serif!important;
+      font-size:10pt;line-height:1.4;
+    }
+    #invoicePaper::before{inset:3mm;border-color:#e7d9b4;}
+    #invoicePaper::after{opacity:.035;}
+    .paper-head{align-items:center;padding-bottom:5mm;border-bottom:1.2pt solid #b78a31;}
+    .paper-brand h2{font-family:'Cormorant Garamond',Georgia,serif!important;font-size:25pt;letter-spacing:.035em;color:#2c2418!important;}
+    .paper-brand p{font-family:'Jost','Helvetica Neue',Arial,sans-serif!important;color:#755d2e!important;font-size:7.5pt;letter-spacing:.07em;}
+    .paper-contact{font-size:8pt;color:#514a3c!important;line-height:1.5;}
+    .gst-badge{background:#f2e9d1!important;color:#544421!important;}
+    .meta-row{margin-top:5mm;color:#5a4a2e!important;font-size:9pt;}
+    .meta-row .inv-no{color:#29251f!important;font-size:10pt;}
+    .bill-to{margin-top:4mm;padding:3mm 4mm;background:#f5f0e4!important;border-left:2pt solid #b78a31;border-radius:0;}
+    .bill-to .lbl,.terms,.terms .t-title{color:#6f644d!important;}
+    .bill-to .nm{font-family:'Cormorant Garamond',Georgia,serif!important;font-size:15pt;color:#29251f!important;}
+    .bill-to .addr{color:#514a3c!important;font-size:9pt;}
+    table.paper-items{margin-top:5mm;font-size:8.5pt;}
+    table.paper-items thead th{padding:2.5mm 2mm;background:#393226!important;color:#f4e8c6!important;font-size:7pt;}
+    table.paper-items tbody td{padding:2mm;color:#39352e!important;border-bottom-color:#e6dfd1;}
+    table.paper-items tbody tr:nth-child(even){background:#f8f5ee!important;}
+    .paper-totals{width:76mm;margin-top:2mm;}
+    .paper-totals .tl{padding:1.5mm 0;color:#514a3c!important;border-bottom-color:#ded5c2;font-size:9pt;}
+    .paper-totals .tl b{color:#29251f!important;}
+    .paper-totals .gt{margin-top:2mm;padding:3mm;background:#393226!important;color:#f4e8c6!important;font-size:14pt;}
+    .paper-totals .gt b{color:#f4e8c6!important;}
+    .words-line{color:#514a3c!important;font-size:8.5pt;}
+    .paper-foot{margin-top:8mm;}
+    .terms,.terms .t-title,.sig-block .for-line,.sig-block .sig-caption{font-size:7.5pt;}
+    .sig-block .for-line,.sig-block .sig-caption{color:#514a3c!important;}
+    .sig-block .sig-caption{border-color:#8c7954;}
+    .voided-invoice-watermark{color:rgba(164,44,35,.2)!important;}
+    .pending-invoice-watermark{color:rgba(150,112,35,.18)!important;}
   }
 </style>
 </head>
@@ -321,7 +364,7 @@
         <div class="panel" style="margin-bottom:18px;">
           <h3><span class="dot"></span>Bill To</h3>
           <div class="row row-2">
-            <div class="field"><label>Customer Name</label><input type="text" id="cust-name" placeholder="e.g. Taulan Yadav Ji"></div>
+            <div class="field"><label>Customer Name *</label><input type="text" id="cust-name" placeholder="Vishesh" required></div>
             <div class="field"><label>Mobile (optional)</label><input type="text" id="cust-mobile" placeholder="10-digit mobile"></div>
           </div>
           <div class="field"><label>Address</label><textarea id="cust-address" placeholder="Customer address"></textarea></div>
@@ -337,8 +380,8 @@
             <table class="itable" id="itemsTable">
               <thead>
                 <tr>
-                  <th>Item</th><th>From Stock</th><th>HSN</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th>
-                  <th>Pcs</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount (₹)</th><th></th>
+                  <th>Item</th><th>From Stock *</th><th>HSN</th><th>Purity</th><th>Gross Wt (g) *</th><th>Net Wt (g) *</th>
+                  <th>Pcs *</th><th>Rate (₹/g) *</th><th>Making %</th><th>Amount (₹)</th><th></th>
                 </tr>
               </thead>
               <tbody id="itemsTbody"></tbody>
@@ -444,7 +487,7 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
     <div class="page-head">
       <p class="eyebrow">Inventory</p>
       <h2>Stocks</h2>
-      <p class="sub">Track weights, purity and quantities of jewellery currently in stock.</p>
+      <p class="sub">Record the item count and total batch weights. Remaining stock is tracked by weight; gross and net weights below cover all pieces in the entered quantity.</p>
     </div>
 
     <div class="stat-cards">
@@ -456,17 +499,17 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
     <div class="panel" style="margin-bottom:20px;">
       <h3><span class="dot"></span><span id="stockFormTitle">Add Stock Item</span></h3>
       <div class="row row-3">
-        <div class="field"><label>Item</label><input type="text" id="st-item" list="itemNamesList" placeholder="Select or type item"></div>
-        <div class="field"><label>Purity</label>
-          <select id="st-purity">
+        <div class="field"><label>Item *</label><input type="text" id="st-item" list="itemNamesList" placeholder="Select or type item" required></div>
+        <div class="field"><label>Purity *</label>
+          <select id="st-purity" required>
             <option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>Silver</option>
           </select>
         </div>
-        <div class="field"><label>Quantity (pcs)</label><input type="number" id="st-qty" value="1" min="1"></div>
+        <div class="field"><label>Quantity added (pcs) *</label><input type="number" id="st-qty" value="1" min="1" step="1" required></div>
       </div>
       <div class="row row-3">
-        <div class="field"><label>Gross Weight — total for qty (g)</label><input type="number" id="st-gross" step="0.001" placeholder="0.000"></div>
-        <div class="field"><label>Net Weight — total for qty (g)</label><input type="number" id="st-net" step="0.001" placeholder="0.000"></div>
+        <div class="field"><label>Total gross weight for quantity (g) *</label><input type="number" id="st-gross" min="0.001" step="0.001" required placeholder="0.000"></div>
+        <div class="field"><label>Total net weight for quantity (g) *</label><input type="number" id="st-net" min="0.001" step="0.001" required placeholder="0.000"></div>
         <div class="field"><label>Rate (₹/g)</label><input type="number" id="st-rate" step="0.01" placeholder="0.00"></div>
       </div>
       <input type="hidden" id="st-edit-id">
@@ -484,7 +527,7 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
       <div class="data-table-wrap">
         <table class="data-table">
           <thead>
-            <tr><th>Item</th><th>Purity</th><th>Qty</th><th>Gross Wt</th><th>Net Wt</th><th>Rate/g</th><th>Value</th><th>Added</th><th>Actions</th></tr>
+            <tr><th>Item</th><th>Purity</th><th>Qty added</th><th>Total gross wt</th><th>Total net wt</th><th>Rate/g</th><th>Value</th><th>Added</th><th>Actions</th></tr>
           </thead>
           <tbody id="stockTbody"></tbody>
         </table>
@@ -506,19 +549,19 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
     <div class="panel" style="margin-bottom:20px;">
       <h3><span class="dot"></span><span id="itemFormTitle">Add Item</span></h3>
       <div class="row row-3">
-        <div class="field"><label>Item Name</label><input type="text" id="it-name" placeholder="e.g. Nathiya Hallmark"></div>
-        <div class="field"><label>HSN Code</label><input type="text" id="it-hsn" placeholder="e.g. 7113" value="7113"></div>
-        <div class="field"><label>Category</label>
-          <select id="it-category">
+        <div class="field"><label>Item Name *</label><input type="text" id="it-name" placeholder="e.g. Nathiya Hallmark" required></div>
+        <div class="field"><label>HSN Code *</label><input type="text" id="it-hsn" placeholder="e.g. 7113" value="7113" required></div>
+        <div class="field"><label>Category *</label>
+          <select id="it-category" required>
             <option>Ring</option><option>Necklace</option><option>Locket</option><option>Bangle</option>
             <option>Chain</option><option>Earring</option><option>Nathiya</option><option>Bracelet</option><option>Other</option>
           </select>
         </div>
       </div>
       <div class="row row-2">
-        <div class="field"><label>Default Making Charge (%)</label><input type="number" id="it-making" step="0.01" placeholder="10.00" value="10"></div>
-        <div class="field"><label>Default Purity</label>
-          <select id="it-purity"><option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>Silver</option></select>
+        <div class="field"><label>Default Making Charge (%) *</label><input type="number" id="it-making" min="0" step="0.01" placeholder="10.00" value="10" required></div>
+        <div class="field"><label>Default Purity *</label>
+          <select id="it-purity" required><option>24K</option><option selected>22K</option><option>18K</option><option>14K</option><option>Silver</option></select>
         </div>
       </div>
       <input type="hidden" id="it-edit-id">
@@ -579,6 +622,7 @@ let stockList = [];
 let bizInfo = {};
 let invoiceCounter = 1;
 let rows = []; // current invoice line items
+let stockBatchTargetId = null;
 
 const uid = () => Math.random().toString(36).slice(2,10);
 
@@ -604,7 +648,7 @@ function showAppMessage(message, type = 'info'){
 window.alert = message => showAppMessage(message, 'error');
 function toast(msg){
   if (msg === 'New invoice started' && document.querySelector('#invoiceSuccessModal.open')) return;
-  const type = /required|enter|select|not enough|only |could not|failed|no items/i.test(msg) ? 'error' : /saved|updated|added|deleted|downloaded|started|recorded/i.test(msg) ? 'success' : 'info';
+  const type = /required|enter|select|not enough|only |could not|failed|no items|cannot|must be|invalid|greater than|complete both/i.test(msg) ? 'error' : /saved|updated|added|deleted|downloaded|started|recorded/i.test(msg) ? 'success' : 'info';
   showAppMessage(msg, type);
 }
 window.addEventListener('unhandledrejection', () => {
@@ -619,6 +663,42 @@ function fmtWt(n){
   n = Number(n)||0;
   return n.toLocaleString('en-IN', {minimumFractionDigits:3, maximumFractionDigits:3});
 }
+
+window._tablePaginationState = {};
+window.refreshTablePagination = function(tbodyId){
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const state = window._tablePaginationState[tbodyId] || (window._tablePaginationState[tbodyId] = {page:1, pageSize:10});
+  const childRows = Array.from(tbody.children);
+  const groups = [];
+  childRows.forEach(row => {
+    if (row.classList.contains('record-detail') && groups.length) groups[groups.length - 1].push(row);
+    else groups.push([row]);
+  });
+  const pageCount = Math.max(1, Math.ceil(groups.length / state.pageSize));
+  state.page = Math.min(Math.max(1, state.page), pageCount);
+  const start = (state.page - 1) * state.pageSize;
+  groups.forEach((group, index) => group.forEach(row => { row.hidden = index < start || index >= start + state.pageSize; }));
+  const wrap = tbody.closest('.data-table-wrap');
+  if (!wrap) return;
+  let controls = wrap.parentElement.querySelector(':scope > .table-pagination[data-pagination-for="' + tbodyId + '"]');
+  if (!controls) {
+    controls = document.createElement('div');
+    controls.className = 'table-pagination';
+    controls.dataset.paginationFor = tbodyId;
+    wrap.insertAdjacentElement('afterend', controls);
+  }
+  const from = groups.length ? start + 1 : 0;
+  const to = Math.min(start + state.pageSize, groups.length);
+  controls.innerHTML = '<span class="page-range">' + from + '–' + to + ' of ' + groups.length + '</span><label for="' + tbodyId + '-page-size">Rows per page</label><select id="' + tbodyId + '-page-size" aria-label="Rows per page"><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select><span>Page ' + state.page + ' of ' + pageCount + '</span><span class="page-nav"><button class="btn btn-ghost btn-sm" type="button" data-page-step="-1" aria-label="Previous page">‹</button><button class="btn btn-ghost btn-sm" type="button" data-page-step="1" aria-label="Next page">›</button></span>';
+  const select = controls.querySelector('select');
+  select.value = String(state.pageSize);
+  select.addEventListener('change', () => { state.pageSize = Number(select.value) || 10; state.page = 1; window.refreshTablePagination(tbodyId); });
+  controls.querySelectorAll('[data-page-step]').forEach(button => {
+    button.disabled = state.page + Number(button.dataset.pageStep) < 1 || state.page + Number(button.dataset.pageStep) > pageCount;
+    button.addEventListener('click', () => { state.page += Number(button.dataset.pageStep); window.refreshTablePagination(tbodyId); });
+  });
+};
 
 /* ---------- Number to words (Indian system) ---------- */
 function numToWords(num){
@@ -688,6 +768,27 @@ function availableQtyFor(stockEntry, excludingRowId){
   return Math.max(stockEntry.qty - earmarked, 0);
 }
 
+let invoiceMarketRates = null;
+let invoiceMarketRatesFetchedAt = 0;
+async function getInvoiceMarketRates(){
+  if(invoiceMarketRates && Date.now() - invoiceMarketRatesFetchedAt < 60000) return invoiceMarketRates;
+  const response = await fetch('/api/live-rates', { cache:'no-store' });
+  if(!response.ok) throw new Error('Live market rates are unavailable');
+  invoiceMarketRates = await response.json();
+  invoiceMarketRatesFetchedAt = Date.now();
+  return invoiceMarketRates;
+}
+
+function invoiceRateForStock(stock, rates){
+  const purity = String(stock.purity || '').trim();
+  if(/^silver$/i.test(purity)) return Number(rates.silverPerGram) || 0;
+  const match = purity.match(/(\d+(?:\.\d+)?)/);
+  if(!match) return Number(rates.goldPerGram) || 0;
+  const value = Number(match[1]);
+  const factor = /k/i.test(purity) ? value / 24 : value > 24 ? value / 1000 : value > 1 ? value / 100 : value;
+  return (Number(rates.goldPerGram) || 0) * Math.min(Math.max(factor, 0), 1);
+}
+
 function stockOptionsHtml(selectedId, rowId){
   const opts = ['<option value="">— manual entry (no stock deduction) —</option>'];
   stockList.forEach(s=>{
@@ -703,17 +804,17 @@ function renderRowsTable(){
   tbody.innerHTML = rows.map(r => `
     <tr data-id="${r.id}">
       <td class="name-cell"><input type="text" list="itemNamesList" class="f-name" value="${escapeHtml(r.name)}" placeholder="Item name"></td>
-      <td style="min-width:170px;"><select class="f-stock">${stockOptionsHtml(r.stockId, r.id)}</select></td>
+      <td style="min-width:170px;"><select class="f-stock" required>${stockOptionsHtml(r.stockId, r.id)}</select></td>
       <td><input type="text" class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;"></td>
       <td>
         <select class="f-purity">
           ${['24K','22K','18K','14K','Silver'].map(p=>`<option ${r.purity===p?'selected':''}>${p}</option>`).join('')}
         </select>
       </td>
-      <td><input type="number" step="0.001" class="f-gross" value="${r.gross}" placeholder="0.000" ${r.stockId?'readonly':''}></td>
-      <td><input type="number" step="0.001" class="f-net" value="${r.net}" placeholder="0.000" ${r.stockId?'readonly':''}></td>
-      <td><input type="number" min="1" step="1" class="f-pcs" value="${r.pcs}" style="width:56px;"></td>
-      <td><input type="number" step="0.01" class="f-rate" value="${r.rate}" placeholder="0.00"></td>
+      <td><input type="number" min="0.001" step="0.001" class="f-gross" value="${r.gross}" placeholder="0.000" required ${r.stockId?'readonly':''}></td>
+      <td><input type="number" min="0.001" step="0.001" class="f-net" value="${r.net}" placeholder="0.000" required ${r.stockId?'readonly':''}></td>
+      <td><input type="number" min="1" step="1" class="f-pcs" value="${r.pcs}" style="width:56px;" required></td>
+      <td><input type="number" min="0.01" step="0.01" class="f-rate" value="${r.rate}" placeholder="0.00" title="Editable; prefilled from the live IBJA benchmark when available" required></td>
       <td><input type="number" step="0.01" class="f-making" value="${r.making}" style="width:60px;"></td>
       <td class="amount-cell">₹${fmt(rowAmount(r))}</td>
       <td><button class="rm-row" data-rm="${r.id}">×</button></td>
@@ -729,7 +830,7 @@ function renderRowsTable(){
       if(match && !row.stockId){ row.hsn = match.hsn; row.making = match.making; row.purity = match.purity || row.purity; renderRowsTable(); renderPreview(); return; }
       renderPreview();
     });
-    tr.querySelector('.f-stock').addEventListener('change', e=>{
+    tr.querySelector('.f-stock').addEventListener('change', async e=>{
       const stockId = e.target.value;
       row.stockId = stockId;
       if(stockId){
@@ -737,9 +838,12 @@ function renderRowsTable(){
         if(s){
           row.name = s.item;
           row.purity = s.purity;
-          row.rate = s.rate || row.rate;
-          row.gross = s.qty ? (s.gross / s.qty).toFixed(3) : s.gross;
-          row.net = s.qty ? (s.net / s.qty).toFixed(3) : s.net;
+          row.rate = s.rate || '';
+          // Stock only tracks aggregate batch weights, not per-piece weights.
+          // Leave invoice weights empty rather than implying every piece has
+          // the batch average; the seller enters the actual sold-item weights.
+          row.gross = '';
+          row.net = '';
           const match = itemsMaster.find(i=>i.name.toLowerCase() === s.item.toLowerCase());
           if(match){ row.hsn = match.hsn; row.making = match.making; }
           const avail = availableQtyFor(s, row.id);
@@ -747,21 +851,40 @@ function renderRowsTable(){
         }
       }
       renderRowsTable(); renderPreview();
+      if(!stockId) return;
+      const selectedStock = stockList.find(x=>x.id===stockId);
+      const rateAtFetchStart = row.rate;
+      try {
+        const rates = await getInvoiceMarketRates();
+        const suggestedRate = invoiceRateForStock(selectedStock, rates);
+        if(suggestedRate > 0 && row.stockId === stockId && row.rate === rateAtFetchStart){
+          row.rate = suggestedRate.toFixed(2);
+          renderRowsTable(); renderPreview();
+        }
+      } catch (_) {
+        // Keep a saved stock rate or allow manual entry when offline.
+      }
     });
     tr.querySelector('.f-hsn').addEventListener('input', e=>{ row.hsn = e.target.value; renderPreview(); });
     tr.querySelector('.f-purity').addEventListener('change', e=>{ row.purity = e.target.value; renderPreview(); });
     tr.querySelector('.f-gross').addEventListener('input', e=>{ row.gross = e.target.value; renderRowsTable(); renderPreview(); });
     tr.querySelector('.f-net').addEventListener('input', e=>{ row.net = e.target.value; renderRowsTable(); renderPreview(); });
     tr.querySelector('.f-pcs').addEventListener('input', e=>{
-      let pcs = parseInt(e.target.value)||1;
+      let pcs = e.target.value === '' ? '' : parseInt(e.target.value)||1;
       if(row.stockId){
         const s = stockList.find(x=>x.id===row.stockId);
         if(s){
           const avail = availableQtyFor(s, row.id);
-          if(pcs > avail){ toast(`Only ${avail} piece(s) of "${s.item}" left in stock`); pcs = Math.max(avail,1); }
+          if(pcs !== '' && pcs > avail){ toast(`Only ${avail} piece(s) of "${s.item}" left in stock`); pcs = Math.max(avail,1); e.target.value = pcs; }
         }
       }
       row.pcs = pcs;
+      tr.querySelector('.amount-cell').textContent = '₹'+fmt(rowAmount(row));
+      renderPreview();
+    });
+    tr.querySelector('.f-pcs').addEventListener('change', e=>{
+      row.pcs = Math.max(parseInt(e.target.value)||1, 1);
+      e.target.value = row.pcs;
       renderRowsTable(); renderPreview();
     });
     tr.querySelector('.f-rate').addEventListener('input', e=>{ row.rate = e.target.value; renderRowsTable(); renderPreview(); });
@@ -1012,16 +1135,21 @@ function renderStockTable(){
       <td>₹${fmt((parseFloat(s.net)||0)*(parseFloat(s.rate)||0))}</td>
       <td>${s.added || '—'}</td>
       <td class="actions-cell">
+        <button class="btn btn-ghost btn-sm" data-batch="${s.id}">Add Batch</button>
         <button class="btn btn-ghost btn-sm" data-edit="${s.id}">Edit</button>
         <button class="btn btn-danger btn-sm" data-del="${s.id}">Delete</button>
       </td>
     </tr>
   `).join('');
+  window.refreshTablePagination('stockTbody');
   document.getElementById('stockEmpty').style.display = stockList.length ? 'none' : 'block';
 
   tbody.querySelectorAll('[data-edit]').forEach(b=>{
     b.addEventListener('click', ()=>{
       const s = stockList.find(x=>x.id===b.dataset.edit);
+      stockBatchTargetId = null;
+      document.getElementById('st-item').readOnly = false;
+      document.getElementById('st-purity').disabled = false;
       document.getElementById('st-item').value = s.item;
       document.getElementById('st-purity').value = s.purity;
       document.getElementById('st-qty').value = s.qty;
@@ -1031,6 +1159,26 @@ function renderStockTable(){
       document.getElementById('st-edit-id').value = s.id;
       document.getElementById('stockFormTitle').textContent = 'Edit Stock Item';
       document.getElementById('btnStockSave').textContent = 'Save Changes';
+      document.getElementById('btnStockCancel').style.display = 'inline-flex';
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+  tbody.querySelectorAll('[data-batch]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const s = stockList.find(x=>x.id===b.dataset.batch);
+      if(!s) return;
+      stockBatchTargetId = s.id;
+      document.getElementById('st-edit-id').value = '';
+      document.getElementById('st-item').value = s.item;
+      document.getElementById('st-item').readOnly = true;
+      document.getElementById('st-purity').value = s.purity;
+      document.getElementById('st-purity').disabled = true;
+      document.getElementById('st-qty').value = 1;
+      document.getElementById('st-gross').value = '';
+      document.getElementById('st-net').value = '';
+      document.getElementById('st-rate').value = s.rate || '';
+      document.getElementById('stockFormTitle').textContent = 'Add Batch to ' + s.item;
+      document.getElementById('btnStockSave').textContent = '＋ Add Batch';
       document.getElementById('btnStockCancel').style.display = 'inline-flex';
       window.scrollTo({top:0, behavior:'smooth'});
     });
@@ -1048,7 +1196,10 @@ async function deleteStock(id){
 }
 
 function resetStockForm(){
+  stockBatchTargetId = null;
   document.getElementById('st-item').value='';
+  document.getElementById('st-item').readOnly = false;
+  document.getElementById('st-purity').disabled = false;
   document.getElementById('st-qty').value=1;
   document.getElementById('st-gross').value='';
   document.getElementById('st-net').value='';
@@ -1061,21 +1212,36 @@ function resetStockForm(){
 
 document.getElementById('btnStockSave').addEventListener('click', async ()=>{
   const item = document.getElementById('st-item').value.trim();
-  if(!item){ toast('Please enter an item name'); return; }
+  if(!item){ toast('Item name is required'); document.getElementById('st-item').focus(); return; }
+  const quantity = Number(document.getElementById('st-qty').value);
+  if(!Number.isInteger(quantity) || quantity < 1){ toast('Quantity is required and must be a whole number of at least 1'); document.getElementById('st-qty').focus(); return; }
+  const gross = Number(document.getElementById('st-gross').value);
+  if(!(gross > 0)){ toast('Total gross weight is required and must be greater than 0'); document.getElementById('st-gross').focus(); return; }
+  const net = Number(document.getElementById('st-net').value);
+  if(!(net > 0)){ toast('Total net weight is required and must be greater than 0'); document.getElementById('st-net').focus(); return; }
+  if(net > gross){ toast('Total net weight cannot exceed total gross weight'); document.getElementById('st-net').focus(); return; }
   const editId = document.getElementById('st-edit-id').value;
+  const batchTargetId = stockBatchTargetId;
   const data = {
-    id: editId || uid(),
+    id: editId || batchTargetId || uid(),
     item,
     purity: document.getElementById('st-purity').value,
-    qty: parseInt(document.getElementById('st-qty').value)||1,
-    gross: parseFloat(document.getElementById('st-gross').value)||0,
-    net: parseFloat(document.getElementById('st-net').value)||0,
+    qty: quantity,
+    gross,
+    net,
     rate: parseFloat(document.getElementById('st-rate').value)||0,
     added: editId ? (stockList.find(s=>s.id===editId)||{}).added : new Date().toLocaleDateString('en-IN'),
   };
   if(editId){
     stockList = stockList.map(s=>s.id===editId ? data : s);
     toast('Stock item updated');
+  }else if(batchTargetId){
+    const existing = stockList.find(s=>s.id===batchTargetId);
+    if(!existing){ toast('The selected stock row is no longer available. Refresh and try again.'); return; }
+    existing.qty = (Number(existing.qty) || 0) + data.qty;
+    existing.gross = (Number(existing.gross) || 0) + data.gross;
+    existing.net = (Number(existing.net) || 0) + data.net;
+    toast('Batch added: +' + data.qty + ' pcs, +' + fmtWt(data.gross) + ' g gross, +' + fmtWt(data.net) + ' g net');
   }else{
     stockList.push(data);
     toast('Added to stock');
@@ -1086,7 +1252,7 @@ document.getElementById('btnStockSave').addEventListener('click', async ()=>{
   renderRowsTable();
 });
 document.getElementById('btnStockCancel').addEventListener('click', resetStockForm);
-document.getElementById('stockSearch').addEventListener('input', renderStockTable);
+document.getElementById('stockSearch').addEventListener('input', () => { window._tablePaginationState.stockTbody.page = 1; renderStockTable(); });
 
 /* ================= ITEMS PAGE ================= */
 function renderItemsMasterTable(){
@@ -1107,6 +1273,7 @@ function renderItemsMasterTable(){
       </td>
     </tr>
   `).join('');
+  window.refreshTablePagination('itemsMasterTbody');
   document.getElementById('itemsEmpty').style.display = itemsMaster.length ? 'none' : 'block';
 
   tbody.querySelectorAll('[data-edit]').forEach(b=>{
@@ -1150,14 +1317,18 @@ function resetItemForm(){
 
 document.getElementById('btnItemSave').addEventListener('click', async ()=>{
   const name = document.getElementById('it-name').value.trim();
-  if(!name){ toast('Please enter an item name'); return; }
+  if(!name){ toast('Item name is required'); document.getElementById('it-name').focus(); return; }
+  const hsn = document.getElementById('it-hsn').value.trim();
+  if(!hsn){ toast('HSN code is required'); document.getElementById('it-hsn').focus(); return; }
+  const makingValue = Number(document.getElementById('it-making').value);
+  if(!Number.isFinite(makingValue) || makingValue < 0){ toast('Default making charge is required and cannot be negative'); document.getElementById('it-making').focus(); return; }
   const editId = document.getElementById('it-edit-id').value;
   const data = {
     id: editId || uid(),
     name,
-    hsn: document.getElementById('it-hsn').value.trim() || '7113',
+    hsn,
     category: document.getElementById('it-category').value,
-    making: parseFloat(document.getElementById('it-making').value)||0,
+    making: makingValue,
     purity: document.getElementById('it-purity').value,
   };
   if(editId){
@@ -1172,7 +1343,7 @@ document.getElementById('btnItemSave').addEventListener('click', async ()=>{
   renderItemsMasterTable(); renderItemsDatalist();
 });
 document.getElementById('btnItemCancel').addEventListener('click', resetItemForm);
-document.getElementById('itemSearch').addEventListener('input', renderItemsMasterTable);
+document.getElementById('itemSearch').addEventListener('input', () => { window._tablePaginationState.itemsMasterTbody.page = 1; renderItemsMasterTable(); });
 
 /* ================= CONFIRM MODAL ================= */
 let pendingDelete = null;
