@@ -1211,6 +1211,8 @@ function resetStockForm(){
 }
 
 document.getElementById('btnStockSave').addEventListener('click', async ()=>{
+  const saveButton = document.getElementById('btnStockSave');
+  if(saveButton.disabled) return;
   const item = document.getElementById('st-item').value.trim();
   if(!item){ toast('Item name is required'); document.getElementById('st-item').focus(); return; }
   const quantity = Number(document.getElementById('st-qty').value);
@@ -1230,26 +1232,46 @@ document.getElementById('btnStockSave').addEventListener('click', async ()=>{
     gross,
     net,
     rate: parseFloat(document.getElementById('st-rate').value)||0,
-    added: editId ? (stockList.find(s=>s.id===editId)||{}).added : new Date().toLocaleDateString('en-IN'),
+    added: new Date().toLocaleDateString('en-IN'),
   };
-  if(editId){
-    stockList = stockList.map(s=>s.id===editId ? data : s);
-    toast('Stock item updated');
-  }else if(batchTargetId){
-    const existing = stockList.find(s=>s.id===batchTargetId);
-    if(!existing){ toast('The selected stock row is no longer available. Refresh and try again.'); return; }
-    existing.qty = (Number(existing.qty) || 0) + data.qty;
-    existing.gross = (Number(existing.gross) || 0) + data.gross;
-    existing.net = (Number(existing.net) || 0) + data.net;
-    toast('Batch added: +' + data.qty + ' pcs, +' + fmtWt(data.gross) + ' g gross, +' + fmtWt(data.net) + ' g net');
-  }else{
-    stockList.push(data);
-    toast('Added to stock');
+  const originalLabel = saveButton.textContent;
+  saveButton.disabled = true;
+  saveButton.textContent = 'Saving…';
+  try{
+    // Refresh before writing so an old page state cannot overwrite newer stock,
+    // and only report success after the encrypted JSON store confirms the save.
+    const saved = await window.storage.get('stock-list');
+    const latestStock = saved ? JSON.parse(saved.value || '[]') : [];
+    if(!Array.isArray(latestStock)) throw new Error('Saved stock data is not in the expected format.');
+    const nextStock = latestStock.map(stock => ({...stock}));
+    if(editId){
+      const index = nextStock.findIndex(stock=>stock.id===editId);
+      if(index < 0) throw new Error('This stock item is no longer available. Refresh the app and try again.');
+      data.added = nextStock[index].added || data.added;
+      nextStock[index] = data;
+    }else if(batchTargetId){
+      const existing = nextStock.find(stock=>stock.id===batchTargetId);
+      if(!existing) throw new Error('The selected stock row is no longer available. Refresh the app and try again.');
+      existing.qty = (Number(existing.qty) || 0) + data.qty;
+      existing.gross = (Number(existing.gross) || 0) + data.gross;
+      existing.net = (Number(existing.net) || 0) + data.net;
+    }else{
+      nextStock.push(data);
+    }
+    await window.storage.set('stock-list', JSON.stringify(nextStock), false);
+    stockList = nextStock;
+    resetStockForm();
+    renderStockTable(); renderStockStats();
+    renderRowsTable();
+    if(editId) toast('Stock item updated');
+    else if(batchTargetId) toast('Batch added: +' + data.qty + ' pcs, +' + fmtWt(data.gross) + ' g gross, +' + fmtWt(data.net) + ' g net');
+    else toast('Added to stock');
+  }catch(error){
+    showAppMessage('Stock could not be saved. Your existing stock was left unchanged. ' + (error.message || ''), 'error');
+  }finally{
+    saveButton.disabled = false;
+    if(saveButton.textContent === 'Saving…') saveButton.textContent = originalLabel;
   }
-  await storeSet('stock-list', stockList);
-  resetStockForm();
-  renderStockTable(); renderStockStats();
-  renderRowsTable();
 });
 document.getElementById('btnStockCancel').addEventListener('click', resetStockForm);
 document.getElementById('stockSearch').addEventListener('input', () => { window._tablePaginationState.stockTbody.page = 1; renderStockTable(); });
