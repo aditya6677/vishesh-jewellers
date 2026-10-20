@@ -217,6 +217,12 @@
   }
   .stat-card .lbl{font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); opacity:0.85;}
   .stat-card .val{font-family:var(--font-display); font-size:30px; font-weight:700; color:var(--ivory); margin-top:4px;}
+  .stat-card .val.stock-summary{font-family:var(--font-sans);font-size:inherit;margin-top:10px;}
+  .stock-weight-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .stock-weight-item{min-width:0;}
+  .stock-weight-item span{display:block;color:var(--ivory-3);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+  .stock-weight-item strong{display:block;margin-top:3px;color:var(--ivory);font-family:var(--font-display);font-size:20px;line-height:1.2;white-space:nowrap;}
+  .stock-entry-count{display:block;margin-top:9px;color:var(--ivory-3);font-size:11px;font-weight:400;}
 
   .toolbar{display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
   .search-box{position:relative; flex:1; min-width:220px; max-width:340px;}
@@ -380,7 +386,7 @@
             <table class="itable" id="itemsTable">
               <thead>
                 <tr>
-                  <th>Item</th><th>From Stock *</th><th>HSN</th><th>Purity</th><th>Gross Wt (g) *</th><th>Net Wt (g) *</th>
+                  <th>Item</th><th>From Stock *</th><th>HSN</th><th>Purity</th><th>Gross Wt (g) · total *</th><th>Net Wt (g) · total *</th>
                   <th>Pcs *</th><th>Rate (₹/g) *</th><th>Making %</th><th>Amount (₹)</th><th></th>
                 </tr>
               </thead>
@@ -903,8 +909,7 @@ function rowAmount(r){
   const net = parseFloat(r.net)||0;
   const rate = parseFloat(r.rate)||0;
   const making = parseFloat(r.making)||0;
-  const pcs = parseInt(r.pcs)||1;
-  return net * pcs * rate * (1 + making/100);
+  return net * rate * (1 + making/100);
 }
 
 function computeTotals(){
@@ -952,8 +957,8 @@ function renderPreview(){
       <td>${escapeHtml(r.name)||'—'}</td>
       <td class="num">${escapeHtml(r.hsn)}</td>
       <td>${r.purity}</td>
-      <td class="num">${fmtWt((parseFloat(r.gross)||0)*(parseInt(r.pcs)||1))}</td>
-      <td class="num">${fmtWt((parseFloat(r.net)||0)*(parseInt(r.pcs)||1))}</td>
+      <td class="num">${fmtWt(parseFloat(r.gross)||0)}</td>
+      <td class="num">${fmtWt(parseFloat(r.net)||0)}</td>
       <td class="num">${parseInt(r.pcs)||1}</td>
       <td class="num">${fmt(r.rate)}</td>
       <td class="num">${fmt(r.making)}%</td>

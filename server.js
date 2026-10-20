@@ -130,13 +130,15 @@ function applyWeightOnlyStockFlow(html) {
     "  const goldStock = stockList.filter(stock => stock.purity !== 'Silver');",
     "  const silverStock = stockList.filter(stock => stock.purity === 'Silver');",
     '  const updateCard = (valueId, label, entries) => {',
-    '    const weight = entries.reduce((sum, entry) => sum + (parseFloat(entry.gross)||0), 0);',
+    '    const gross = entries.reduce((sum, entry) => sum + (parseFloat(entry.gross)||0), 0);',
+    '    const net = entries.reduce((sum, entry) => sum + (parseFloat(entry.net)||0), 0);',
     '    const value = document.getElementById(valueId);',
     '    value.previousElementSibling.textContent = label;',
-    "    value.innerHTML = fmtWt(weight) + ' g <small>' + entries.length + ' entries</small>';",
+    "    value.classList.add('stock-summary');",
+    "    value.innerHTML = '<div class=\"stock-weight-pair\"><div class=\"stock-weight-item\"><span>Gross</span><strong>' + fmtWt(gross) + ' g</strong></div><div class=\"stock-weight-item\"><span>Net</span><strong>' + fmtWt(net) + ' g</strong></div></div><small class=\"stock-entry-count\">' + entries.length + ' ' + (entries.length === 1 ? 'item' : 'items') + '</small>';",
     '  };',
-    "  updateCard('stat-count', 'Gold Entries', goldStock);",
-    "  updateCard('stat-weight', 'Silver Entries', silverStock);",
+    "  updateCard('stat-count', 'Gold Stock', goldStock);",
+    "  updateCard('stat-weight', 'Silver Stock', silverStock);",
     '}',
     '',
     'function renderStockTable()'
@@ -1158,8 +1160,9 @@ if ('serviceWorker' in navigator) {
       const stock = stockList.find(stockItem => String(stockItem.id) === String(item.stockId));
       const pcs = Number(item.pcs) || 1;
       stock.qty = (Number(stock.qty) || 0) + pcs;
-      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0) * pcs;
-      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0) * pcs;
+      const weightMultiplier = record.weightMode === 'line-total' ? 1 : pcs;
+      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0) * weightMultiplier;
+      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0) * weightMultiplier;
     });
     const oldMetalEntries = await getOldGold();
     const reversals = oldMetalEntries.filter(entry => entry.invoice === record.number && ['Invoice exchange', 'Gold settlement', 'Silver settlement'].includes(entry.source));
@@ -1222,7 +1225,7 @@ if ('serviceWorker' in navigator) {
   const editInvoiceModal = document.createElement('div');
   editInvoiceModal.id = 'editInvoiceModal';
   editInvoiceModal.className = 'modal-backdrop';
-  editInvoiceModal.innerHTML = '<div class="modal" style="max-width:980px; max-height:92vh; overflow:auto;"><div class="toolbar"><h3 style="margin:0;">Edit Invoice</h3><button class="btn btn-ghost btn-sm" id="closeEditInvoice">Close</button></div><p class="void-modal-note">Update this active invoice completely. Saving recalculates totals and safely reconciles stock and exchanged metal.</p><div class="form-grid"><div class="field"><label>Invoice date *</label><input id="editInvoiceDate" type="date"></div><div class="field"><label>Customer name *</label><input id="editInvoiceCustomer" type="text"></div><div class="field"><label>Mobile number</label><input id="editInvoiceMobile" type="tel"></div><div class="field"><label>Address</label><input id="editInvoiceAddress" type="text"></div></div><div class="field" style="margin-top:14px;"><label>Terms &amp; conditions</label><textarea id="editInvoiceTerms" style="min-height:70px;"></textarea></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Items</h4><button class="btn btn-ghost btn-sm" id="addEditItem" type="button">+ Add item</button></div><div class="items-table-wrap"><table class="itable"><thead><tr><th>From stock</th><th>Item</th><th>Purity</th><th>Gross Wt (g)</th><th>Net Wt (g)</th><th>Pcs</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount</th><th></th></tr></thead><tbody id="editInvoiceItems"></tbody></table></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Gold / Silver Exchange</h4><button class="btn btn-ghost btn-sm" id="addEditExchange" type="button">+ Add exchange item</button></div><div id="editInvoiceExchangeRows" class="exchange-rows"></div><div class="form-grid" style="margin-top:18px;"><div class="field"><label>Manual discount (₹)</label><input id="editInvoiceDiscount" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>GST rate</label><select id="editInvoiceGst"><option value="3">3% (CGST + SGST)</option><option value="0">0% (Exempt)</option></select></div><div class="field"><label>Amount paid at invoice (₹)</label><input id="editInvoicePaid" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>Revised total</label><div class="payment-balance" id="editInvoiceTotal">₹0.00</div></div></div><div class="record-info-grid" style="margin:14px 0 0;"><div class="record-info"><b>Items subtotal</b><span id="editInvoiceSubtotal">₹0.00</span></div><div class="record-info"><b>Exchange credit</b><span id="editInvoiceExchange">₹0.00</span></div><div class="record-info"><b>Amount due</b><span class="due-amount" id="editInvoiceDue">₹0.00</span></div></div><div class="btn-row" style="margin-top:20px;"><button class="btn btn-gold" id="saveInvoiceEdit">Save Revised Invoice</button><button class="btn btn-ghost" id="cancelInvoiceEdit">Cancel</button></div></div>';
+  editInvoiceModal.innerHTML = '<div class="modal" style="max-width:980px; max-height:92vh; overflow:auto;"><div class="toolbar"><h3 style="margin:0;">Edit Invoice</h3><button class="btn btn-ghost btn-sm" id="closeEditInvoice">Close</button></div><p class="void-modal-note">Update this active invoice completely. Weights are totals for the line; PCS only affects stock quantity. Saving recalculates totals and safely reconciles stock and exchanged metal.</p><div class="form-grid"><div class="field"><label>Invoice date *</label><input id="editInvoiceDate" type="date"></div><div class="field"><label>Customer name *</label><input id="editInvoiceCustomer" type="text"></div><div class="field"><label>Mobile number</label><input id="editInvoiceMobile" type="tel"></div><div class="field"><label>Address</label><input id="editInvoiceAddress" type="text"></div></div><div class="field" style="margin-top:14px;"><label>Terms &amp; conditions</label><textarea id="editInvoiceTerms" style="min-height:70px;"></textarea></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Items</h4><button class="btn btn-ghost btn-sm" id="addEditItem" type="button">+ Add item</button></div><div class="items-table-wrap"><table class="itable"><thead><tr><th>From stock</th><th>Item</th><th>Purity</th><th>Gross Wt (g) · total</th><th>Net Wt (g) · total</th><th>Pcs</th><th>Rate (₹/g)</th><th>Making %</th><th>Amount</th><th></th></tr></thead><tbody id="editInvoiceItems"></tbody></table></div><div class="toolbar" style="margin-top:20px;"><h4 style="margin:0;">Gold / Silver Exchange</h4><button class="btn btn-ghost btn-sm" id="addEditExchange" type="button">+ Add exchange item</button></div><div id="editInvoiceExchangeRows" class="exchange-rows"></div><div class="form-grid" style="margin-top:18px;"><div class="field"><label>Manual discount (₹)</label><input id="editInvoiceDiscount" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>GST rate</label><select id="editInvoiceGst"><option value="3">3% (CGST + SGST)</option><option value="0">0% (Exempt)</option></select></div><div class="field"><label>Amount paid at invoice (₹)</label><input id="editInvoicePaid" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>Revised total</label><div class="payment-balance" id="editInvoiceTotal">₹0.00</div></div></div><div class="record-info-grid" style="margin:14px 0 0;"><div class="record-info"><b>Items subtotal</b><span id="editInvoiceSubtotal">₹0.00</span></div><div class="record-info"><b>Exchange credit</b><span id="editInvoiceExchange">₹0.00</span></div><div class="record-info"><b>Amount due</b><span class="due-amount" id="editInvoiceDue">₹0.00</span></div></div><div class="btn-row" style="margin-top:20px;"><button class="btn btn-gold" id="saveInvoiceEdit">Save Revised Invoice</button><button class="btn btn-ghost" id="cancelInvoiceEdit">Cancel</button></div></div>';
   document.body.appendChild(editInvoiceModal);
   document.querySelector('#editInvoiceGst option[value="3"]').textContent = 'GST Invoice — 3%';
   document.querySelector('#editInvoiceGst option[value="0"]').textContent = 'Non-GST Invoice — No GST charged';
@@ -1230,7 +1233,7 @@ if ('serviceWorker' in navigator) {
   let editInvoiceState = { items: [], exchanges: [], stock: [], record: null };
   const closeEditInvoiceModal = () => { editInvoiceModal.classList.remove('open'); activeEditInvoiceIndex = null; };
   const editMoney = value => money(Number(value) || 0);
-  const editItemAmount = item => (Number(item.net) || 0) * (Number(item.pcs) || 1) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
+  const editItemAmount = item => (Number(item.net) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
   const editInitialPaidFor = record => {
     if (Number.isFinite(Number(record.initialPaid))) return Number(record.initialPaid);
     const payments = Array.isArray(record.payments) ? record.payments : [];
@@ -1274,7 +1277,11 @@ if ('serviceWorker' in navigator) {
     editInvoiceState.record = record;
     const exchanges = Array.isArray(record.exchanges) ? record.exchanges : record.exchange ? [record.exchange] : [];
     const totalExchange = exchanges.reduce((sum, entry) => sum + (Number(entry.value) || (Number(entry.weight) || 0) * (Number(entry.rate) || 0)), 0);
-    editInvoiceState.items = ((record.status === 'pending' ? record.orderItems : record.soldItems) || []).map((item, itemIndex) => Object.assign({ lineId: item.lineId || ('edit-' + itemIndex), hsn: item.hsn || '' }, item));
+    editInvoiceState.items = ((record.status === 'pending' ? record.orderItems : record.soldItems) || []).map((item, itemIndex) => {
+      const pcs = Number(item.pcs) || 1;
+      const multiplier = record.weightMode === 'line-total' ? 1 : pcs;
+      return Object.assign({ lineId: item.lineId || ('edit-' + itemIndex), hsn: item.hsn || '' }, item, { gross: (Number(item.gross) || 0) * multiplier, net: (Number(item.net) || 0) * multiplier });
+    });
     editInvoiceState.exchanges = exchanges.map(entry => ({ metal: entry.metal === 'silver' ? 'silver' : 'gold', weight: Number(entry.weight) || 0, rate: Number(entry.rate) || 0 }));
     document.getElementById('editInvoiceDate').value = record.invoiceDate || (record.savedAt ? record.savedAt.slice(0, 10) : '');
     document.getElementById('editInvoiceCustomer').value = record.customer || '';
@@ -1356,14 +1363,15 @@ if ('serviceWorker' in navigator) {
       let stock = stockList.find(entry => entry.id === item.stockId);
       if (!stock) { stock = { id: item.stockId, item: item.name || 'Restored item', purity: item.purity || '', qty: 1, gross: 0, net: 0, added: 'Restored from ' + record.number }; stockList.push(stock); }
       stock.qty = (Number(stock.qty) || 0) + (Number(item.pcs) || 1);
-      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0) * (Number(item.pcs) || 1);
-      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0) * (Number(item.pcs) || 1);
+      const weightMultiplier = record.weightMode === 'line-total' ? 1 : (Number(item.pcs) || 1);
+      stock.gross = (Number(stock.gross) || 0) + (Number(item.gross) || 0) * weightMultiplier;
+      stock.net = (Number(stock.net) || 0) + (Number(item.net) || 0) * weightMultiplier;
     });
     const requested = new Map();
     items.forEach(item => {
       const requestedItem = requested.get(item.stockId) || { gross: 0, net: 0, pcs: 0, name: item.name };
       const pcs = Number(item.pcs) || 1;
-      requestedItem.pcs += pcs; requestedItem.gross += (Number(item.gross) || 0) * pcs; requestedItem.net += (Number(item.net) || 0) * pcs; requested.set(item.stockId, requestedItem);
+      requestedItem.pcs += pcs; requestedItem.gross += Number(item.gross) || 0; requestedItem.net += Number(item.net) || 0; requested.set(item.stockId, requestedItem);
     });
     for (const [stockId, requestedItem] of requested) {
       const stock = stockList.find(entry => entry.id === stockId);
@@ -1378,6 +1386,7 @@ if ('serviceWorker' in navigator) {
     record.mobile = mobile;
     record.address = address;
     record.terms = terms;
+    record.weightMode = 'line-total';
     record.soldItems = items.map((item, itemIndex) => Object.assign({}, item, { lineId: item.lineId || ('edit-' + itemIndex) }));
     if (record.status === 'pending') {
       record.status = 'completed';
@@ -1406,7 +1415,7 @@ if ('serviceWorker' in navigator) {
       setText('#p-cust-name', customer); setText('#p-cust-address', [address, mobile ? 'Mob: ' + mobile : ''].filter(Boolean).join(' · ')); setText('#p-date', displayDate);
       setText('#p-terms', terms);
       const body = paper.querySelector('#p-items-body');
-      if (body) body.innerHTML = items.map((item, itemIndex) => { const pcs = Number(item.pcs) || 1; return '<tr><td>' + (itemIndex + 1) + '</td><td>' + safe(item.name) + '</td><td class="num">' + safe(item.hsn || '') + '</td><td>' + safe(item.purity) + '</td><td class="num">' + ((Number(item.gross) || 0) * pcs).toFixed(3) + '</td><td class="num">' + ((Number(item.net) || 0) * pcs).toFixed(3) + '</td><td class="num">' + pcs + '</td><td class="num">' + (Number(item.rate) || 0).toFixed(2) + '</td><td class="num">' + (Number(item.making) || 0).toFixed(2) + '%</td><td class="num">' + editItemAmount(item).toFixed(2) + '</td></tr>'; }).join('');
+      if (body) body.innerHTML = items.map((item, itemIndex) => { const pcs = Number(item.pcs) || 1; return '<tr><td>' + (itemIndex + 1) + '</td><td>' + safe(item.name) + '</td><td class="num">' + safe(item.hsn || '') + '</td><td>' + safe(item.purity) + '</td><td class="num">' + (Number(item.gross) || 0).toFixed(3) + '</td><td class="num">' + (Number(item.net) || 0).toFixed(3) + '</td><td class="num">' + pcs + '</td><td class="num">' + (Number(item.rate) || 0).toFixed(2) + '</td><td class="num">' + (Number(item.making) || 0).toFixed(2) + '%</td><td class="num">' + editItemAmount(item).toFixed(2) + '</td></tr>'; }).join('');
       const totalsPanel = paper.querySelector('#p-totals');
       if (totalsPanel) totalsPanel.innerHTML = '<div class="tl"><span>Total</span><b>' + editMoney(totals.subtotal) + '</b></div><div class="tl"><span>Exchange / Discount</span><b>' + editMoney(totals.exchange + totals.discount) + '</b></div><div class="tl"><span>CGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="tl"><span>SGST ' + (totals.gstRate / 2) + '%</span><b>' + editMoney(totals.tax / 2) + '</b></div><div class="gt"><span>Grand Total</span><b>' + editMoney(totals.total) + '</b></div>';
       const words = paper.querySelector('#p-words'); if (words && typeof numToWords === 'function') words.textContent = totals.total > 0 ? 'Rs. ' + numToWords(totals.total) + ' Only' : '';
@@ -1465,7 +1474,7 @@ if ('serviceWorker' in navigator) {
   };
   const calculateReturnAmount = record => {
     const items = returnableItems(record);
-    const originalBase = (record.soldItems || []).reduce((sum, item) => sum + (Number(item.net) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100), 0);
+    const originalBase = (record.soldItems || []).reduce((sum, item) => sum + (Number(item.net) || 0) * (record.weightMode === 'line-total' ? 1 : (Number(item.pcs) || 1)) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100), 0);
     const returnedBase = items.reduce((sum, item, index) => {
       const input = document.querySelector('[data-return-index="' + index + '"]');
       return sum + (Number(input && input.value) || 0) * (Number(item.rate) || 0) * (1 + (Number(item.making) || 0) / 100);
@@ -2202,6 +2211,7 @@ if ('serviceWorker' in navigator) {
     return {
       number: document.getElementById('inv-no').value || '—',
       date: document.getElementById('p-date').textContent || '—',
+      weightMode: 'line-total',
       invoiceDate: document.getElementById('inv-date').value || '',
       status,
       customer: document.getElementById('cust-name').value || 'Walk-in customer',
