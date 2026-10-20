@@ -105,6 +105,38 @@
     background:rgba(0,0,0,0.22); color:var(--ivory); font-size:14px; outline:none;
     transition:border .2s, box-shadow .2s;
   }
+  select{
+    appearance:none;-webkit-appearance:none;color-scheme:dark;cursor:pointer;padding-right:32px;
+    background-color:var(--charcoal-2);
+    background-image:linear-gradient(45deg,transparent 50%,var(--gold-light) 50%),linear-gradient(135deg,var(--gold-light) 50%,transparent 50%);
+    background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px;background-repeat:no-repeat;
+  }
+  select:hover{border-color:rgba(198,154,58,0.65);}
+  select option{background-color:var(--charcoal-2);color:var(--ivory);}
+  select option:checked{background-color:var(--charcoal-3);color:var(--gold-pale);}
+  select:disabled{opacity:.65;cursor:not-allowed;}
+  .app-select-control{position:relative;display:block;width:100%;min-width:0;}
+  .app-select-control.is-compact{display:inline-flex;width:auto;min-width:68px;}
+  .app-select-native{position:absolute!important;width:1px!important;height:1px!important;min-width:0!important;padding:0!important;margin:0!important;border:0!important;opacity:0!important;pointer-events:none!important;}
+  .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:38px;padding:9px 11px;border:1px solid rgba(198,154,58,.34);border-radius:7px;background:linear-gradient(145deg,#2A2217,#211A12);color:var(--ivory);font-family:var(--font-ui);font-size:14px;text-align:left;transition:border .2s,box-shadow .2s;}
+  .app-select-trigger:hover,.app-select-trigger[aria-expanded="true"]{border-color:rgba(198,154,58,.7);}
+  .app-select-trigger:focus-visible{outline:none;border-color:var(--gold-light);box-shadow:0 0 0 3px rgba(198,154,58,.16);}
+  .app-select-trigger:disabled{opacity:.58;cursor:not-allowed;}
+  .app-select-trigger .app-select-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .app-select-trigger .app-select-chevron{flex:0 0 auto;width:8px;height:8px;border-right:1.5px solid var(--gold-light);border-bottom:1.5px solid var(--gold-light);transform:rotate(45deg) translateY(-2px);transition:transform .16s;}
+  .app-select-trigger[aria-expanded="true"] .app-select-chevron{transform:rotate(225deg) translate(-1px,-1px);}
+  .app-select-control.is-compact .app-select-trigger{width:auto;min-width:68px;min-height:32px;padding:6px 28px 6px 9px;font-size:12px;}
+  .app-select-control.is-compact .app-select-chevron{position:absolute;right:11px;}
+  .app-select-menu{position:fixed;z-index:1100;display:none;width:min(360px,calc(100vw - 24px));max-height:min(340px,55vh);padding:7px;background:#1E1811;border:1px solid rgba(198,154,58,.42);border-radius:10px;box-shadow:0 16px 38px rgba(0,0,0,.52);}
+  .app-select-filter{width:100%;margin:0 0 6px;padding:8px 10px;border:1px solid rgba(198,154,58,.28);border-radius:6px;background:#2A2217;color:var(--ivory);font:12px var(--font-ui);}
+  .app-select-options{overflow:auto;max-height:min(290px,48vh);}
+  .app-select-option{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:9px 10px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ivory);font:12.5px var(--font-ui);text-align:left;}
+  .app-select-option:hover,.app-select-option:focus-visible{outline:none;background:rgba(198,154,58,.09);border-color:rgba(198,154,58,.2);}
+  .app-select-option.is-selected{background:#3A3020;color:var(--gold-pale);}
+  .app-select-option:disabled{opacity:.45;cursor:not-allowed;}
+  .app-select-empty{padding:12px 10px;color:var(--ivory-3);font-size:12px;}
+  table.itable .app-select-trigger{min-height:30px;padding:6px 26px 6px 7px;font-size:12.5px;}
+  .table-pagination .app-select-control{width:auto;}
   input:focus, textarea:focus, select:focus{border-color:var(--gold-light); box-shadow:0 0 0 3px rgba(198,154,58,0.18);}
   textarea{resize:vertical; min-height:56px;}
   .row{display:grid; gap:12px;}
@@ -142,6 +174,7 @@
   }
   table.itable td{padding:6px 6px; border-bottom:1px solid rgba(255,255,255,0.06); vertical-align:middle;}
   table.itable input, table.itable select{padding:6px 7px; font-size:12.5px;}
+  table.itable select{padding-right:24px;}
   table.itable input[type=number]{width:78px;}
   table.itable input[readonly]{background:rgba(198,154,58,0.08); color:var(--gold-pale); cursor:not-allowed;}
   table.itable .name-cell{min-width:140px;}
@@ -223,6 +256,15 @@
   .stock-weight-item span{display:block;color:var(--ivory-3);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
   .stock-weight-item strong{display:block;margin-top:3px;color:var(--ivory);font-family:var(--font-display);font-size:20px;line-height:1.2;white-space:nowrap;}
   .stock-entry-count{display:block;margin-top:9px;color:var(--ivory-3);font-size:11px;font-weight:400;}
+  table.itable input.f-stock-search{display:block;width:100%;min-width:145px;padding:7px 9px;font-size:11.5px;background:#2A2217;color:#FAF5E7;border:1px solid rgba(198,154,58,0.38);border-radius:6px;box-shadow:none;}
+  table.itable input.f-stock-search::placeholder{color:#C6B78F;opacity:.8;}
+  table.itable input.f-stock-search:focus{background:#2A2217;color:#FAF5E7;border-color:#C69A3A;outline:none;box-shadow:0 0 0 2px rgba(198,154,58,0.16);}
+  .stock-picker-menu{position:fixed;z-index:1000;display:none;max-height:min(320px,45vh);overflow:auto;padding:5px;background:#1E1811;border:1px solid rgba(198,154,58,.42);border-radius:9px;box-shadow:0 14px 32px rgba(0,0,0,.48);}
+  .stock-picker-option{display:block;width:100%;padding:9px 10px;text-align:left;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--ivory);}
+  .stock-picker-option:hover,.stock-picker-option:focus-visible{background:rgba(198,154,58,.10);border-color:rgba(198,154,58,.24);outline:none;}
+  .stock-picker-option .stock-option-name{display:block;font-size:12px;font-weight:600;}
+  .stock-picker-option .stock-option-meta{display:block;margin-top:3px;color:var(--ivory-3);font-size:10px;}
+  .stock-picker-empty{padding:12px 10px;color:var(--ivory-3);font-size:12px;}
 
   .toolbar{display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
   .search-box{position:relative; flex:1; min-width:220px; max-width:340px;}
@@ -795,22 +837,87 @@ function invoiceRateForStock(stock, rates){
   return (Number(rates.goldPerGram) || 0) * Math.min(Math.max(factor, 0), 1);
 }
 
-function stockOptionsHtml(selectedId, rowId){
+function stockOptionsHtml(selectedId, rowId, searchTerm=''){
+  const search = String(searchTerm).trim().toLowerCase();
   const opts = ['<option value="">— manual entry (no stock deduction) —</option>'];
   stockList.forEach(s=>{
     const avail = availableQtyFor(s, rowId);
     if(avail <= 0 && s.id !== selectedId) return;
+    if(search && !`${s.item} ${s.purity} ${s.id} ${avail}`.toLowerCase().includes(search) && s.id !== selectedId) return;
     opts.push(`<option value="${s.id}" ${s.id===selectedId?'selected':''}>${escapeHtml(s.item)} · ${s.purity} · ${fmtWt(s.net)}g · ${avail} in stock</option>`);
   });
   return opts.join('');
 }
+
+function stockSearchValue(stockId, rowId){
+  const stock = stockList.find(entry=>entry.id===stockId);
+  if(!stock) return '';
+  const available = availableQtyFor(stock, rowId);
+  return `${stock.item} · ${stock.purity} · ${available} pcs · #${String(stock.id).slice(-4)}`;
+}
+
+const stockPickerMenu = document.createElement('div');
+stockPickerMenu.className = 'stock-picker-menu';
+stockPickerMenu.setAttribute('role', 'listbox');
+document.body.appendChild(stockPickerMenu);
+let activeStockPicker = null;
+
+function closeStockPicker(){
+  stockPickerMenu.style.display = 'none';
+  activeStockPicker = null;
+}
+
+function positionStockPicker(){
+  if(!activeStockPicker) return;
+  const rect = activeStockPicker.input.getBoundingClientRect();
+  const width = Math.min(Math.max(rect.width, 240), window.innerWidth - 24);
+  stockPickerMenu.style.width = width + 'px';
+  stockPickerMenu.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)) + 'px';
+  const below = window.innerHeight - rect.bottom;
+  const menuHeight = stockPickerMenu.offsetHeight;
+  stockPickerMenu.style.top = (below < menuHeight + 12 && rect.top > menuHeight + 12 ? rect.top - menuHeight - 6 : rect.bottom + 6) + 'px';
+}
+
+function showStockPicker(input, row){
+  activeStockPicker = { input, rowId: row.id };
+  const query = input.value === stockSearchValue(row.stockId, row.id) ? '' : input.value.trim().toLowerCase();
+  const matches = stockList.filter(stock=>{
+    const available = availableQtyFor(stock, row.id);
+    if(available <= 0 && stock.id !== row.stockId) return false;
+    return !query || `${stock.item} ${stock.purity} ${stock.id} ${available} ${stock.gross} ${stock.net}`.toLowerCase().includes(query);
+  });
+  stockPickerMenu.innerHTML = matches.length ? matches.map(stock=>{
+    const available = availableQtyFor(stock, row.id);
+    return `<button type="button" class="stock-picker-option" role="option" data-stock-id="${escapeHtml(stock.id)}"><span class="stock-option-name">${escapeHtml(stock.item)}</span><span class="stock-option-meta">${escapeHtml(stock.purity)} · ${available} pcs · Gross ${fmtWt(stock.gross)} g · Net ${fmtWt(stock.net)} g</span></button>`;
+  }).join('') : '<div class="stock-picker-empty">No matching stock items</div>';
+  stockPickerMenu.style.display = 'block';
+  positionStockPicker();
+}
+
+stockPickerMenu.addEventListener('pointerdown', event=>{ if(event.target.closest('.stock-picker-option')) event.preventDefault(); });
+stockPickerMenu.addEventListener('click', event=>{
+  const option = event.target.closest('.stock-picker-option');
+  if(!option || !activeStockPicker) return;
+  const row = rows.find(entry=>entry.id===activeStockPicker.rowId);
+  const stock = stockList.find(entry=>String(entry.id)===option.dataset.stockId);
+  if(!row || !stock) return closeStockPicker();
+  const input = activeStockPicker.input;
+  const select = input.closest('td').querySelector('.f-stock');
+  input.value = stockSearchValue(stock.id, row.id);
+  select.value = stock.id;
+  closeStockPicker();
+  select.dispatchEvent(new Event('change'));
+});
+document.addEventListener('pointerdown', event=>{ if(activeStockPicker && !stockPickerMenu.contains(event.target) && !event.target.classList.contains('f-stock-search')) closeStockPicker(); });
+window.addEventListener('resize', positionStockPicker);
+window.addEventListener('scroll', positionStockPicker, true);
 
 function renderRowsTable(){
   const tbody = document.getElementById('itemsTbody');
   tbody.innerHTML = rows.map(r => `
     <tr data-id="${r.id}">
       <td class="name-cell"><input type="text" list="itemNamesList" class="f-name" value="${escapeHtml(r.name)}" placeholder="Item name"></td>
-      <td style="min-width:170px;"><select class="f-stock" required>${stockOptionsHtml(r.stockId, r.id)}</select></td>
+      <td style="min-width:180px;"><input type="search" class="f-stock-search" value="${escapeHtml(stockSearchValue(r.stockId, r.id))}" placeholder="Search or select stock…" aria-label="Search or select stock item" autocomplete="off" required><select class="f-stock" hidden tabindex="-1">${stockOptionsHtml(r.stockId, r.id)}</select></td>
       <td><input type="text" class="f-hsn" value="${escapeHtml(r.hsn)}" style="width:56px;"></td>
       <td>
         <select class="f-purity">
@@ -830,6 +937,20 @@ function renderRowsTable(){
   tbody.querySelectorAll('tr').forEach(tr=>{
     const id = tr.dataset.id;
     const row = rows.find(r=>r.id===id);
+    const stockSearch = tr.querySelector('.f-stock-search');
+    const stockSelect = tr.querySelector('.f-stock');
+    stockSearch.addEventListener('focus', ()=>{ stockSearch.select(); showStockPicker(stockSearch, row); });
+    stockSearch.addEventListener('input', ()=>showStockPicker(stockSearch, row));
+    stockSearch.addEventListener('keydown', event=>{
+      if(event.key === 'Escape'){ closeStockPicker(); stockSearch.value = stockSearchValue(row.stockId, row.id); }
+      if(event.key === 'Enter' && stockPickerMenu.querySelector('.stock-picker-option')){ event.preventDefault(); stockPickerMenu.querySelector('.stock-picker-option').click(); }
+    });
+    stockSearch.addEventListener('blur', ()=>setTimeout(()=>{
+      if(document.activeElement !== stockSearch && !stockPickerMenu.contains(document.activeElement)){
+        if(activeStockPicker && activeStockPicker.input === stockSearch) closeStockPicker();
+        stockSearch.value = stockSearchValue(row.stockId, row.id);
+      }
+    }, 120));
     tr.querySelector('.f-name').addEventListener('input', e=>{
       row.name = e.target.value;
       const match = itemsMaster.find(i=>i.name.toLowerCase() === row.name.toLowerCase());
@@ -1419,6 +1540,127 @@ async function init(){
 
   await resetInvoiceForm(false);
 }
+
+/* App-themed select controls. The native selects remain as the data source so
+   existing app logic and change handlers continue to work unchanged. */
+const appSelectValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+let activeAppSelect = null;
+const appSelectMenu = document.createElement('div');
+appSelectMenu.className = 'app-select-menu';
+appSelectMenu.innerHTML = '<input class="app-select-filter" type="search" placeholder="Search options…" aria-label="Search dropdown options"><div class="app-select-options" role="listbox"></div>';
+document.body.appendChild(appSelectMenu);
+const appSelectFilter = appSelectMenu.querySelector('.app-select-filter');
+const appSelectOptions = appSelectMenu.querySelector('.app-select-options');
+
+function syncAppSelect(select){
+  const trigger = select._appSelectTrigger;
+  if(!trigger) return;
+  const option = select.options[select.selectedIndex];
+  trigger.querySelector('.app-select-value').textContent = option ? option.textContent.trim() : 'Choose an option';
+  trigger.disabled = select.disabled;
+  trigger.setAttribute('aria-required', select.required ? 'true' : 'false');
+  if(activeAppSelect && activeAppSelect.select === select) renderAppSelectOptions();
+}
+
+function closeAppSelect(){
+  if(activeAppSelect) activeAppSelect.trigger.setAttribute('aria-expanded','false');
+  activeAppSelect = null;
+  appSelectMenu.style.display = 'none';
+  appSelectFilter.value = '';
+}
+
+function positionAppSelectMenu(){
+  if(!activeAppSelect) return;
+  const rect = activeAppSelect.trigger.getBoundingClientRect();
+  const width = Math.min(Math.max(rect.width, 220), window.innerWidth - 24);
+  appSelectMenu.style.width = width + 'px';
+  appSelectMenu.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)) + 'px';
+  const roomBelow = window.innerHeight - rect.bottom;
+  const menuHeight = appSelectMenu.offsetHeight;
+  appSelectMenu.style.top = roomBelow < menuHeight + 12 && rect.top > menuHeight + 12 ? (rect.top - menuHeight - 6) + 'px' : (rect.bottom + 6) + 'px';
+}
+
+function renderAppSelectOptions(){
+  if(!activeAppSelect) return;
+  const { select } = activeAppSelect;
+  const query = appSelectFilter.value.trim().toLowerCase();
+  const options = Array.from(select.options).map((option,index)=>({option,index,group:option.parentElement?.tagName==='OPTGROUP'?option.parentElement.label:''}))
+    .filter(item=>!query || `${item.option.textContent} ${item.group}`.toLowerCase().includes(query));
+  appSelectOptions.innerHTML = options.length ? options.map(({option,index,group})=>`<button type="button" role="option" aria-selected="${option.selected}" class="app-select-option${option.selected?' is-selected':''}" data-option-index="${index}" ${option.disabled?'disabled':''}><span>${escapeHtml(option.textContent.trim())}</span>${group?`<small>${escapeHtml(group)}</small>`:''}</button>`).join('') : '<div class="app-select-empty">No matching options</div>';
+  const needsSearch = select.options.length > 7;
+  appSelectFilter.hidden = !needsSearch;
+  positionAppSelectMenu();
+}
+
+function openAppSelect(select){
+  if(select.disabled || !select._appSelectTrigger) return;
+  activeAppSelect = {select,trigger:select._appSelectTrigger};
+  activeAppSelect.trigger.setAttribute('aria-expanded','true');
+  appSelectMenu.style.display = 'block';
+  renderAppSelectOptions();
+  if(select.options.length > 7){ appSelectFilter.focus(); appSelectFilter.select(); }
+}
+
+appSelectMenu.addEventListener('pointerdown',event=>{if(event.target.closest('.app-select-option'))event.preventDefault();});
+appSelectMenu.addEventListener('click',event=>{
+  const button=event.target.closest('.app-select-option');
+  if(!button||!activeAppSelect)return;
+  const {select}=activeAppSelect;
+  const option=select.options[Number(button.dataset.optionIndex)];
+  if(!option||option.disabled)return;
+  select.value=option.value;
+  closeAppSelect();
+  select.dispatchEvent(new Event('change',{bubbles:true}));
+});
+appSelectMenu.addEventListener('keydown',event=>{if(event.key==='Escape'){const trigger=activeAppSelect?.trigger;closeAppSelect();trigger?.focus();}});
+appSelectFilter.addEventListener('input',renderAppSelectOptions);
+document.addEventListener('pointerdown',event=>{if(activeAppSelect&&!appSelectMenu.contains(event.target)&&!activeAppSelect.trigger.contains(event.target))closeAppSelect();});
+window.addEventListener('resize',positionAppSelectMenu);
+window.addEventListener('scroll',positionAppSelectMenu,true);
+
+function enhanceAppSelect(select){
+  if(select._appSelectTrigger||select.hidden||select.classList.contains('f-stock'))return;
+  const wrapper=document.createElement('div');
+  wrapper.className='app-select-control';
+  if(select.closest('.table-pagination'))wrapper.classList.add('is-compact');
+  if(select.style.width==='auto')wrapper.classList.add('is-compact');
+  if(select.style.minWidth)wrapper.style.minWidth=select.style.minWidth;
+  if(select.style.margin)wrapper.style.margin=select.style.margin;
+  select.parentNode.insertBefore(wrapper,select);
+  wrapper.appendChild(select);
+  const trigger=document.createElement('button');
+  trigger.type='button';
+  trigger.className='app-select-trigger';
+  trigger.setAttribute('aria-haspopup','listbox');
+  trigger.setAttribute('aria-expanded','false');
+  trigger.innerHTML='<span class="app-select-value"></span><span class="app-select-chevron" aria-hidden="true"></span>';
+  const label=Array.from(document.querySelectorAll('label[for]')).find(item=>item.htmlFor===select.id);
+  const adjacentLabel=select.previousElementSibling?.tagName==='LABEL'?select.previousElementSibling:null;
+  const labelText=(label||adjacentLabel)?.textContent.trim();
+  trigger.setAttribute('aria-label',select.getAttribute('aria-label')||labelText||select.id||'Choose an option');
+  if(label)label.htmlFor=trigger.id='app-select-'+(select.id||Math.random().toString(36).slice(2));
+  else trigger.id='app-select-'+(select.id||Math.random().toString(36).slice(2));
+  select.classList.add('app-select-native');
+  select.tabIndex=-1;
+  select.setAttribute('aria-hidden','true');
+  select._appSelectTrigger=trigger;
+  wrapper.insertBefore(trigger,select);
+  const sync=()=>syncAppSelect(select);
+  select.addEventListener('change',sync);
+  new MutationObserver(sync).observe(select,{childList:true,subtree:true,attributes:true,attributeFilter:['selected','disabled']});
+  const nativeValue=appSelectValue;
+  Object.defineProperty(select,'value',{configurable:true,get(){return nativeValue.get.call(this);},set(value){nativeValue.set.call(this,value);sync();}});
+  trigger.addEventListener('click',()=>{sync();activeAppSelect?.select===select?closeAppSelect():openAppSelect(select);});
+  trigger.addEventListener('keydown',event=>{if(event.key==='ArrowDown'){event.preventDefault();openAppSelect(select);if(select.options.length>7)appSelectFilter.focus();else appSelectOptions.querySelector('.app-select-option')?.focus();}});
+  sync();
+}
+
+function enhanceAppSelects(root=document){
+  if(root.matches?.('select'))enhanceAppSelect(root);
+  root.querySelectorAll?.('select').forEach(enhanceAppSelect);
+}
+enhanceAppSelects();
+new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)enhanceAppSelects(node);}))).observe(document.body,{childList:true,subtree:true});
 init();
 </script>
 </body>

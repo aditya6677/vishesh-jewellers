@@ -76,9 +76,7 @@ function applyWeightOnlyStockFlow(html) {
     '    opts.push(`<option value="${s.id}" ${s.id===selectedId?\'selected\':\'\'}>${escapeHtml(s.item)} · ${s.purity} · ${fmtWt(s.net)}g remaining</option>`);',
     '  });',
     "  return opts.join('');",
-    '}',
-    '',
-    'function renderRowsTable()'
+    '}'
   ].join('\n');
   const completeSale = [
     "document.getElementById('btnCompleteSale').addEventListener('click', async ()=>{",
@@ -145,7 +143,7 @@ function applyWeightOnlyStockFlow(html) {
   ].join('\n');
   return html
     .replace(/function availableQtyFor\(stockEntry, excludingRowId\)\{[\s\S]*?\n\}\n\nfunction stockOptionsHtml/, "function availableQtyFor(stockEntry, excludingRowId){\n  return (parseFloat(stockEntry.net)||0) > 0 ? 1 : 0;\n}\n\nfunction stockOptionsHtml")
-    .replace(/function stockOptionsHtml\(selectedId, rowId\)\{[\s\S]*?\n\}\n\nfunction renderRowsTable\(\)/, stockOptions)
+    .replace(/function stockOptionsHtml\(selectedId, rowId(?:, searchTerm=['"]{2})?\)\{[\s\S]*?\n\}/, stockOptions)
     .replace('          row.gross = s.qty ? (s.gross / s.qty).toFixed(3) : s.gross;\n          row.net = s.qty ? (s.net / s.qty).toFixed(3) : s.net;', "          row.gross = '';\n          row.net = '';")
     .replace('class="f-stock">', 'class="f-stock" required>')
     .replace('class="f-name" value="${escapeHtml(r.name)}" placeholder="Item name">', 'class="f-name" value="${escapeHtml(r.name)}" placeholder="${window.orderMode ? \'Item name\' : \'Select from stock\'}" ${window.orderMode ? \'\' : \'readonly\'}>')
