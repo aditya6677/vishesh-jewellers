@@ -1,0 +1,32 @@
+
+  <section class="page" id="page-purchases">
+    <div class="page-head">
+      <p class="eyebrow">Old metal register</p>
+      <h2>Purchase</h2>
+      <p class="sub">Record old gold and silver purchases separately from fresh stock.</p>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card"><div class="lbl">Gold Purchased</div><div class="val" id="purchaseGoldWeight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Silver Purchased</div><div class="val" id="purchaseSilverWeight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Total Purchase Value</div><div class="val" id="purchaseTotalValue">₹0.00</div></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Add Old Metal Purchase</h3>
+      <form id="purchaseForm" novalidate>
+        <div class="row row-3">
+          <div class="field"><label>Metal *</label><select id="purchaseMetal" aria-required="true"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
+          <div class="field"><label>Weight (g) *</label><input type="number" id="purchaseWeight" min="0.001" step="0.001" aria-required="true" placeholder="0.000"></div>
+          <div class="field"><label>Rate per gram (₹) *</label><input type="number" id="purchaseRate" min="0.01" step="0.01" aria-required="true" placeholder="0.00"></div>
+        </div>
+        <div class="row row-2" style="align-items:end;">
+          <div class="field" style="margin-bottom:0;"><label>Calculated amount (₹)</label><div class="payment-balance" id="purchaseAmount">₹0.00</div></div>
+          <div class="btn-row" style="margin:0;"><button class="btn btn-gold" type="submit">Save Purchase</button></div>
+        </div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Purchase History</h3><span style="color:var(--ivory-3); font-size:12px;" id="purchaseCount"></span></div>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Metal</th><th>Weight</th><th>Rate / g</th><th>Amount</th><th></th></tr></thead><tbody id="purchaseTbody"></tbody></table></div>
+      <div class="empty-state" id="purchasesEmpty" style="display:none;"><div class="glyph">✦</div>No old metal purchases recorded yet.</div>
+    </div>
+  </section>

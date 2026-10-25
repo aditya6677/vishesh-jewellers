@@ -31,7 +31,11 @@ npm install
 npm run dev
 ```
 
-`nodemon` restarts the server when application code changes in `server.js` or `lib/`. Its explicit configuration ignores the entire `data/` folder, so JSON data saves do not reload the app. On Node 18+, the dependency-free alternative is `npm run watch`.
+`nodemon` restarts the server when application code changes in `server.js`, `lib/`, `source/`, or the public assets. It watches JavaScript, HTML, CSS, and JSON source files. Its explicit configuration ignores the entire `data/` folder, so JSON data saves do not reload the app. On Node 18+, the dependency-free alternative is `npm run watch` (backend JavaScript only).
+
+## Code organization and checks
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the route/service structure, menu file locations, browser initialization dependencies, and instructions for extending the app. Run `npm test` for automated checks using temporary encrypted test data.
 
 ## Code layout
 

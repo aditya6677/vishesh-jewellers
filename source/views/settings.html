@@ -1,0 +1,32 @@
+
+  <section class="page" id="page-settings">
+    <div class="page-head">
+      <p class="eyebrow">Application settings</p>
+      <h2>Settings</h2>
+      <p class="sub">Choose where the encrypted desktop data is stored on this computer.</p>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Data Location</h3>
+      <div class="record-info-grid" style="margin-bottom:18px;"><div class="record-info"><b>Current folder</b><span id="settingsDataPath" style="word-break:break-all;">Loading…</span></div><div class="record-info"><b>Protection</b><span class="paid-amount">AES-256 encrypted</span></div></div>
+      <p class="sub" style="margin:0 0 14px;">The app copies existing data to the selected folder, then restarts. The old folder is not deleted.</p>
+      <button class="btn btn-gold" id="settingsChooseData" type="button">Choose Data Folder</button>
+      <div id="settingsDataStatus" style="min-height:18px; margin-top:10px; color:var(--ivory-3); font-size:12px;"></div>
+    </div>
+    <div class="panel" style="margin-top:18px;">
+      <h3><span class="dot"></span>Encrypted Backups</h3>
+      <p class="sub" id="settingsBackupDescription">A backup is created automatically once per week when the app starts. You can also create one whenever you want or restore a previous backup. Weekly backups are saved outside the app installation folder, in Documents → Vishesh Jewellers Backups.</p>
+      <p class="sub" id="settingsBackupNote" style="margin:0 0 14px;">The business data in the backup is encrypted. Restore requires the matching app encryption key.</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-gold" id="settingsCreateBackup" type="button">Create Backup Now</button>
+        <button class="btn" id="settingsRestoreBackup" type="button">Restore Backup…</button>
+        <input id="settingsRestoreFile" type="file" accept="application/json,.json" style="display:none;">
+      </div>
+      <div id="settingsBackupStatus" style="min-height:18px; margin-top:10px; color:var(--ivory-3); font-size:12px;"></div>
+    </div>
+    <div class="panel" style="margin-top:18px;">
+      <h3><span class="dot"></span>Export All Data</h3>
+      <p class="sub">Download a readable Excel workbook with a Business Snapshot dashboard first, followed by separate sheets for invoices, invoice items, exchanges, settlements, returns, stock, item catalog, purchases, payments, and the old-metal ledger. A complete-data sheet is included as a portable reference.</p>
+      <p class="sub" style="margin:0 0 14px;">The Excel file is not encrypted and contains customer details. Store it securely.</p>
+      <button class="btn btn-gold" id="settingsExportData" type="button">↓ Export All Data to Excel</button>
+    </div>
+  </section>

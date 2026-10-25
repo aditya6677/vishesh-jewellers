@@ -1,0 +1,29 @@
+
+  <section class="page" id="page-records">
+    <div class="page-head">
+      <p class="eyebrow">Sales history</p>
+      <h2>Invoice Records</h2>
+      <p class="sub">Search by customer, mobile number, or invoice number, then export the matching invoice details as a PDF.</p>
+    </div>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search-box"><input type="text" id="recordSearch" placeholder="Search invoice number, customer, or mobile…"></div>
+        <label class="record-filter-label" for="recordStatusFilter">Status</label><select id="recordStatusFilter" aria-label="Filter invoices by status" style="width:auto;min-width:150px;margin:0;"><option value="all">All records</option><option value="due">Due</option><option value="advance">Advance</option><option value="pending">Pending delivery</option><option value="settled">Settled</option><option value="voided">Voided</option></select>
+        <button class="btn btn-ghost btn-sm" id="exportRecordsPdf" type="button">↓ Export PDF</button>
+        <span style="color:var(--ivory-3); font-size:12px; opacity:.7;" id="recordCountLabel"></span>
+      </div>
+      <div class="records-range" aria-label="Filter invoice records by date">
+        <div class="range-date"><label for="recordFrom">From</label><input id="recordFrom" type="date" aria-label="Start invoice date"></div>
+        <div class="range-date"><label for="recordTo">To</label><input id="recordTo" type="date" aria-label="End invoice date"></div>
+        <button class="btn btn-ghost btn-sm" id="clearRecordDates" type="button">Clear dates</button>
+        <span class="range-caption">Filters by invoice date</span>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Balance</th><th></th></tr></thead>
+          <tbody id="recordsTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="recordsEmpty" style="display:none;"><div class="glyph">✦</div>No completed invoices yet.</div>
+    </div>
+  </section>

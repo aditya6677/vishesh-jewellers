@@ -1,0 +1,44 @@
+  const invoiceTypeField = document.createElement('div');
+  invoiceTypeField.className = 'field';
+  invoiceTypeField.innerHTML = '<label>Invoice type</label><select id="invoiceType"><option value="sale">Ready sale — deduct stock</option><option value="pending">Pending delivery order</option></select>';
+  document.getElementById('inv-date').closest('.field').insertAdjacentElement('afterend', invoiceTypeField);
+  const pendingOrderButton = document.createElement('button');
+  pendingOrderButton.className = 'btn btn-gold';
+  pendingOrderButton.id = 'btnSavePendingOrder';
+  pendingOrderButton.type = 'button';
+  pendingOrderButton.textContent = 'Save Pending Order';
+  pendingOrderButton.style.display = 'none';
+  document.getElementById('btnCompleteSale').insertAdjacentElement('beforebegin', pendingOrderButton);
+  const updateInvoiceType = () => {
+    window.orderMode = document.getElementById('invoiceType').value === 'pending';
+    document.querySelector('#itemsTable th:nth-child(2)').textContent = window.orderMode ? 'From Stock (on delivery)' : 'From Stock *';
+    pendingOrderButton.style.display = window.orderMode ? '' : 'none';
+    document.getElementById('btnCompleteSale').style.display = window.orderMode ? 'none' : '';
+    renderRowsTable(); renderPreview(); setSaleStatus();
+    if (window.orderMode) document.getElementById('saleStatus').textContent = 'Pending delivery order: enter the requested item details. Stock will be selected and deducted only on delivery.';
+  };
+  document.getElementById('invoiceType').setAttribute('aria-required', 'true');
+  document.getElementById('invoiceType').closest('.field').querySelector('label').textContent = 'Invoice type *';
+  document.getElementById('inv-date').required = true;
+  document.getElementById('inv-date').closest('.field').querySelector('label').textContent = 'Date *';
+  document.getElementById('invoiceType').addEventListener('change', updateInvoiceType);
+  document.getElementById('btnNewInvoice').addEventListener('click', () => {
+    document.getElementById('invoiceType').value = 'sale';
+    window.orderMode = false;
+    updateInvoiceType();
+  });
+  const stockItemInput = document.getElementById('st-item');
+  stockItemInput.placeholder = 'e.g. Gold Ring or Silver Chain';
+  stockItemInput.required = true;
+  stockItemInput.closest('.field').querySelector('label').textContent = 'Item (Gold / Silver) *';
+  document.getElementById('st-purity').required = true;
+  document.getElementById('st-purity').closest('.field').querySelector('label').textContent = 'Purity *';
+  document.getElementById('st-qty').required = true;
+  document.getElementById('st-gross').required = true;
+  document.getElementById('st-net').required = true;
+  const customerNameInput = document.getElementById('cust-name');
+  customerNameInput.required = true;
+  customerNameInput.closest('.field').querySelector('label').textContent = 'Customer Name *';
+  document.querySelectorAll('#itemsTable th').forEach(header => {
+    if (['From Stock', 'Rate (₹/g)'].includes(header.textContent.trim())) header.textContent += ' *';
+  });

@@ -1,0 +1,66 @@
+
+  <section class="page" id="page-dashboard">
+    <div class="page-head">
+      <p class="eyebrow">Business overview</p>
+      <h2>Dashboard</h2>
+      <p class="sub">A quick view of sales, collections, outstanding payments, and remaining metal stock.</p>
+    </div>
+    <div class="panel" id="liveRatesPanel" style="display:none; margin-bottom:20px;">
+      <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Live Market Rates</h3><div style="display:flex; align-items:center; gap:8px;"><span style="color:var(--ivory-3); font-size:11px;" id="liveRatesUpdated"></span><button class="btn btn-ghost btn-sm live-rates-refresh" id="refreshLiveRates" type="button" title="Refresh live rates" aria-label="Refresh live rates">↻</button></div></div>
+      <div class="record-info-grid" style="margin-bottom:0;">
+        <div class="record-info"><b>Gold 24K (₹/g)</b><span class="paid-amount" id="liveGoldRate">—</span><small id="liveGoldChange" class="rate-change" hidden></small></div>
+        <div class="record-info"><b>Silver (₹/g)</b><span class="paid-amount" id="liveSilverRate">—</span><small id="liveSilverChange" class="rate-change" hidden></small></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Business Snapshot</h3>
+      <form id="dashboardRangeForm" class="snapshot-range">
+        <div class="range-date"><label for="dashboardFrom">From</label><input type="date" id="dashboardFrom"></div>
+        <div class="range-date"><label for="dashboardTo">To</label><input type="date" id="dashboardTo"></div>
+        <button class="btn btn-gold btn-sm" type="submit">Apply</button><button class="btn btn-ghost btn-sm" id="dashboardAllTime" type="button">All time</button>
+        <span id="dashboardRangeLabel" class="range-caption" aria-live="polite">All time</span>
+      </form>
+      <div class="snapshot-sections" id="dashboardSnapshot">
+        <div class="snapshot-section"><h4>Overall Sales</h4><div class="record-info-grid">
+          <div class="record-info"><b>Total Invoices</b><span id="dash-invoices">0</span></div>
+          <div class="record-info"><b>Total Collected</b><span class="paid-amount" id="dash-collected">₹0.00</span></div>
+          <div class="record-info"><b>Outstanding Due</b><span class="due-amount" id="dash-due">₹0.00</span></div>
+        </div></div>
+        <div class="snapshot-section"><h4>Cash Flow</h4><div class="record-info-grid">
+          <div class="record-info"><b>Old Metal Purchases</b><span class="due-amount" id="dash-purchases">₹0.00</span></div>
+          <div class="record-info"><b>Net after Purchases</b><span class="paid-amount" id="dash-net-collected">₹0.00</span></div>
+          <div class="record-info"><b>Cash Outflow</b><span class="due-amount" id="dash-amount-payments">₹0.00</span></div>
+          <div class="record-info"><b>Final Net Collection</b><span class="paid-amount" id="dash-final-net-collected">₹0.00</span></div>
+        </div></div>
+        <div class="snapshot-section"><h4>Today</h4><div class="record-info-grid">
+          <div class="record-info"><b>Invoices</b><span id="dash-today-invoices">0</span></div>
+          <div class="record-info"><b>Collection</b><span class="paid-amount" id="dash-today-collected">₹0.00</span></div>
+          <div class="record-info"><b>Old Metal Purchases</b><span class="due-amount" id="dash-today-purchases">₹0.00</span></div>
+          <div class="record-info"><b>Net after Purchases</b><span class="paid-amount" id="dash-today-net-collected">₹0.00</span></div>
+          <div class="record-info"><b>Cash Outflow</b><span class="due-amount" id="dash-today-amount-payments">₹0.00</span></div>
+          <div class="record-info"><b>Final Net</b><span class="paid-amount" id="dash-today-final-net-collected">₹0.00</span></div>
+          <div class="record-info"><b>Due</b><span class="due-amount" id="dash-today-due">₹0.00</span></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="dashboard-metal-grid">
+      <div class="panel">
+        <h3><span class="dot"></span>Fresh Stock Remaining</h3>
+        <div class="record-info-grid">
+          <div class="record-info"><b>Fresh Gold</b><span id="dash-gold">0.000 g</span></div>
+          <div class="record-info"><b>Fresh Silver</b><span id="dash-silver">0.000 g</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3><span class="dot"></span>Old Metal Balance</h3>
+        <div class="record-info-grid">
+          <div class="record-info"><b>Old Gold</b><span class="paid-amount" id="dash-old-gold">0.000 g</span></div>
+          <div class="record-info"><b>Old Silver</b><span class="paid-amount" id="dash-old-silver">0.000 g</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel low-stock-panel" id="lowStockPanel" style="display:none;">
+      <h3><span class="dot"></span>Low Stock Warning</h3>
+      <div class="low-stock-list" id="lowStockList"></div>
+    </div>
+  </section>

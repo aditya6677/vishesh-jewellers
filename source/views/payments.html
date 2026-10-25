@@ -1,0 +1,37 @@
+
+  <section class="page" id="page-payments">
+    <div class="page-head">
+      <p class="eyebrow">Outgoing payments</p>
+      <h2>Payment</h2>
+      <p class="sub">Record cash payments, self expenses, or metal-to-metal payments from your old Gold and Silver balance.</p>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card"><div class="lbl">Cash Outflow</div><div class="val" id="paymentCashTotal">₹0.00</div></div>
+      <div class="stat-card"><div class="lbl">Gold Used</div><div class="val" id="paymentGoldWeight">0.000 g</div></div>
+      <div class="stat-card"><div class="lbl">Silver Used</div><div class="val" id="paymentSilverWeight">0.000 g</div></div>
+    </div>
+    <div class="panel">
+      <h3><span class="dot"></span>Add Payment</h3>
+      <form id="paymentForm" novalidate>
+        <div class="row row-2">
+          <div class="field"><label>Payment type *</label><select id="paymentType" aria-required="true"><option value="amount">Amount</option><option value="self-expense">Self Expense</option><option value="metal">Metal to Metal</option></select></div>
+          <div class="field" id="paymentAmountField"><label>Amount paid (₹) *</label><input type="number" id="paymentAmountInput" min="0.01" step="0.01" aria-required="true" placeholder="0.00"></div>
+        </div>
+        <div class="field"><label>Reason (optional)</label><input type="text" id="paymentReason" placeholder="e.g. Shop electricity, supplier payment"></div>
+        <div id="paymentMetalFields" style="display:none;">
+          <div class="row row-3">
+            <div class="field"><label>Metal *</label><select id="paymentMetal" aria-required="true"><option value="gold">Gold</option><option value="silver">Silver</option></select></div>
+            <div class="field"><label>Gross weight (g) *</label><input type="number" id="paymentWeight" min="0.001" step="0.001" aria-required="true" placeholder="0.000"></div>
+            <div class="field"><label>Purity (%) *</label><input type="number" id="paymentPurity" min="0.01" max="100" step="0.01" aria-required="true" placeholder="e.g. 40"></div>
+          </div>
+          <div class="field" style="margin-bottom:0;"><label>Fine metal weight (g)</label><div class="payment-balance" id="paymentFineWeight">0.000 g</div></div>
+        </div>
+        <div class="btn-row" style="margin:18px 0 0;"><button class="btn btn-gold" type="submit">Save Payment</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="toolbar"><h3 style="margin:0;"><span class="dot"></span>Payment History</h3><span style="color:var(--ivory-3); font-size:12px;" id="paymentCount"></span></div>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Metal</th><th>Gross Wt</th><th>Purity</th><th>Fine Wt</th><th>Amount</th><th></th></tr></thead><tbody id="paymentTbody"></tbody></table></div>
+      <div class="empty-state" id="paymentsEmpty" style="display:none;"><div class="glyph">✦</div>No payments recorded yet.</div>
+    </div>
+  </section>

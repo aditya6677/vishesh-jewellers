@@ -6,6 +6,7 @@
   "main": "electron-main.js",
   "description": "Vishesh Jewellers billing and inventory app with JSON persistence",
   "scripts": {
+    "test": "node --test test/*.test.js",
     "start": "node server.js",
     "dev": "nodemon --config nodemon.json server.js",
     "watch": "node --watch server.js",
