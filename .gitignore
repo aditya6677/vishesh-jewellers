@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+public/frontend/
 
 # Private app data and secrets
 data/

@@ -3,9 +3,9 @@
 const { createApplication } = require('./lib/app');
 const { DesktopMessage } = require('./lib/domain/constants');
 
-function startServer() {
+async function startServer() {
   const app = createApplication();
-  app.initialize();
+  await app.initialize();
   app.server.listen(app.config.port, app.config.host, () => {
     const address = app.server.address();
     const activePort = typeof address === 'object' && address ? address.port : app.config.port;
@@ -16,6 +16,6 @@ function startServer() {
   return app.server;
 }
 
-if (require.main === module) startServer();
+if (require.main === module) startServer().catch(error => { console.error('Could not start the app:', error); process.exitCode = 1; });
 
 module.exports = { startServer };

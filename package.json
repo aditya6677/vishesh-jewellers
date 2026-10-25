@@ -6,7 +6,14 @@
   "main": "electron-main.js",
   "description": "Vishesh Jewellers billing and inventory app with JSON persistence",
   "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:frontend": "npm run typecheck && vite build",
+    "dev:frontend": "vite build --watch",
+    "prepackage:desktop": "npm run build:frontend",
+    "prepackage:windows": "npm run build:frontend",
+    "prepackage:all": "npm run build:frontend",
     "test": "node --test test/*.test.js",
+    "pretest": "npm run build:frontend",
     "start": "node server.js",
     "dev": "nodemon --config nodemon.json server.js",
     "watch": "node --watch server.js",
@@ -16,9 +23,13 @@
     "package:all": "electron-builder --mac dmg --win nsis"
   },
   "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "electron": "37.2.6",
     "electron-builder": "^26.0.12",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "typescript": "5.9.3",
+    "vite": "7.3.7"
   },
   "build": {
     "appId": "com.visheshjewellers.billing",
@@ -39,10 +50,23 @@
       "public/**/*",
       "assets/**/*"
     ],
-    "mac": { "target": ["dmg"] },
-    "win": { "target": ["nsis"] }
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
   },
   "engines": {
-    "node": ">=18"
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "dependencies": {
+    "fastify": "5.12.7",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   }
 }

@@ -23,7 +23,7 @@ function fixture(t) {
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const config = createConfig({
     DATA_DIR: path.join(directory, 'data'), BACKUP_DIR: path.join(directory, 'backups'),
-    DATA_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'), PORT: '0'
+    DATA_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'), PORT: '0', BACKEND_MODE: process.env.BACKEND_MODE
   });
   return { directory, config };
 }
@@ -33,7 +33,7 @@ async function runningApp(t, options = {}) {
   const store = createJsonStore(config.dataFile, { encryptionKey: config.encryptionKey });
   const errors = [];
   const app = createApplication({ config, store, desktop: { enabled: false }, logger: { error: (...args) => errors.push(args) }, ...options });
-  app.initialize();
+  await app.initialize();
   app.server.listen(0, '127.0.0.1');
   await once(app.server, 'listening');
   t.after(() => new Promise(resolve => { app.server.close(resolve); app.server.closeAllConnections(); }));
@@ -162,6 +162,52 @@ test('dashboard keeps cash, expenses, purchases, and metal settlements separate'
   assert.equal(summary.gold.sold, 10);
   assert.equal(summary.collected, 8000);
   assert.equal(summary.afterPayment, 6300);
+});
+
+test('dashboard API preserves legacy summaries and filters without changing saved data', async t => {
+  const { request, store, config } = await runningApp(t);
+  const data = {
+    [StorageKey.INVOICES]: [
+      { number: 'TEST1', status: 'completed', invoiceDate: '2026-10-01', savedAt: '2026-10-01T12:00:00Z', total: 12000, paid: 10000, due: 2000, weightMode: 'line-total', soldItems: [{ pcs: 4, net: 10, rate: 1000 }], payments: [{ method: 'amount', amount: 8000, settledAt: '2026-10-01T12:00:00Z' }, { method: 'gold', amount: 2000, settledAt: '2026-10-03T12:00:00Z' }] },
+      { number: 'TEST2', status: 'pending', invoiceDate: '2026-09-01', savedAt: '2026-09-01T12:00:00Z', total: 2000, paid: 500, due: 1500, payments: [] }
+    ],
+    [StorageKey.PURCHASES]: [{ amount: 1000, savedAt: '2026-10-02T12:00:00Z' }],
+    [StorageKey.PAYMENTS]: [{ type: 'self-expense', amount: 200, savedAt: '2026-10-03T12:00:00Z' }],
+    [StorageKey.OLD_METAL]: [{ metal: 'gold', weight: 2, value: 2000, source: 'Gold settlement', receivedAt: '2026-10-03T12:00:00Z' }],
+    [StorageKey.STOCK]: [{ purity: '22K', net: 9, gross: 10, qty: 4 }, { purity: 'Silver', net: 100, gross: 105, qty: 2 }]
+  };
+  store.write(data);
+  const before = fs.readFileSync(config.dataFile, 'utf8');
+  for (const range of [{}, { from: '2026-10-01', to: '2026-10-31' }]) {
+    const result = await (await request('/api/dashboard?' + new URLSearchParams(range))).json();
+    assert.deepEqual(result.summary, calculateDashboard(data[StorageKey.INVOICES], data[StorageKey.PURCHASES], data[StorageKey.PAYMENTS], data[StorageKey.OLD_METAL], range));
+    assert.deepEqual(result.fresh, { gold: 9, silver: 100 });
+    assert.deepEqual(result.old, { gold: 2, silver: 0 });
+  }
+  for (const query of ['from=2026-02-30', 'from=invalid', 'from=2026-10-31&to=2026-10-01']) {
+    assert.equal((await request('/api/dashboard?' + query)).status, 400);
+  }
+  assert.equal(fs.readFileSync(config.dataFile, 'utf8'), before);
+});
+
+test('React preview owns only dashboard and serves built assets; original remains available', async t => {
+  const { request } = await runningApp(t);
+  const legacy = await (await request('/?frontend=legacy')).text();
+  assert.ok(!legacy.includes('id="react-dashboard"'));
+  assert.ok(legacy.includes("const renderDashboard = async (forceLiveRates"));
+  const preview = await request('/?frontend=react');
+  assert.equal(preview.status, 200);
+  const html = await preview.text();
+  assert.ok(html.includes('id="react-dashboard"'));
+  assert.ok(!html.includes("document.getElementById('dashboardRangeForm').addEventListener"));
+  assert.ok(html.includes("const openRecords = async"));
+  const script = html.match(/type="module" src="([^\"]+)"/)[1];
+  const asset = await request(script);
+  assert.equal(asset.status, 200);
+  assert.match(asset.headers.get('content-type'), /javascript/);
+  await asset.arrayBuffer();
+  assert.equal((await request('/frontend/assets/missing.js')).status, 404);
+  assert.equal((await request('/frontend/assets/%2e%2e%2fstore.json')).status, 404);
 });
 
 test('desktop server starts on an available port and preserves Electron IPC messages', { timeout: 15000 }, async t => {

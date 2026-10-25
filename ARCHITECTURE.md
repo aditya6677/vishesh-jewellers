@@ -1,5 +1,10 @@
 # Application structure
 
+The framework migration branch adds Fastify as the default HTTP backend and an
+opt-in React/TypeScript Dashboard built by Vite. See [MIGRATION.md](MIGRATION.md)
+for the active phase and fallback instructions. `frontend/` contains independently
+owned React components; the original menus below remain available during migration.
+
 `server.js` starts the app and reports its address to Electron. It contains no UI,
 business calculations, storage operations, or route implementations.
 
@@ -28,7 +33,7 @@ state, rather than introducing inheritance for every helper. Add a route module
 and register it in `lib/app.js` to extend the API.
 
 `createApplication()` does not start listening or migrate the store. Call
-`initialize()` and then `server.listen()` explicitly. Importing `server.js` also
+`await initialize()` and then `server.listen()` explicitly. Importing `server.js` also
 does not start the server. Existing npm commands and Electron IPC remain supported.
 
 ## Browser menus
@@ -61,5 +66,5 @@ syntax, storage contracts, exports, deletion reversals, backup restore, rates
 caching, dashboard accounting, and Electron server/IPC startup.
 
 Run `npm run dev` to watch backend and browser source changes. Existing Electron
-packaging globs include all new files under `lib/` and `source/`; no runtime
-dependency or build step was added.
+packaging globs include files under `lib/`, `source/`, and `public/`. Packaging
+commands build the React bundle first. Fastify is installed as a runtime dependency.
