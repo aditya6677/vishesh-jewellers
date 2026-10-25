@@ -28,6 +28,24 @@ must remain with it. No data-schema migration is performed in this phase.
 - Invoice, Stocks, Purchase, Payment, Records, Settings, and PIN entry still use
   the original UI implementations.
 
+## Phase 2: Stocks
+
+- React preview now owns Dashboard and Stocks; the original Stocks page remains
+  available with `?frontend=legacy`. Other menus retain their existing UI.
+- Reusable typed dropdown, dialog, and pagination components preserve the theme.
+- Dedicated `/api/stocks` endpoints support listing, creation, editing, deletion,
+  and ID-based batch additions (`POST /api/stocks/:id/batches`). Names never merge
+  stock entries. Quantity and gross/net weights remain batch totals.
+- Server validation rejects invalid inputs. Edit/batch/delete require a matching
+  row revision, preventing a stale React editor from overwriting newer changes.
+- Successful writes update the existing Invoice stock state through a narrow
+  event bridge. The encrypted JSON schema and legacy storage API are unchanged.
+- Tests cover repeated additions, total weights, duplicate names, revisions,
+  validation, deletion, legacy storage compatibility, and browser script parsing.
+  All 12 tests pass under Fastify and the legacy router. Browser checks cover
+  Stocks rendering, dropdown keyboard dismissal, and required-field dialogs;
+  mutation tests use temporary stores, not business data.
+
 ## Run and compare
 
 Use Node 20.19+ within the Node 20 line, or Node 22.12+ (Electron supplies its own
@@ -40,7 +58,7 @@ npm run dev
 ```
 
 - Original UI: `http://localhost:3000/` or `/?frontend=legacy`
-- React Dashboard preview: `http://localhost:3000/?frontend=react`
+- React Dashboard and Stocks preview: `http://localhost:3000/?frontend=react`
 
 For React development, run `npm run dev:frontend` in a second terminal. This
 watches and rebuilds the frontend bundle; the existing backend reload mechanism
@@ -96,8 +114,7 @@ or tested as part of Phase 1; test both before distributing a release.
 
 ## Next phases
 
-1. Stocks: typed stock API, reusable accessible dropdown/table components, and
-   React forms; verify total gross/net weights and quantity behavior.
+1. Stocks migration completed in Phase 2; continue cross-menu acceptance testing.
 2. Purchase and Payment: preserve linked old-metal ledger calculations and edits.
 3. Settings: exports, backups, restoration, and desktop folder selection.
 4. Records: filters, pagination, settlements, editing, voiding, and deletion.

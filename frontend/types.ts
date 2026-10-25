@@ -1,6 +1,11 @@
 export type Metal = 'gold' | 'silver';
 export type InvoiceStatus = 'completed' | 'pending' | 'voided';
 export type PaymentType = 'amount' | 'metal' | 'self-expense';
+export type Purity = '24K' | '22K' | '18K' | '14K' | 'Silver';
+export interface StockInput { item: string; purity: Purity; qty: number; gross: number; net: number }
+export interface StockItem extends StockInput { id: string; added: string; rate: number }
+export interface StockSnapshot { items: StockItem[]; versions: Record<string, string> }
+export type StockEditor = { mode: 'add' } | { mode: 'edit' | 'batch'; item: StockItem; version: string };
 export interface DateRange { from: string; to: string }
 export interface MetalSummary {
   sold: number; sales: number; received: number; receivedValue: number;

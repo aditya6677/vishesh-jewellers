@@ -1,5 +1,8 @@
 
 /* Mobile refinement layer */
+dialog.react-dialog { margin:auto; color:var(--ivory); width:calc(100% - 40px); }
+dialog.react-dialog::backdrop { background:rgba(10,8,5,.72); }
+dialog.react-dialog p { color:var(--ivory-3); font-size:14px; }
 #page-stocks .row-3:has(#st-rate) {
   grid-template-columns: 1fr 1fr;
 }
@@ -13,8 +16,8 @@
 #page-dashboard .stat-cards { grid-template-columns: repeat(4, 1fr); }
 #page-stocks .stat-card:nth-child(3) { display: none; }
 #page-stocks .stat-card .val small { display: block; margin-top: 2px; font-family: var(--font-ui); font-size: 12px; font-weight: 500; color: var(--gold-light); }
-#page-stocks .data-table th:nth-child(6), #page-stocks .data-table td:nth-child(6),
-#page-stocks .data-table th:nth-child(7), #page-stocks .data-table td:nth-child(7) {
+#page-stocks:not(.react-page) .data-table th:nth-child(6), #page-stocks:not(.react-page) .data-table td:nth-child(6),
+#page-stocks:not(.react-page) .data-table th:nth-child(7), #page-stocks:not(.react-page) .data-table td:nth-child(7) {
   display: none;
 }
 .record-detail > td { padding: 0 !important; }

@@ -190,7 +190,7 @@ test('dashboard API preserves legacy summaries and filters without changing save
   assert.equal(fs.readFileSync(config.dataFile, 'utf8'), before);
 });
 
-test('React preview owns only dashboard and serves built assets; original remains available', async t => {
+test('React preview owns dashboard and stocks; original remains available', async t => {
   const { request } = await runningApp(t);
   const legacy = await (await request('/?frontend=legacy')).text();
   assert.ok(!legacy.includes('id="react-dashboard"'));
@@ -199,6 +199,9 @@ test('React preview owns only dashboard and serves built assets; original remain
   assert.equal(preview.status, 200);
   const html = await preview.text();
   assert.ok(html.includes('id="react-dashboard"'));
+  assert.ok(html.includes('id="react-stocks"'));
+  assert.ok(!html.includes('const stockItemInput ='));
+  for (const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
   assert.ok(!html.includes("document.getElementById('dashboardRangeForm').addEventListener"));
   assert.ok(html.includes("const openRecords = async"));
   const script = html.match(/type="module" src="([^\"]+)"/)[1];
@@ -208,6 +211,38 @@ test('React preview owns only dashboard and serves built assets; original remain
   await asset.arrayBuffer();
   assert.equal((await request('/frontend/assets/missing.js')).status, 404);
   assert.equal((await request('/frontend/assets/%2e%2e%2fstore.json')).status, 404);
+});
+
+test('stock API adds batches by ID, validates totals, rejects stale edits, and retains other data', async t => {
+  const { request, store } = await runningApp(t);
+  store.write({ unrelated: { keep: true } });
+  const call = (url, method, body) => request(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const input = { item: 'Ring', purity: '22K', qty: 10, gross: 100, net: 100 };
+  let result = await (await call('/api/stocks', 'POST', input)).json();
+  const id = result.items[0].id;
+  const version = result.versions[id];
+  result = await (await call(`/api/stocks/${id}/batches`, 'POST', { qty: 5, gross: 200, net: 200, version })).json();
+  assert.equal(result.items[0].qty, 15);
+  assert.equal(result.items[0].gross, 300);
+  assert.equal(result.items[0].net, 300);
+  assert.equal((await call(`/api/stocks/${id}`, 'PUT', { ...input, version })).status, 409);
+  const before = store.read();
+  for (const invalid of [{ item: '' }, { purity: 'invalid' }, { qty: 1.2 }, { qty: 0 }, { gross: 0 }, { net: 101 }]) {
+    assert.equal((await call('/api/stocks', 'POST', { ...input, ...invalid })).status, 400);
+    assert.deepEqual(store.read(), before);
+  }
+  for (let i = 0; i < 20; i++) assert.equal((await call('/api/stocks', 'POST', input)).status, 200);
+  result = await (await request('/api/stocks')).json();
+  assert.equal(result.items.length, 21);
+  result = await (await call(`/api/stocks/${id}`, 'PUT', { ...input, purity: 'Silver', version: result.versions[id] })).json();
+  assert.equal(result.items[0].purity, 'Silver');
+  assert.equal(result.items[0].added, before[StorageKey.STOCK][0].added);
+  assert.equal((await call(`/api/stocks/${id}`, 'DELETE', { version: result.versions[id] })).status, 200);
+  assert.equal((await call(`/api/stocks/${id}`, 'DELETE', { version })).status, 404);
+  assert.equal(store.read()[StorageKey.STOCK].length, 20);
+  assert.deepEqual(store.read().unrelated, { keep: true });
+  const legacy = await (await request('/api/storage/stock-list')).json();
+  assert.deepEqual(JSON.parse(legacy.value), store.read()[StorageKey.STOCK]);
 });
 
 test('desktop server starts on an available port and preserves Electron IPC messages', { timeout: 15000 }, async t => {
