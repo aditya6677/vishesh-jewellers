@@ -115,6 +115,21 @@ must remain with it. No data-schema migration is performed in this phase.
   search, voided preview/watermark, metal settlement, refreshed history,
   fully-paid confirmation, and filtered PDF download.
 
+## Phase 6a: Invoice payment summary
+
+- The Invoice page now mounts a React-owned discount, amount-paid, and due/plus
+  summary in `?frontend=react`. The old dynamic summary is suppressed only in
+  React preview mode; the original Invoice remains unchanged in legacy mode.
+- Discount continues to combine with the existing gold/silver exchange credit,
+  and the legacy invoice calculation, records, print preview, and save handlers
+  consume the same field IDs. The printed invoice due/plus line updates live.
+- New Invoice resets the migrated inputs and exchange rows. Core invoice fields,
+  stock selection/deduction, exchange-row editor, and order/sale save flows remain
+  legacy and are still pending migration.
+- Frontend typecheck/build passed. A browser preview in an isolated temporary
+  data directory confirmed subtotal, GST, discount, amount paid, due, and print
+  preview stayed in sync; no production records were changed.
+
 ## Run and compare
 
 Use Node 20.19+ within the Node 20 line, or Node 22.12+ (Electron supplies its own
@@ -127,7 +142,8 @@ npm run dev
 ```
 
 - Original UI: `http://localhost:3000/` or `/?frontend=legacy`
-- React Dashboard, Stocks, Purchase, Payment, Settings, and Records preview: `http://localhost:3000/?frontend=react`
+- React Dashboard, Stocks, Purchase, Payment, Settings, Records, and the Invoice
+  payment summary preview: `http://localhost:3000/?frontend=react`
 
 For React development, run `npm run dev:frontend` in a second terminal. This
 watches and rebuilds the frontend bundle; the existing backend reload mechanism
@@ -187,7 +203,8 @@ or tested as part of Phase 1; test both before distributing a release.
 2. Purchase and Payment completed in Phase 3; continue cross-menu acceptance testing.
 3. Settings completed in Phase 4; native desktop dialogs need installer acceptance testing.
 4. Records table/details completed in Phase 5b; editor, void, and print bridges remain until Invoice migration.
-5. Invoice: billing, exchange rows, stock deductions, print/PDF, and pending orders.
+5. Invoice migration has started with the payment summary; next move billing
+   fields and calculations, exchange rows, stock deductions, and sale/order saves.
 6. Remove compatibility code only after replacement behavior is verified.
 7. Separate commercial hardening: customer credentials, signing, upgrade/data
    migrations, dependency review, and installer testing. Database changes are a
