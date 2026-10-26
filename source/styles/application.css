@@ -64,6 +64,9 @@ dialog.react-dialog p { color:var(--ivory-3); font-size:14px; }
 .invoice-success-number { margin: 12px 0; color: var(--gold-light); font-family: var(--font-mono); font-size: 20px; text-align: center; }
 .void-modal-note { margin: 12px 0; color: var(--ivory-3); font-size: 13px; line-height: 1.5; }
 .payment-balance { padding: 9px 11px; min-height: 40px; border-radius: 7px; border: 1px solid rgba(198,154,58,.28); background: rgba(0,0,0,.22); color: var(--gold-light); font-family: var(--font-mono); font-size: 14px; }
+.invoice-payment-summary { margin: 16px 0 0; padding: 14px; border: 1px solid rgba(198,154,58,.2); border-radius: 9px; background: rgba(198,154,58,.045); }
+.invoice-payment-summary .field { margin: 0; }
+.invoice-payment-summary output.payment-balance { display: flex; align-items: center; box-sizing: border-box; }
 #inv-no:disabled { opacity: 1; color: var(--gold-pale); cursor: not-allowed; background: rgba(198,154,58,.08); }
 .f-purity:disabled { opacity: 1; color: var(--gold-pale); cursor: not-allowed; background: rgba(198,154,58,.08); }
 .exchange-panel { margin: 16px 0; padding: 14px; border: 1px solid rgba(198,154,58,.28); border-radius: 8px; background: rgba(198,154,58,.06); }
