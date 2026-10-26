@@ -219,6 +219,20 @@ test('React preview owns dashboard, stocks, purchases and payments; original rem
   assert.equal((await request('/frontend/assets/%2e%2e%2fstore.json')).status, 404);
 });
 
+test('record API rejects stale settlements and writes linked metal receipts', async t => {
+  const { request, store } = await runningApp(t);
+  store.write({ [StorageKey.INVOICES]: [{ number: 'VJTEST', total: 500, due: 500, paid: 0 }] });
+  const snapshot = await (await request('/api/records')).json();
+  const input = { version: snapshot.versions.VJTEST, method: 'silver', weight: 2, rate: 50 };
+  const options = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) };
+  const response = await request('/api/records/VJTEST/settlements', options);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).record.due, 400);
+  assert.equal(store.read()[StorageKey.OLD_METAL][0].weight, 2);
+  assert.equal((await request('/api/records/VJTEST/settlements', options)).status, 409);
+  assert.equal((await request('/api/records/missing/settlements', options)).status, 404);
+});
+
 test('Settings exposes browser capabilities and keeps desktop actions isolated', async t => {
   const { request, config } = await runningApp(t);
   assert.deepEqual(await (await request('/api/data-location')).json(), { path: config.dataDir, desktop: false });

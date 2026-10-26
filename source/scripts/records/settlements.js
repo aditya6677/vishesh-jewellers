@@ -18,6 +18,7 @@
     const rate = Number(document.getElementById('settlement-rate-' + index).value) || 0;
     document.getElementById('settlement-value-' + index).textContent = money(weight * rate);
   });
+  let settlementBusy = false;
   document.getElementById('recordsTbody').addEventListener('click', async event => {
     const button = event.target.closest('button[data-index]');
     if (!button) return;
@@ -29,19 +30,23 @@
       button.textContent = opening ? 'Hide' : 'Details';
       return;
     }
-    const records = await getRecords();
-    const record = records[index];
+    if (settlementBusy) return;
+    let records;
+    try { records = await getRecords(); }
+    catch (error) { showAppMessage(error.message, 'error'); return; }
+    if (settlementBusy) return;
+    const record = records.find(entry => entry.number === button.dataset.number);
     if (!record) return;
     if (button.classList.contains('record-reprint')) {
       reprintInvoice(record);
       return;
     }
     if (button.classList.contains('record-edit')) {
-      openEditInvoiceModal(record, index);
+      openEditInvoiceModal(record, records.indexOf(record));
       return;
     }
     if (button.classList.contains('record-void')) {
-      openVoidModal(record, index);
+      openVoidModal(record, records.indexOf(record));
       return;
     }
     const due = Number(record.due) || 0;
@@ -54,17 +59,23 @@
       alert(method === 'amount' ? 'Enter a valid amount up to the outstanding due of ' + money(due) + '.' : 'Enter a valid weight and price per gram whose value does not exceed the due of ' + money(due) + '.');
       return;
     }
-    if (button.classList.contains('record-paid') && !(await confirmFullyPaid(record, due))) return;
-    record.paid = (Number(record.paid) || 0) + settled;
-    record.due = Math.max(due - settled, 0);
-    record.payments = Array.isArray(record.payments) ? record.payments : [];
-    const settledAt = new Date().toISOString();
-    record.payments.unshift({ method: button.classList.contains('record-paid') ? 'amount' : method, amount: settled, weight: method === 'amount' ? null : weight, rate: method === 'amount' ? null : rate, settledAt });
-    await window.storage.set('invoice-records', JSON.stringify(records));
-    if ((method === 'gold' || method === 'silver') && !button.classList.contains('record-paid')) {
-      await addOldGold({ sourceId: record.number + ':settlement:' + settledAt, metal: method, source: (method === 'gold' ? 'Gold' : 'Silver') + ' settlement', invoice: record.number, customer: record.customer, date: new Date(settledAt).toLocaleDateString('en-GB'), weight, rate, value: settled, receivedAt: settledAt });
-    }
-    await renderRecords();
-    showAppMessage('Settlement of ' + money(settled) + ' saved for invoice ' + record.number + '. Remaining due: ' + money(record.due) + '.', 'success');
+    settlementBusy = true;
+    button.disabled = true;
+    try {
+      if (button.classList.contains('record-paid') && !(await confirmFullyPaid(record, due))) return;
+      const response = await fetch('/api/records/' + encodeURIComponent(record.number) + '/settlements', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ version: button.dataset.version, method, amount: settled, weight, rate, fullyPaid: button.classList.contains('record-paid') })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        if (response.status === 409 || response.status === 404) await renderRecords();
+        throw new Error(result.error || 'Could not save settlement.');
+      }
+      await renderRecords();
+      window.dispatchEvent(new Event('vj:transactions-updated'));
+      showAppMessage('Settlement of ' + money(result.settled) + ' saved for invoice ' + record.number + '. Remaining due: ' + money(result.record.due) + '.', 'success');
+    } catch (error) { showAppMessage(error.message, 'error'); }
+    finally { settlementBusy = false; button.disabled = false; }
   });
 

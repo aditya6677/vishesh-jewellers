@@ -62,6 +62,10 @@
     window.refreshTablePagination('recordsTbody');
     filtered.forEach(({ record, index }) => {
       const card = document.querySelector('[data-detail="' + index + '"] .record-detail-card');
+      card.querySelectorAll('button[data-index]').forEach(button => {
+        button.dataset.number = record.number;
+        button.dataset.version = recordVersions[record.number];
+      });
       const button = document.createElement('button');
       button.className = 'btn btn-danger btn-sm';
       button.style.cssText = 'margin-top:14px;color:#E8A99E;border-color:#9a554a;background:rgba(164,44,35,.16)';

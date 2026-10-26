@@ -79,6 +79,25 @@ must remain with it. No data-schema migration is performed in this phase.
   Main-preview Settings rendering and browser backup download were checked manually.
   Native Electron file dialogs still require installer-level acceptance testing.
 
+## Phase 5a: Records backend foundation
+
+- Records UI is still the existing implementation. This stage prepares its
+  React migration without replacing invoice editing, preview/PDF, or void dialogs.
+- `GET /api/records` normalizes legacy paid/due fields without writing on read;
+  supports `q`, `status`, `from`, and `to`. Voided invoices retain zero due.
+- Filtering functions are shared by the API, current Records table, and PDF
+  export via `lib/record-filters.js`. The browser retains local pagination.
+- `POST /api/records/:number/settlements` validates the current record revision
+  and commits invoice/payment history plus any metal receipt in one store write.
+  Positive weight and rate are validated independently. Fully-paid confirmation
+  records cash without inheriting metal fields from the selected dropdown.
+- Current UI uses these endpoints; stale submissions refresh Records and are
+  rejected. Actions resolve invoice identity by number rather than stale indexes.
+- 23 tests pass on both backends; a temporary browser fixture verified a ₹200
+  settlement reduced ₹1,000 due to ₹800 and kept the user on Records.
+- Next: React Records table/filter/detail components; retain existing invoice
+  preview/editor bridges until Invoice migrates. This is not full Records UI migration.
+
 ## Run and compare
 
 Use Node 20.19+ within the Node 20 line, or Node 22.12+ (Electron supplies its own
