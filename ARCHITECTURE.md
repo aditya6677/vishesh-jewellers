@@ -1,7 +1,7 @@
 # Application structure
 
 The framework migration branch adds Fastify as the default HTTP backend and an
-opt-in React/TypeScript Dashboard, Stocks, Purchase, Payment, and Settings built by Vite. See [MIGRATION.md](MIGRATION.md)
+opt-in React/TypeScript Dashboard, Stocks, Purchase, Payment, Settings, and Records built by Vite. See [MIGRATION.md](MIGRATION.md)
 for the active phase and fallback instructions. `frontend/` contains independently
 owned React components; the original menus below remain available during migration.
 

@@ -98,6 +98,23 @@ must remain with it. No data-schema migration is performed in this phase.
 - Next: React Records table/filter/detail components; retain existing invoice
   preview/editor bridges until Invoice migrates. This is not full Records UI migration.
 
+## Phase 5b: React Records table and details
+
+- React preview owns the Records table, search/status/date filters, pagination,
+  expanded exchange/payment details, and settlement forms. It uses the Records
+  API and retains filters after settlement; the updated row is collapsed.
+- Cash, gold and silver settlement values remain server-validated. Fully-paid
+  and permanent-delete actions use application confirmation dialogs. Voided and
+  zero-due invoices do not expose settlement controls.
+- Invoice preview/print/PDF, editing/delivery, and void/cancel still use their
+  existing implementations through an explicit, revision-checked bridge that
+  resolves invoice numbers to current indexes. These actions are not yet React.
+- The original and React Records pages share `records/pdf-export.js`, so exports
+  include all matching records, not only the currently visible page.
+- Browser testing on temporary data covered 13 records with 10-row pagination,
+  search, voided preview/watermark, metal settlement, refreshed history,
+  fully-paid confirmation, and filtered PDF download.
+
 ## Run and compare
 
 Use Node 20.19+ within the Node 20 line, or Node 22.12+ (Electron supplies its own
@@ -110,7 +127,7 @@ npm run dev
 ```
 
 - Original UI: `http://localhost:3000/` or `/?frontend=legacy`
-- React Dashboard, Stocks, Purchase, Payment, and Settings preview: `http://localhost:3000/?frontend=react`
+- React Dashboard, Stocks, Purchase, Payment, Settings, and Records preview: `http://localhost:3000/?frontend=react`
 
 For React development, run `npm run dev:frontend` in a second terminal. This
 watches and rebuilds the frontend bundle; the existing backend reload mechanism
@@ -169,7 +186,7 @@ or tested as part of Phase 1; test both before distributing a release.
 1. Stocks migration completed in Phase 2; continue cross-menu acceptance testing.
 2. Purchase and Payment completed in Phase 3; continue cross-menu acceptance testing.
 3. Settings completed in Phase 4; native desktop dialogs need installer acceptance testing.
-4. Records: filters, pagination, settlements, editing, voiding, and deletion.
+4. Records table/details completed in Phase 5b; editor, void, and print bridges remain until Invoice migration.
 5. Invoice: billing, exchange rows, stock deductions, print/PDF, and pending orders.
 6. Remove compatibility code only after replacement behavior is verified.
 7. Separate commercial hardening: customer credentials, signing, upgrade/data

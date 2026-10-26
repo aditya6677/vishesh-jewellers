@@ -1,9 +1,16 @@
 import type { DashboardSnapshot, DateRange, Rates, StockInput, StockSnapshot } from './types';
 import type { TransactionKind, TransactionInput, TransactionSnapshot } from './types';
+import type { InvoiceRecord, RecordFilters, RecordsSnapshot, SettlementInput } from './types';
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
+
+export const recordsApi = {
+  list: (filters: RecordFilters, signal: AbortSignal) => get<RecordsSnapshot>('/api/records?' + new URLSearchParams({ q: filters.query, status: filters.status, from: filters.from, to: filters.to }), signal),
+  settle: (number: string, version: string, input: SettlementInput) => mutate<{ record: InvoiceRecord; settled: number }>('POST', '/api/records/' + encodeURIComponent(number) + '/settlements', { ...input, version }),
+  remove: (number: string) => mutate<{ ok: boolean }>('DELETE', '/api/invoices/' + encodeURIComponent(number), {})
+};
 
 export interface DataLocation { path: string; desktop: boolean }
 export interface BackupStatus { latest: string | null; desktop: boolean }

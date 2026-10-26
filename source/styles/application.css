@@ -4,6 +4,9 @@ dialog.react-dialog { margin:auto; color:var(--ivory); width:calc(100% - 40px); 
 dialog.react-dialog::backdrop { background:rgba(10,8,5,.72); }
 dialog.react-dialog p { color:var(--ivory-3); font-size:14px; }
 .react-page output.payment-balance { display:block; }
+.react-record-toolbar > .app-select-control { width:180px; flex:0 1 180px; }
+.react-record-toolbar > span { color:var(--ivory-3); font-size:12px; }
+@media (max-width:600px) { .react-record-toolbar > .app-select-control { flex:1 1 180px; } }
 #page-stocks .row-3:has(#st-rate) {
   grid-template-columns: 1fr 1fr;
 }

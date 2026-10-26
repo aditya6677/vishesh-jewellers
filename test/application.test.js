@@ -203,6 +203,10 @@ test('React preview owns dashboard, stocks, purchases and payments; original rem
   assert.ok(html.includes('id="react-purchases"'));
   assert.ok(html.includes('id="react-payments"'));
   assert.ok(html.includes('id="react-settings"'));
+  assert.ok(html.includes('id="react-records"'));
+  assert.ok(!html.includes("document.getElementById('recordsTbody').addEventListener"));
+  assert.ok(html.includes('window.vjRecordAction'));
+  assert.ok(legacy.includes('id="recordsTbody"'));
   assert.ok(!html.includes("document.getElementById('settingsChooseData').addEventListener"));
   assert.ok(!html.includes("document.getElementById('paymentForm').addEventListener"));
   assert.ok(!html.includes("document.getElementById('purchaseForm').addEventListener"));
