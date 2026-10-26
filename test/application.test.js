@@ -202,6 +202,8 @@ test('React preview owns dashboard, stocks, purchases and payments; original rem
   assert.ok(html.includes('id="react-stocks"'));
   assert.ok(html.includes('id="react-purchases"'));
   assert.ok(html.includes('id="react-payments"'));
+  assert.ok(html.includes('id="react-settings"'));
+  assert.ok(!html.includes("document.getElementById('settingsChooseData').addEventListener"));
   assert.ok(!html.includes("document.getElementById('paymentForm').addEventListener"));
   assert.ok(!html.includes("document.getElementById('purchaseForm').addEventListener"));
   assert.ok(!html.includes('const stockItemInput ='));
@@ -215,6 +217,26 @@ test('React preview owns dashboard, stocks, purchases and payments; original rem
   await asset.arrayBuffer();
   assert.equal((await request('/frontend/assets/missing.js')).status, 404);
   assert.equal((await request('/frontend/assets/%2e%2e%2fstore.json')).status, 404);
+});
+
+test('Settings exposes browser capabilities and keeps desktop actions isolated', async t => {
+  const { request, config } = await runningApp(t);
+  assert.deepEqual(await (await request('/api/data-location')).json(), { path: config.dataDir, desktop: false });
+  assert.equal((await request('/api/data-location', { method: 'POST' })).status, 400);
+  assert.equal((await request('/api/backup/create', { method: 'POST' })).status, 400);
+  const status = await (await request('/api/backup-status')).json();
+  assert.equal(status.desktop, false);
+  assert.match(status.latest, /Weekly/);
+  const backup = await request('/api/backup/download');
+  assert.match(backup.headers.get('content-disposition'), /attachment.*\.json/);
+  const payload = await backup.json();
+  assert.equal(payload.encryptedStore.algorithm, 'aes-256-gcm');
+  assert.equal(payload.encryptionKey, undefined);
+  const messages = [];
+  const desktopApp = await runningApp(t, { desktop: { enabled: true, send: message => messages.push(message) } });
+  assert.equal((await desktopApp.request('/api/backup/download')).status, 400);
+  assert.equal((await desktopApp.request('/api/backup/create', { method: 'POST' })).status, 202);
+  assert.equal(messages[0].type, DesktopMessage.CREATE_BACKUP);
 });
 
 test('transaction HTTP endpoints preserve storage and dashboard contracts', async t => {

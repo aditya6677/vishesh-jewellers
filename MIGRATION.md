@@ -65,6 +65,20 @@ must remain with it. No data-schema migration is performed in this phase.
   verified purchase calculation/save, metal-payment creation/editing, and updated
   dashboard balances. No production transactions were created for testing.
 
+## Phase 4: Settings
+
+- Settings now uses React in preview mode; original Settings remains in legacy mode.
+- Existing backup, restore, Excel export, and desktop IPC endpoints are unchanged.
+  Buttons respect browser/desktop capabilities, lock during requests, and surface
+  errors in application dialogs. Desktop requests report dialog launch, not completion.
+- Browser restore requires confirmation after file selection, checks the 50 MB
+  limit and JSON syntax, and reloads only after the success dialog is dismissed.
+  Server-side key validation and pre-restore safety backups remain authoritative.
+- All 18 tests pass against both backends, including temporary-store restoration,
+  mismatched keys, download contracts, and desktop-only capability checks.
+  Main-preview Settings rendering and browser backup download were checked manually.
+  Native Electron file dialogs still require installer-level acceptance testing.
+
 ## Run and compare
 
 Use Node 20.19+ within the Node 20 line, or Node 22.12+ (Electron supplies its own
@@ -77,7 +91,7 @@ npm run dev
 ```
 
 - Original UI: `http://localhost:3000/` or `/?frontend=legacy`
-- React Dashboard, Stocks, Purchase, and Payment preview: `http://localhost:3000/?frontend=react`
+- React Dashboard, Stocks, Purchase, Payment, and Settings preview: `http://localhost:3000/?frontend=react`
 
 For React development, run `npm run dev:frontend` in a second terminal. This
 watches and rebuilds the frontend bundle; the existing backend reload mechanism
@@ -135,7 +149,7 @@ or tested as part of Phase 1; test both before distributing a release.
 
 1. Stocks migration completed in Phase 2; continue cross-menu acceptance testing.
 2. Purchase and Payment completed in Phase 3; continue cross-menu acceptance testing.
-3. Settings: exports, backups, restoration, and desktop folder selection.
+3. Settings completed in Phase 4; native desktop dialogs need installer acceptance testing.
 4. Records: filters, pagination, settlements, editing, voiding, and deletion.
 5. Invoice: billing, exchange rows, stock deductions, print/PDF, and pending orders.
 6. Remove compatibility code only after replacement behavior is verified.

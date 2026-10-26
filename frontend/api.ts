@@ -5,6 +5,22 @@ export class ApiError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
 
+export interface DataLocation { path: string; desktop: boolean }
+export interface BackupStatus { latest: string | null; desktop: boolean }
+export const settingsApi = {
+  location: (signal?: AbortSignal) => get<DataLocation>('/api/data-location', signal),
+  backups: (signal?: AbortSignal) => get<BackupStatus>('/api/backup-status', signal),
+  action: (path: '/api/data-location' | '/api/backup/create' | '/api/backup/restore', input: unknown = {}) => mutate<{ ok: boolean }>('POST', path, input),
+  download: async (path: '/api/export.xlsx' | '/api/backup/download') => {
+    const response = await fetch(path, { cache: 'no-store', signal: AbortSignal.timeout(60000) });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new ApiError(result.error || 'Could not prepare the download.', response.status);
+    }
+    return response.blob();
+  }
+};
+
 async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { cache: 'no-store', signal: signal || AbortSignal.timeout(20000) });
   if (!response.ok) {
