@@ -46,6 +46,25 @@ must remain with it. No data-schema migration is performed in this phase.
   Stocks rendering, dropdown keyboard dismissal, and required-field dialogs;
   mutation tests use temporary stores, not business data.
 
+## Phase 3: Purchase and Payment
+
+- Both menus now use React in preview mode, including themed selectors, live
+  amount/fine-weight calculation, inline editing, confirmation dialogs, and
+  pagination (10 rows by default). Original menus remain available in legacy mode.
+- `GET/POST /api/purchases` and `/api/payments`, plus `PUT/DELETE` on `/:id`,
+  use a shared transaction service. Payment types remain Amount, Self Expense,
+  and Metal to Metal; metal payments deduct gross weight, not fine weight.
+- Each change validates and updates the record and linked old-metal ledger in a
+  single encrypted atomic store write. Edits preserve IDs and original dates.
+  Revision checks reject stale changes, including changes to the linked entry.
+- Purchase reductions/deletions that would create or worsen a negative old-metal
+  balance are rejected: adjust the consuming metal payments first.
+- Cash summaries, dashboard calculations, exports, and the JSON schema are
+  unchanged. Dashboard reloads from the same store when its tab is opened.
+- All 17 tests pass on both backends. Browser checks in a temporary data directory
+  verified purchase calculation/save, metal-payment creation/editing, and updated
+  dashboard balances. No production transactions were created for testing.
+
 ## Run and compare
 
 Use Node 20.19+ within the Node 20 line, or Node 22.12+ (Electron supplies its own
@@ -58,7 +77,7 @@ npm run dev
 ```
 
 - Original UI: `http://localhost:3000/` or `/?frontend=legacy`
-- React Dashboard and Stocks preview: `http://localhost:3000/?frontend=react`
+- React Dashboard, Stocks, Purchase, and Payment preview: `http://localhost:3000/?frontend=react`
 
 For React development, run `npm run dev:frontend` in a second terminal. This
 watches and rebuilds the frontend bundle; the existing backend reload mechanism
@@ -115,7 +134,7 @@ or tested as part of Phase 1; test both before distributing a release.
 ## Next phases
 
 1. Stocks migration completed in Phase 2; continue cross-menu acceptance testing.
-2. Purchase and Payment: preserve linked old-metal ledger calculations and edits.
+2. Purchase and Payment completed in Phase 3; continue cross-menu acceptance testing.
 3. Settings: exports, backups, restoration, and desktop folder selection.
 4. Records: filters, pagination, settlements, editing, voiding, and deletion.
 5. Invoice: billing, exchange rows, stock deductions, print/PDF, and pending orders.

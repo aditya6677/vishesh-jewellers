@@ -1,7 +1,7 @@
 # Application structure
 
 The framework migration branch adds Fastify as the default HTTP backend and an
-opt-in React/TypeScript Dashboard built by Vite. See [MIGRATION.md](MIGRATION.md)
+opt-in React/TypeScript Dashboard, Stocks, Purchase, and Payment built by Vite. See [MIGRATION.md](MIGRATION.md)
 for the active phase and fallback instructions. `frontend/` contains independently
 owned React components; the original menus below remain available during migration.
 
@@ -16,7 +16,7 @@ business calculations, storage operations, or route implementations.
 | `lib/app.js` | Creates and injects services; registers routes |
 | `lib/http/` | Routing, JSON request parsing, and responses |
 | `lib/routes/` | Storage, invoices, reports, rates, settings, and pages |
-| `lib/services/` | Backup lifecycle, invoice deletion, and rates caching |
+| `lib/services/` | Backup lifecycle, invoice deletion, rates caching, stock operations, and atomic purchase/payment ledger updates |
 | `lib/domain/constants.js` | Frozen runtime enums for statuses, storage keys, and IPC messages |
 | `lib/ui/` | Page rendering and explicit feature manifest |
 | `lib/json-store.js` | Encrypted JSON persistence |

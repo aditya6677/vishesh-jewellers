@@ -190,7 +190,7 @@ test('dashboard API preserves legacy summaries and filters without changing save
   assert.equal(fs.readFileSync(config.dataFile, 'utf8'), before);
 });
 
-test('React preview owns dashboard and stocks; original remains available', async t => {
+test('React preview owns dashboard, stocks, purchases and payments; original remains available', async t => {
   const { request } = await runningApp(t);
   const legacy = await (await request('/?frontend=legacy')).text();
   assert.ok(!legacy.includes('id="react-dashboard"'));
@@ -200,6 +200,10 @@ test('React preview owns dashboard and stocks; original remains available', asyn
   const html = await preview.text();
   assert.ok(html.includes('id="react-dashboard"'));
   assert.ok(html.includes('id="react-stocks"'));
+  assert.ok(html.includes('id="react-purchases"'));
+  assert.ok(html.includes('id="react-payments"'));
+  assert.ok(!html.includes("document.getElementById('paymentForm').addEventListener"));
+  assert.ok(!html.includes("document.getElementById('purchaseForm').addEventListener"));
   assert.ok(!html.includes('const stockItemInput ='));
   for (const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
   assert.ok(!html.includes("document.getElementById('dashboardRangeForm').addEventListener"));
@@ -211,6 +215,31 @@ test('React preview owns dashboard and stocks; original remains available', asyn
   await asset.arrayBuffer();
   assert.equal((await request('/frontend/assets/missing.js')).status, 404);
   assert.equal((await request('/frontend/assets/%2e%2e%2fstore.json')).status, 404);
+});
+
+test('transaction HTTP endpoints preserve storage and dashboard contracts', async t => {
+  const { request, store } = await runningApp(t);
+  const send = (path, method, body) => request(path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let response = await send('/api/purchases', 'POST', { metal: 'gold', weight: 100, rate: 10 });
+  assert.equal(response.status, 200);
+  const purchase = await response.json();
+  response = await send('/api/payments', 'POST', { type: 'metal', metal: 'gold', weight: 40, purity: 50 });
+  assert.equal(response.status, 200);
+  const payment = await response.json();
+  assert.equal(payment.items[0].fineWeight, 20);
+  assert.equal((await (await request('/api/dashboard')).json()).old.gold, 60);
+  assert.equal((await send('/api/purchases/' + purchase.items[0].id, 'DELETE', { version: purchase.versions[purchase.items[0].id] })).status, 400);
+  response = await send('/api/payments/' + payment.items[0].id, 'PUT', { type: 'amount', amount: 200, version: payment.versions[payment.items[0].id] });
+  assert.equal(response.status, 200);
+  const edited = await response.json();
+  assert.equal(edited.balances.gold, 100);
+  const dashboard = await (await request('/api/dashboard')).json();
+  assert.equal(dashboard.summary.afterPayment, -1200);
+  assert.equal((await send('/api/payments/' + payment.items[0].id, 'DELETE', { version: edited.versions[payment.items[0].id] })).status, 200);
+  assert.equal((await send('/api/purchases/' + purchase.items[0].id, 'DELETE', { version: purchase.versions[purchase.items[0].id] })).status, 200);
+  assert.deepEqual(store.read()[StorageKey.OLD_METAL], []);
+  assert.deepEqual((await (await request('/api/payments')).json()).items, []);
+  assert.equal((await send('/api/purchases', 'POST', { metal: 'gold' })).status, 400);
 });
 
 test('stock API adds batches by ID, validates totals, rejects stale edits, and retains other data', async t => {

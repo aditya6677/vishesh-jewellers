@@ -3,6 +3,7 @@
 dialog.react-dialog { margin:auto; color:var(--ivory); width:calc(100% - 40px); }
 dialog.react-dialog::backdrop { background:rgba(10,8,5,.72); }
 dialog.react-dialog p { color:var(--ivory-3); font-size:14px; }
+.react-page output.payment-balance { display:block; }
 #page-stocks .row-3:has(#st-rate) {
   grid-template-columns: 1fr 1fr;
 }

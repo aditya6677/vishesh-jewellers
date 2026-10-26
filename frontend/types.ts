@@ -36,3 +36,7 @@ declare global {
     showAppMessage?: (message: string, type: string) => void;
   }
 }
+export type TransactionKind = 'purchases' | 'payments';
+export interface TransactionInput { type: PaymentType; metal: Metal; weight: number; rate: number; purity: number; amount: number; reason: string }
+export interface TransactionEntry extends Partial<TransactionInput> { id: string; savedAt: string; fineWeight?: number }
+export interface TransactionSnapshot { items: TransactionEntry[]; versions: Record<string, string>; balances: Record<Metal, number> }
