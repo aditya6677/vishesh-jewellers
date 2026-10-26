@@ -1028,24 +1028,13 @@ function renderRowsTable(){
 }
 
 function rowAmount(r){
-  const net = parseFloat(r.net)||0;
-  const rate = parseFloat(r.rate)||0;
-  const making = parseFloat(r.making)||0;
-  return net * rate * (1 + making/100);
+  return window.vjInvoiceMath.lineAmount(r);
 }
 
 function computeTotals(){
-  const subtotal = rows.reduce((s,r)=>s + rowAmount(r), 0);
-  const disc = parseFloat(document.getElementById('exchange-disc').value) || 0;
-  const gstPct = parseFloat(document.getElementById('gst-rate').value) || 0;
-  // GST is calculated on the complete jewellery value. Exchange credit and
-  // invoice discount are then deducted from the GST-inclusive total.
-  const cgst = subtotal * (gstPct/100);
-  const sgst = subtotal * (gstPct/100);
-  const rawGrand = Math.max(subtotal + cgst + sgst - disc, 0);
-  const grand = Math.round(rawGrand);
-  const roundOff = grand - rawGrand;
-  return { subtotal, disc, cgst, sgst, gstPct, grand, roundOff };
+  const discount = parseFloat(document.getElementById('exchange-disc').value) || 0;
+  const taxRatePerComponent = parseFloat(document.getElementById('gst-rate').value) || 0;
+  return window.vjInvoiceMath.totals(rows, discount, taxRatePerComponent);
 }
 
 function renderMiniTotals(){

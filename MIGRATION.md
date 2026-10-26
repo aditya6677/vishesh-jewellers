@@ -123,12 +123,17 @@ must remain with it. No data-schema migration is performed in this phase.
 - Discount continues to combine with the existing gold/silver exchange credit,
   and the legacy invoice calculation, records, print preview, and save handlers
   consume the same field IDs. The printed invoice due/plus line updates live.
+- Currency calculations are extracted to a shared tested module. Each line uses
+  its entered total net weight × rate × making; PCS affects stock deduction only.
+  GST is rounded to paise per component before exchange/discount credit, and the
+  final total is rounded to the nearest rupee with the round-off shown.
 - New Invoice resets the migrated inputs and exchange rows. Core invoice fields,
   stock selection/deduction, exchange-row editor, and order/sale save flows remain
   legacy and are still pending migration.
-- Frontend typecheck/build passed. A browser preview in an isolated temporary
-  data directory confirmed subtotal, GST, discount, amount paid, due, and print
-  preview stayed in sync; no production records were changed.
+- Frontend typecheck/build and all 27 automated tests passed, including new
+  invoice arithmetic cases for PCS, making, GST, credits, non-GST, currency
+  precision, and zero-flooring. Browser checks confirmed paid/due and printed
+  preview values; draft-only checks did not save or alter production records.
 
 ## Run and compare
 
