@@ -24,6 +24,7 @@ export interface DashboardSnapshot {
   lowStockLimits: Record<Metal, number>;
 }
 export interface Rates {
+  history?: { quoteDate: string; session: string; goldPerGram: number; silverPerGram: number }[];
   goldPerGram: number; silverPerGram: number; quoteDate: string; session: string;
   goldChangePercent: number | null; silverChangePercent: number | null;
   previousQuote?: { quoteDate: string; session: string };

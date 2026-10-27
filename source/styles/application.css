@@ -182,3 +182,30 @@ body.pin-locked > *:not(.pin-lock) { visibility: hidden; }
   nav.tabs button { font-size: 10px; }
   main { padding-inline: 12px; }
 }
+nav.tabs button.workspace-logout {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 36px; width: 36px; min-height: 36px; padding: 8px;
+  color: #ef9191; background: rgba(220,70,70,.07); border: 1px solid rgba(220,70,70,.16);
+  border-radius: 9px; cursor: pointer; transition: color .15s, background .15s;
+}
+nav.tabs button.workspace-logout:hover { color: #ffb0b0; background: rgba(220,70,70,.18); }
+nav.tabs button.workspace-logout:focus-visible { outline: 2px solid #ef9191; outline-offset: 2px; }
+.benchmark-chart { margin-top: 22px; padding-top: 20px; border-top: 1px solid rgba(201,168,91,.16); color: #d8b968; }
+.benchmark-chart.is-silver { color: #b9ccd9; }
+.benchmark-chart-head, .benchmark-chart-summary, .benchmark-chart-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.benchmark-chart-head h4 { margin: 0; color: var(--ivory); font-size: 16px; }
+.benchmark-chart-head p, .benchmark-chart-note { color: var(--ivory-3); font-size: 11px; margin: 5px 0 0; }
+.benchmark-metal-select { width: 125px; }
+.benchmark-chart-summary { margin: 18px 0 4px; font-size: 13px; }
+.benchmark-chart-summary strong { font-size: 25px; font-weight: 500; }
+.benchmark-chart-summary small { font-size: 11px; font-weight: 400; }
+.benchmark-chart-summary div > span { display: block; margin-top: 3px; color: var(--ivory-3); font-size: 11px; }
+.benchmark-chart-svg { display: block; width: 100%; height: auto; min-height: 150px; overflow: visible; }
+.benchmark-grid { stroke: rgba(180,170,145,.12); stroke-dasharray: 3 5; }
+.benchmark-guide { stroke: currentColor; stroke-opacity: .3; stroke-dasharray: 4 4; }
+.benchmark-axis { fill: #a99f8b; font-size: 11px; }
+.benchmark-chart-svg [role="button"] { cursor: pointer; }
+.benchmark-chart-svg [role="button"]:focus { outline: none; stroke: currentColor; stroke-width: 1.5; }
+.benchmark-chart-footer { color: var(--ivory-3); font-size: 11px; padding-top: 10px; }
+.benchmark-chart-footer b { color: var(--ivory); font-weight: 500; margin-left: 5px; }
+.benchmark-chart-note { line-height: 1.6; margin-top: 12px; }

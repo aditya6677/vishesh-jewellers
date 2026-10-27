@@ -5,6 +5,18 @@ const vm = require('node:vm');
 const { PageRenderer } = require('../lib/ui/page-renderer');
 const { createConfig } = require('../lib/config');
 
+test('logout clears only the PIN session, supports locking again, and reports blocked storage', async () => {
+  const { PIN_SESSION_KEY, clearPinSession, isPinUnlocked, savePinSession } = await import('../lib/pin-lock.mjs');
+  const values = new Map([['invoice-draft', 'preserved'], [PIN_SESSION_KEY, 'true']]);
+  const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  assert.equal(clearPinSession(storage), true); assert.equal(isPinUnlocked(storage), false);
+  assert.equal(values.get('invoice-draft'), 'preserved');
+  assert.equal(savePinSession(storage), true); assert.equal(isPinUnlocked(storage), true);
+  assert.equal(clearPinSession({ removeItem() { throw Error('Blocked'); }, setItem: storage.setItem }), true);
+  assert.equal(isPinUnlocked(storage), false);
+  assert.equal(clearPinSession({ removeItem() { throw Error('Blocked'); }, setItem() { throw Error('Blocked'); } }), false);
+});
+
 test('PIN validation preserves required/incorrect messages and accepts only the existing PIN', async () => {
   const { pinError } = await import('../lib/pin-lock.mjs');
   for (const value of ['', '   ']) assert.equal(pinError(value), 'PIN is required.');

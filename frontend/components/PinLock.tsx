@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { isPinUnlocked, pinError, savePinSession } from '../../lib/pin-lock.mjs';
+import { clearPinSession, isPinUnlocked, PIN_LOCK_EVENT, pinError, savePinSession } from '../../lib/pin-lock.mjs';
 
 function unlocked() { try { return isPinUnlocked(window.sessionStorage); } catch (_) { return false; } }
 
@@ -7,6 +7,17 @@ export function PinLock() {
   const [open, setOpen] = useState(() => !unlocked());
   const [pin, setPin] = useState(''), [error, setError] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    function lock() {
+      let cleared = false;
+      try { cleared = clearPinSession(window.sessionStorage); } catch (_) { /* Lock the visible workspace even if storage is unavailable. */ }
+      setPin('');
+      setError(cleared ? '' : 'Session storage is unavailable. Close this tab to finish logging out.');
+      setOpen(true);
+    }
+    window.addEventListener(PIN_LOCK_EVENT, lock);
+    return () => window.removeEventListener(PIN_LOCK_EVENT, lock);
+  }, []);
   useEffect(() => {
     const host = document.getElementById('react-pin-lock');
     document.body.classList.toggle('pin-locked', open);

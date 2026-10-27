@@ -1,5 +1,6 @@
 import { money } from '../components/Metric';
 import type { Rates } from '../types';
+import { RateChart } from './RateChart';
 
 function Change({ value, previous }: { value: number | null; previous: Rates['previousQuote'] }) {
   if (!previous || value === null || !Number.isFinite(value)) return null;
@@ -18,5 +19,6 @@ export function MarketRates({ rates, refresh, loading }: { rates: Rates | null; 
       <div className="record-info"><b>Gold 999 / 24K (₹/g)</b><span className="paid-amount">{money(rates.goldPerGram)}</span><Change value={rates.goldChangePercent} previous={rates.previousQuote} /></div>
       <div className="record-info"><b>Silver 999 (₹/g)</b><span className="paid-amount">{money(rates.silverPerGram)}</span><Change value={rates.silverChangePercent} previous={rates.previousQuote} /></div>
     </div>
+    <RateChart rates={rates} />
   </div>;
 }
