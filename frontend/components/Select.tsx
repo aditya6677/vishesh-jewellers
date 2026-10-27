@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-export function Select({ label, value, options, onChange, name, disabled = false, compact = false }: {
+export function Select({ label, value, options, onChange, name, disabled = false, compact = false, portalTarget }: {
   label: string; value: string; options: readonly string[]; onChange: (value: string) => void;
-  name?: string; disabled?: boolean; compact?: boolean;
+  name?: string; disabled?: boolean; compact?: boolean; portalTarget?: HTMLElement;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -56,6 +56,6 @@ export function Select({ label, value, options, onChange, name, disabled = false
         {options.map(option => <button type="button" role="option" aria-selected={option === value} className={'app-select-option' + (option === value ? ' is-selected' : '')} key={option}
           onClick={() => { onChange(option); close(true); }}>{option}</button>)}
       </div>
-    </div>, document.body)}
+    </div>, portalTarget || document.body)}
   </div>;
 }

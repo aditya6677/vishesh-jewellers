@@ -48,7 +48,5 @@ export interface RecordsSnapshot { items: InvoiceRecord[]; total: number; versio
 export interface SettlementInput { method: string; amount?: number; weight?: number; rate?: number; fullyPaid?: boolean }
 declare global {
   interface Window {
-    vjRecordAction: (action: 'view' | 'edit' | 'void', number: string, version: string) => Promise<void>;
-    vjRecordExport: (filters: RecordFilters) => Promise<void>;
   }
 }

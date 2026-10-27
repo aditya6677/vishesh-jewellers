@@ -39,7 +39,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the route/service structure, menu fil
 
 ## Framework migration preview
 
-On `migration/react-fastify`, use Node 20.19+ (Node 20) or Node 22.12+, run `npm ci`, then `npm run build:frontend` and `npm start`. Open `http://localhost:3000/?frontend=react` for the React Dashboard; `/` retains the original UI. See [MIGRATION.md](MIGRATION.md) for milestones, checks, packaging, and recovery instructions.
+On `migration/react-fastify`, use Node 22.12+; run `npm ci`, then `npm run build:frontend` and `npm start`. React is the default at `http://localhost:3000/` for browser and desktop launches. Use `/?frontend=legacy` only for the retained compatibility fallback; `/?frontend=react` remains supported. See [MIGRATION.md](MIGRATION.md) for milestones, checks, packaging, and recovery instructions.
 
 ## Code layout
 

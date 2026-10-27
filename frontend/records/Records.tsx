@@ -6,6 +6,7 @@ import { Pagination } from '../components/Pagination';
 import { money } from '../transactions/TransactionForm';
 import { RecordDetails, balance, netTotal } from './RecordDetails';
 import type { InvoiceRecord, RecordFilters, RecordsSnapshot, SettlementInput } from '../types';
+import { downloadRecordsReport, type ReportPdfConstructor } from '../../lib/records-report.mjs';
 
 const statuses: Record<string, string> = { all: 'All records', due: 'Due', advance: 'Advance', pending: 'Pending delivery', settled: 'Settled', voided: 'Voided' };
 export function Records() {
@@ -50,7 +51,9 @@ export function Records() {
         await recordsApi.remove(record.number); setExpanded(undefined); await reload();
         window.dispatchEvent(new Event('vj:record-stock-refresh')); window.dispatchEvent(new Event('vj:transactions-updated'));
         setMessage({ title: 'Invoice deleted', text: record.number + ' was deleted and its calculations reversed. This cannot be undone from the app.' });
-      } else await window.vjRecordAction(action, record.number, version);
+      } else if (action === 'view') await window.vjSavedInvoiceOpen(record.number, version);
+      else if (action === 'edit') await window.vjInvoiceEditOpen(record.number, version);
+      else await window.vjInvoiceVoidOpen(record.number, version);
     } catch (error) {
       setMessage({ title: 'Action could not be completed', text: (error as Error).message });
       await reload();
@@ -62,10 +65,22 @@ export function Records() {
     <div className="panel"><div className="toolbar react-record-toolbar">
       <div className="search-box"><input type="text" aria-label="Search invoices" placeholder="Search invoice number, customer, or mobile…" value={filters.query} disabled={busy} onInput={event => change({ query: event.currentTarget.value })} /></div>
       <Select label="Filter invoices by status" value={statuses[filters.status]} options={Object.values(statuses)} disabled={busy} onChange={label => change({ status: Object.keys(statuses).find(key => statuses[key] === label)! })} />
-      <button className="btn btn-ghost btn-sm" disabled={busy || loading || Boolean(error)} onClick={async () => { if (lock.current) return; lock.current = true; setBusy(true); try { await window.vjRecordExport(filters); } catch (error) { setMessage({ title: 'Export failed', text: (error as Error).message }); } finally { lock.current = false; setBusy(false); } }}>↓ Export PDF</button>
+      <button className="btn btn-ghost btn-sm" disabled={busy || loading || Boolean(error)} onClick={async () => {
+        if (lock.current) return; lock.current = true; setBusy(true);
+        try {
+          const snapshot = await recordsApi.list(filters, AbortSignal.timeout(20000));
+          const count = downloadRecordsReport(snapshot.items, filters, window.jspdf?.jsPDF as unknown as ReportPdfConstructor | undefined);
+          setMessage({ title: 'PDF downloaded', text: count === 1 ? 'Invoice PDF downloaded.' : count + ' invoice records exported to PDF.' });
+        } catch (error) { setMessage({ title: 'Export failed', text: (error as Error).message }); }
+        finally { lock.current = false; setBusy(false); }
+      }}>↓ Export PDF</button>
       <span>{data.items.length} of {data.total} shown</span><button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => { setExpanded(undefined); void reload(); }}>Refresh Records</button>
     </div>
-    <div className="records-range"><div className="range-date"><label htmlFor="react-record-from">From</label><input id="react-record-from" type="date" aria-label="Start invoice date" value={filters.from} max={filters.to || undefined} disabled={busy} onChange={event => change({ from: event.currentTarget.value })} /></div><div className="range-date"><label htmlFor="react-record-to">To</label><input id="react-record-to" type="date" aria-label="End invoice date" value={filters.to} min={filters.from || undefined} disabled={busy} onChange={event => change({ to: event.currentTarget.value })} /></div><button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => change({ from: '', to: '' })}>Clear dates</button><span className="range-caption">Filters by invoice date</span></div>
+    <div className="records-range">
+      <div className="range-date"><label htmlFor="react-record-from">From</label><input id="react-record-from" type="date" aria-label="Start invoice date" value={filters.from} max={filters.to || undefined} disabled={busy} onInput={event => change({ from: event.currentTarget.value })} onChange={event => change({ from: event.currentTarget.value })} /></div>
+      <div className="range-date"><label htmlFor="react-record-to">To</label><input id="react-record-to" type="date" aria-label="End invoice date" value={filters.to} min={filters.from || undefined} disabled={busy} onInput={event => change({ to: event.currentTarget.value })} onChange={event => change({ to: event.currentTarget.value })} /></div>
+      <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => change({ from: '', to: '' })}>Clear dates</button><span className="range-caption">Filters by invoice date</span>
+    </div>
     {error && <p role="alert" className="due-amount">{error}</p>}{loading && <p role="status">Loading records…</p>}
     <div className="data-table-wrap"><table className="data-table"><thead><tr>{['Invoice', 'Date', 'Customer', 'Mobile', 'Total', 'Balance', 'Actions'].map(label => <th key={label}>{label}</th>)}</tr></thead><tbody>
       {data.items.slice((currentPage - 1) * size, currentPage * size).map(record => { const remaining = balance(record); return <Fragment key={record.number}><tr className={record.status === 'voided' ? 'voided-record' : ''}>

@@ -3,6 +3,16 @@
 dialog.react-dialog { margin:auto; color:var(--ivory); width:calc(100% - 40px); }
 dialog.react-dialog::backdrop { background:rgba(10,8,5,.72); }
 dialog.react-dialog p { color:var(--ivory-3); font-size:14px; }
+dialog.saved-invoice-dialog #invoicePaper p { color:inherit; }
+dialog.invoice-edit-dialog { max-width:980px; max-height:92vh; overflow:auto; }
+dialog.invoice-success-dialog { max-width:430px; text-align:center; }
+dialog.shared-message-dialog { max-width:430px; box-sizing:border-box; padding:28px; border-radius:16px; background:#211b13; text-align:center; }
+dialog.shared-message-dialog::backdrop { background:rgba(0,0,0,.65); backdrop-filter:blur(3px); }
+.shared-message-icon { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 16px; border-radius:50%; background:rgba(198,154,58,.12); font-size:26px; color:var(--gold-light); }
+.shared-message-dialog[data-type=error] .shared-message-icon { color:#E8A99E; background:rgba(232,169,158,.12); }
+.shared-message-dialog[data-type=success] .shared-message-icon { color:#9CC7A2; background:rgba(156,199,162,.12); }
+.shared-message-dialog #react-message-title { margin:0; font-size:24px; }
+.shared-message-dialog #react-message-text { margin:14px 0 22px; line-height:1.6; white-space:pre-wrap; }
 .react-page output.payment-balance { display:block; }
 .react-record-toolbar > .app-select-control { width:180px; flex:0 1 180px; }
 .react-record-toolbar > span { color:var(--ivory-3); font-size:12px; }

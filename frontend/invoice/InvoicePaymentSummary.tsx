@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
 import { money } from '../components/Metric';
+import { calculateInvoiceExchange } from '../../lib/invoice-exchange.mjs';
 
 function readMoney(value: string | null | undefined): number {
   return Number(String(value || '').replace(/[^\d.-]/g, '')) || 0;
 }
 
 function updatePreviewPaymentLine(paid: number, total: number) {
+  if (document.getElementById('react-invoice-preview')) {
+    window.dispatchEvent(new Event('vj:invoice-payment-updated'));
+    return;
+  }
   const totals = document.getElementById('p-totals');
   if (!totals) return;
   totals.querySelector('.payment-summary-line')?.remove();
@@ -30,31 +35,35 @@ export function InvoicePaymentSummary() {
     const reset = () => {
       setDiscount('0');
       setPaid('0');
-      const exchangeRows = document.getElementById('exchangeRows');
-      const addExchangeButton = document.getElementById('addExchangeRow') as HTMLButtonElement | null;
-      exchangeRows?.replaceChildren();
-      addExchangeButton?.click();
-      window.setTimeout(() => {
-        updateExchangeDeduction('0');
-        refresh();
-      }, 0);
+      window.dispatchEvent(new Event('vj:invoice-exchange-reset'));
+      const hiddenExchange = document.getElementById('exchange-disc') as HTMLInputElement | null;
+      if (hiddenExchange) {
+        hiddenExchange.value = '0';
+        hiddenExchange.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      window.setTimeout(refresh, 0);
     };
     const newInvoiceButton = document.getElementById('btnNewInvoice');
     document.addEventListener('input', refresh);
     document.addEventListener('change', refresh);
     newInvoiceButton?.addEventListener('click', reset);
+    window.addEventListener('vj:invoice-reset', reset);
+    window.addEventListener('vj:invoice-totals-updated', refresh);
     window.setTimeout(refresh, 0);
     return () => {
       document.removeEventListener('input', refresh);
       document.removeEventListener('change', refresh);
       newInvoiceButton?.removeEventListener('click', reset);
+      window.removeEventListener('vj:invoice-reset', reset);
+      window.removeEventListener('vj:invoice-totals-updated', refresh);
     };
   }, []);
 
   useEffect(() => updatePreviewPaymentLine(readMoney(paid), grandTotal), [paid, grandTotal]);
 
   const updateExchangeDeduction = (nextDiscount: string) => {
-    const exchangeValue = readMoney(document.getElementById('exchange-value')?.textContent);
+    const entries = window.vjInvoiceExchangeEntries?.();
+    const exchangeValue = entries ? calculateInvoiceExchange(entries) : readMoney(document.getElementById('exchange-value')?.textContent);
     const exchangeInput = document.getElementById('exchange-disc') as HTMLInputElement | null;
     if (!exchangeInput) return;
     exchangeInput.value = (exchangeValue + Math.max(Number(nextDiscount) || 0, 0)).toFixed(2);

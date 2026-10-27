@@ -3,6 +3,8 @@ const { fork } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { createJsonStore } = require('./lib/json-store');
+const { replaceDesktopData } = require('./lib/desktop-data-files');
 
 let serverProcess;
 
@@ -45,6 +47,9 @@ async function chooseDataLocation(currentDataDir) {
       detail: 'Using it will replace the app’s active data location. No files will be deleted.'
     });
     if (choice.response !== 0) return;
+    // Validate before switching configuration; another installation's encrypted
+    // store may require a different protected key. Do not activate unreadable data.
+    createJsonStore(existingStore, { encryptionKey: dataEncryptionKey() }).read();
   } else if (fs.existsSync(currentDataDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
     fs.cpSync(currentDataDir, targetDir, { recursive: true, force: false, errorOnExist: false });
@@ -144,15 +149,11 @@ async function restoreBackup(dataDir) {
     detail: `Backup date: ${backup.createdAt || 'unknown'}\nA safety copy of the current data will be created first. This backup is protected for this computer account.`
   });
   if (confirmation.response !== 0) return;
-  const beforePath = path.join(backupsDir(), `Vishesh-Jewellers-Before-Restore-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+  const beforePath = path.join(backupsDir(), `Vishesh-Jewellers-Before-Restore-${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID()}.json`);
   writeBackup(beforePath, dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
   const storePath = path.join(dataDir, 'store.json');
-  const tempStorePath = storePath + '.restore.tmp';
-  fs.writeFileSync(tempStorePath, JSON.stringify(restored.encryptedStore, null, 2) + '\n', { mode: 0o600 });
-  fs.writeFileSync(dataKeyFile() + '.restore.tmp', restored.keyEnvelope + '\n', { mode: 0o600 });
-  fs.renameSync(dataKeyFile() + '.restore.tmp', dataKeyFile());
-  fs.renameSync(tempStorePath, storePath);
+  replaceDesktopData({ storePath, keyPath: dataKeyFile(), encryptedStore: restored.encryptedStore, keyEnvelope: restored.keyEnvelope });
   const choice = await dialog.showMessageBox({ type: 'info', buttons: ['Restart Now'], message: 'Backup restored', detail: 'The app will restart to load the restored data.' });
   if (choice.response === 0) { app.relaunch(); app.exit(0); }
 }

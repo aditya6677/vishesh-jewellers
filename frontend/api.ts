@@ -7,6 +7,9 @@ export class ApiError extends Error {
 }
 
 export const recordsApi = {
+  void: (number: string, version: string, reason: string) => mutate<{ record: InvoiceRecord; version: string }>('POST', '/api/invoices/' + encodeURIComponent(number) + '/void', { version, reason }),
+  edit: (number: string, input: unknown) => mutate<{ record: InvoiceRecord; version: string }>('PUT', '/api/invoices/' + encodeURIComponent(number), input),
+  get: (number: string, version = '') => get<{ record: InvoiceRecord; version: string }>('/api/records/' + encodeURIComponent(number) + '?' + new URLSearchParams({ version })),
   list: (filters: RecordFilters, signal: AbortSignal) => get<RecordsSnapshot>('/api/records?' + new URLSearchParams({ q: filters.query, status: filters.status, from: filters.from, to: filters.to }), signal),
   settle: (number: string, version: string, input: SettlementInput) => mutate<{ record: InvoiceRecord; settled: number }>('POST', '/api/records/' + encodeURIComponent(number) + '/settlements', { ...input, version }),
   remove: (number: string) => mutate<{ ok: boolean }>('DELETE', '/api/invoices/' + encodeURIComponent(number), {})

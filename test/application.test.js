@@ -73,12 +73,21 @@ test('HTTP storage contract, encrypted persistence, exports, and asset routes', 
   assert.equal(workbook.status, 200);
   assert.match(workbook.headers.get('content-disposition'), /\.xlsx/);
   assert.equal(Buffer.from(await workbook.arrayBuffer()).subarray(0, 2).toString(), 'PK');
-  for (const route of ['/', '/index.html', '/assets/vishesh-jewellers-logo.png', '/manifest.webmanifest', '/service-worker.js']) {
+  for (const route of ['/', '/index.html', '/assets/vishesh-jewellers-logo.png', '/manifest.webmanifest', '/service-worker.js', '/vendor/html2canvas.min.js', '/vendor/jspdf.umd.min.js']) {
     const response = await request(route);
     assert.equal(response.status, 200, route);
     await response.arrayBuffer();
   }
   assert.equal((await request('/unknown')).status, 404);
+  assert.equal((await request('/vendor/package.json')).status, 404);
+  assert.equal((await request('/vendor/fonts/LICENSE')).status, 404);
+  const fontCss = await request('/vendor/fonts.css');
+  assert.equal(fontCss.status, 200); assert.match(fontCss.headers.get('content-type'), /text\/css/);
+  for (const font of require('../lib/ui/offline-fonts')) {
+    const response = await request('/vendor/fonts/' + font.file);
+    assert.equal(response.status, 200); assert.equal(response.headers.get('content-type'), 'font/woff2');
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), fs.readFileSync(path.join(config.root, 'public/vendor/fonts', font.file)));
+  }
   assert.equal((await request('/api/version')).status, 200);
 });
 
@@ -107,6 +116,71 @@ test('failed invoice reversal leaves every stored collection unchanged', async t
   store.write(data);
   assert.equal((await request('/api/invoices/VJ000002', { method: 'DELETE' })).status, 400);
   assert.deepEqual(store.read(), data);
+});
+
+test('invoice HTTP save retries commit one encrypted transaction and reject overselling', async t => {
+  const { request, store, config } = await runningApp(t);
+  const stock = [{ id: 'ring', item: 'Gold Ring', purity: '22K', qty: 10, gross: 100, net: 90 }];
+  store.write({ [StorageKey.STOCK]: stock, 'invoice-counter': 1, unrelated: true });
+  const input = {
+    requestId: crypto.randomUUID(), number: 'VJ000001', status: 'completed', invoiceDate: '2026-10-26', customer: 'HTTP Test',
+    items: [{ lineId: 'one', stockId: 'ring', name: 'Gold Ring', purity: '22K', gross: 10, net: 9, pcs: 4, rate: 1000, making: 10 }],
+    exchanges: [{ metal: 'gold', weight: 0, rate: 0 }], manualDiscount: 0, paid: 10000, gstRate: 3, expectedTotal: 10197
+  };
+  const post = value => request('/api/invoices', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(value) });
+  const responses = await Promise.all([post(input), post(input)]);
+  for (const response of responses) assert.equal(response.status, 200);
+  const saved = store.read();
+  assert.equal(saved[StorageKey.INVOICES].length, 1);
+  assert.equal(saved[StorageKey.INVOICES][0].due, 197);
+  assert.deepEqual(saved[StorageKey.STOCK][0], { ...stock[0], qty: 6, gross: 90, net: 81 });
+  assert.equal(saved['invoice-counter'], 2);
+  const encrypted = JSON.parse(fs.readFileSync(config.dataFile, 'utf8'));
+  assert.equal(encrypted.algorithm, 'aes-256-gcm');
+  const failed = await post({ ...input, requestId: crypto.randomUUID(), number: 'VJ000002', items: [{ ...input.items[0], pcs: 7 }] });
+  assert.equal(failed.status, 409);
+  assert.deepEqual(store.read(), saved);
+});
+
+test('invoice revision HTTP endpoint preserves counter and rejects stale, missing and invalid edits', async t => {
+  const { request, store } = await runningApp(t);
+  const record = { number: 'VJ000003', total: 100, paid: 10, initialPaid: 10, due: 90, status: 'completed', weightMode: 'line-total', soldItems: [{ stockId: 'ring', name: 'Ring', purity: '22K', gross: 1, net: 1, pcs: 1 }] };
+  store.write({ [StorageKey.INVOICES]: [record], [StorageKey.STOCK]: [{ id: 'ring', item: 'Ring', purity: '22K', qty: 1, gross: 1, net: 1 }], 'invoice-counter': 4 });
+  const snapshot = await (await request('/api/records')).json();
+  const input = { version: snapshot.versions.VJ000003, customer: 'Revised Customer', invoiceDate: '2026-10-26', items: [{ stockId: 'ring', name: 'Ring', purity: '22K', gross: 2, net: 2, pcs: 2, rate: 100, making: 0 }], exchanges: [], paid: 50, manualDiscount: 0, gstRate: 0, expectedTotal: 200 };
+  const put = (number, body) => request('/api/invoices/' + number, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  assert.equal((await put(record.number, { ...input, customer: '' })).status, 400);
+  const response = await put(record.number, input);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.record.due, 150); assert.equal(result.record.paid, 50);
+  assert.equal(store.read()['invoice-counter'], 4);
+  assert.equal(store.read()[StorageKey.STOCK][0].qty, 0);
+  const after = store.read();
+  assert.equal((await put(record.number, input)).status, 409);
+  assert.equal((await put('missing', input)).status, 404);
+  assert.deepEqual(store.read(), after);
+});
+
+test('void HTTP endpoint checks revision and reason, commits reversals, and never voids twice', async t => {
+  const { request, store } = await runningApp(t);
+  const record = { number: 'VJ000004', status: 'completed', weightMode: 'line-total', paid: 50, total: 100, due: 50, soldItems: [{ stockId: 'ring', name: 'Ring', pcs: 2, gross: 3, net: 2 }] };
+  store.write({ [StorageKey.INVOICES]: [record], [StorageKey.STOCK]: [{ id: 'ring', qty: 1, gross: 1, net: 1 }], [StorageKey.OLD_METAL]: [{ sourceId: 'exchange', invoice: record.number, source: 'Invoice exchange', metal: 'gold', weight: 1, value: 100 }], 'invoice-counter': 5 });
+  const snapshot = await (await request('/api/records')).json();
+  const input = { version: snapshot.versions[record.number], reason: 'Customer cancelled' };
+  const post = (number, body) => request('/api/invoices/' + number + '/void', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const before = store.read();
+  assert.equal((await post(record.number, { ...input, reason: '' })).status, 400);
+  assert.equal((await post(record.number, { ...input, version: 'stale' })).status, 409);
+  assert.equal((await post('missing', input)).status, 404);
+  assert.deepEqual(store.read(), before);
+  const response = await post(record.number, input); assert.equal(response.status, 200);
+  const result = await response.json(); assert.equal(result.record.status, 'voided'); assert.equal(result.record.due, 0);
+  const after = store.read(); assert.deepEqual(after[StorageKey.STOCK], [{ id: 'ring', qty: 3, gross: 4, net: 3 }]);
+  assert.equal(after[StorageKey.OLD_METAL].length, 2); assert.equal(after['invoice-counter'], 5);
+  assert.equal((await post(record.number, input)).status, 409);
+  assert.equal((await post(record.number, { ...input, version: result.version })).status, 409);
+  assert.deepEqual(store.read(), after);
 });
 
 test('backup download and restore retain encryption and reject a mismatched key', async t => {
@@ -190,8 +264,16 @@ test('dashboard API preserves legacy summaries and filters without changing save
   assert.equal(fs.readFileSync(config.dataFile, 'utf8'), before);
 });
 
-test('React preview owns dashboard, stocks, purchases and payments; original remains available', async t => {
+test('React is default for browser and desktop entry points; explicit legacy remains available', async t => {
   const { request } = await runningApp(t);
+  for (const route of ['/', '/index.html', '/?frontend=react']) {
+    const response = await request(route);
+    assert.equal(response.status, 200);
+    const page = await response.text();
+    assert.ok(page.includes('id="react-navigation"'), route);
+    assert.ok(page.includes('id="react-dashboard"'), route);
+    assert.ok(page.includes('id="react-pin-lock"'), route);
+  }
   const legacy = await (await request('/?frontend=legacy')).text();
   assert.ok(!legacy.includes('id="react-dashboard"'));
   assert.ok(legacy.includes("const renderDashboard = async (forceLiveRates"));
@@ -204,16 +286,35 @@ test('React preview owns dashboard, stocks, purchases and payments; original rem
   assert.ok(html.includes('id="react-payments"'));
   assert.ok(html.includes('id="react-settings"'));
   assert.ok(html.includes('id="react-records"'));
+  assert.ok(html.includes('id="react-invoice-exchange"'));
+  assert.ok(html.includes('id="react-invoice-details"'));
+  assert.ok(html.includes('id="legacy-invoice-details" hidden'));
+  assert.ok(html.includes('window.vjInvoiceDetails ='));
+  assert.ok(!legacy.includes('id="react-invoice-details"'));
+  assert.ok(html.includes('const getExchangeEntries = () => window.vjInvoiceExchangeEntries'));
+  assert.ok(html.includes('const saveInvoiceThroughApi = async status'));
+  assert.ok(html.includes('data-react-invoice-items="true"'));
+  assert.ok(html.includes('window.vjInvoiceItems ='));
+  assert.ok(html.includes('id="react-invoice-preview"'));
+  assert.ok(html.includes('window.vjInvoicePreviewSource ='));
+  assert.ok(!html.includes("document.getElementById('p-items-body').innerHTML ="));
+  assert.ok(!html.includes("document.getElementById('btnPrint').addEventListener"));
+  assert.ok(!html.includes('const stockPickerMenu ='));
+  assert.ok(legacy.includes('const stockPickerMenu ='));
+  assert.ok(!html.includes('let pendingRecord = null'));
+  assert.ok(!html.includes("await storeSet('stock-list', stockList);\n  renderStockTable(); renderStockStats();\n  saleCompleted = true;"));
+  assert.ok(!html.includes("const getExchangeEntries = () => Array.from(exchangeRows.querySelectorAll"));
   assert.ok(!html.includes("document.getElementById('recordsTbody').addEventListener"));
-  assert.ok(html.includes('window.vjRecordAction'));
+  assert.ok(!html.includes('window.vjRecordAction'));
   assert.ok(legacy.includes('id="recordsTbody"'));
+  assert.ok(legacy.includes("const getExchangeEntries = () => Array.from(exchangeRows.querySelectorAll"));
   assert.ok(!html.includes("document.getElementById('settingsChooseData').addEventListener"));
   assert.ok(!html.includes("document.getElementById('paymentForm').addEventListener"));
   assert.ok(!html.includes("document.getElementById('purchaseForm').addEventListener"));
   assert.ok(!html.includes('const stockItemInput ='));
   for (const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
   assert.ok(!html.includes("document.getElementById('dashboardRangeForm').addEventListener"));
-  assert.ok(html.includes("const openRecords = async"));
+  assert.ok(html.includes('id="react-navigation"'));
   const script = html.match(/type="module" src="([^\"]+)"/)[1];
   const asset = await request(script);
   assert.equal(asset.status, 200);
@@ -227,6 +328,13 @@ test('record API rejects stale settlements and writes linked metal receipts', as
   const { request, store } = await runningApp(t);
   store.write({ [StorageKey.INVOICES]: [{ number: 'VJTEST', total: 500, due: 500, paid: 0 }] });
   const snapshot = await (await request('/api/records')).json();
+  const before = store.read();
+  const saved = await request('/api/records/VJTEST?version=' + snapshot.versions.VJTEST);
+  assert.equal(saved.status, 200);
+  assert.equal((await saved.json()).record.due, 500);
+  assert.deepEqual(store.read(), before);
+  assert.equal((await request('/api/records/VJTEST?version=stale')).status, 409);
+  assert.equal((await request('/api/records/missing')).status, 404);
   const input = { version: snapshot.versions.VJTEST, method: 'silver', weight: 2, rate: 50 };
   const options = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) };
   const response = await request('/api/records/VJTEST/settlements', options);

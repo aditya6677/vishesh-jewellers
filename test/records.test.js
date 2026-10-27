@@ -6,9 +6,28 @@ const { StorageKey } = require('../lib/domain/constants');
 
 function fixture(record = {}) {
   let data = { [StorageKey.INVOICES]: [{ number: 'VJ1', total: 1000, paid: 0, due: 1000, status: 'completed', ...record }], untouched: true }, writes = 0;
+  if (data[StorageKey.INVOICES][0].due === undefined) delete data[StorageKey.INVOICES][0].due;
   const store = { read: () => structuredClone(data), write: value => { data = structuredClone(value); writes++; } };
   return { store, writes: () => writes, service: new RecordService(store) };
 }
+test('saved invoice reads are normalized, revision checked, and never write business data', () => {
+  const { service, store, writes } = fixture({ total: 1000, paid: 200, due: undefined, invoiceMarkup: '<div id="invoicePaper">Historical totals</div>' });
+  const before = store.read();
+  const version = service.list().versions.VJ1;
+  const result = service.get('VJ1', version);
+  assert.equal(result.record.due, 800);
+  assert.equal(result.version, version);
+  assert.equal(result.record.invoiceMarkup, before[StorageKey.INVOICES][0].invoiceMarkup);
+  assert.throws(() => service.get('VJ1', 'stale'), error => error.statusCode === 409);
+  assert.throws(() => service.get('missing'), error => error.statusCode === 404);
+  assert.deepEqual(store.read(), before); assert.equal(writes(), 0);
+  const settled = service.settle('VJ1', { version, method: 'amount', amount: 300 });
+  assert.equal(service.get('VJ1').record.due, 500);
+  assert.equal(service.get('VJ1').record.paid, 500);
+  assert.equal(service.get('VJ1').version, settled.version);
+  assert.throws(() => service.get('VJ1', version), error => error.statusCode === 409);
+  assert.equal(writes(), 1);
+});
 test('settlements update invoice and metal ledger with one write and reject repeated revisions', () => {
   const { store, service, writes } = fixture();
   const version = service.list().versions.VJ1;

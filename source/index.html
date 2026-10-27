@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vishesh Jewellers</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Jost:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="/vendor/fonts.css" rel="stylesheet">
+<script src="/vendor/html2canvas.min.js"></script>
+<script src="/vendor/jspdf.umd.min.js"></script>
 <style>
   :root{
     --ink:#14110C;
@@ -447,6 +446,7 @@
             </div>
           </div>
 
+          <div id="react-invoice-exchange" hidden></div>
           <div id="react-invoice-payment-summary" hidden></div>
           <div class="totals-mini">
             <div class="tline"><span>Subtotal</span><b id="mini-sub">₹0.00</b></div>
