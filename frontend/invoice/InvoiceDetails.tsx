@@ -86,7 +86,7 @@ export function InvoiceDetails() {
       </div>
       <div className="row row-2">
         <div className="field"><label htmlFor={idFor('inv-no')}>Invoice No.</label>
-          <input id={idFor('inv-no')} value={values['inv-no']} disabled title="Invoice number is assigned automatically" />
+          <input type="text" id={idFor('inv-no')} value={values['inv-no']} disabled title="Invoice number is assigned automatically" />
         </div>
         {input('inv-date', 'Date *', '', true, 'date')}
         <div className="field"><label>Invoice type *</label>

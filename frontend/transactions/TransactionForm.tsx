@@ -30,7 +30,7 @@ export function TransactionForm({ kind, entry, busy, balances, save, cancel }: {
         {!purchase && <><div className="row row-2"><div className="field"><label>Payment type *</label>
           <Select label="Payment type" value={paymentLabels[type]} options={Object.values(paymentLabels)} disabled={busy} onChange={value => setType((Object.keys(paymentLabels) as PaymentType[]).find(key => paymentLabels[key] === value)!)} />
         </div>{!isMetal && numeric('amount', type === 'self-expense' ? 'Self expense amount (₹)' : 'Amount paid (₹)', '0.01')}</div>
-        <div className="field"><label htmlFor="payment-reason">Reason (optional)</label><input id="payment-reason" name="reason" defaultValue={entry?.reason || ''} placeholder="e.g. Shop electricity, supplier payment" /></div></>}
+        <div className="field"><label htmlFor="payment-reason">Reason (optional)</label><input type="text" id="payment-reason" name="reason" defaultValue={entry?.reason || ''} placeholder="e.g. Shop electricity, supplier payment" /></div></>}
         {isMetal && <><div className="row row-3"><div className="field"><label>Metal *</label>
           <Select label="Metal" value={metal === 'gold' ? 'Gold' : 'Silver'} options={['Gold', 'Silver']} disabled={busy} onChange={value => setMetal(value === 'Gold' ? 'gold' : 'silver')} />
         </div>{numeric('weight', purchase ? 'Weight (g)' : 'Gross weight (g)', '0.001')}
