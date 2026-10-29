@@ -1,6 +1,6 @@
 {
   "name": "vishesh-jewellers-json-app",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "author": "Vishesh Jewellers",
   "main": "electron-main.js",
@@ -73,6 +73,7 @@
     "mac": {
       "icon": "assets/desktop/icon.icns",
       "mergeASARs": false,
+      "x64ArchFiles": "**/better-sqlite3-multiple-ciphers/prebuilds/darwin-*.node",
       "target": [
         "dmg"
       ]
