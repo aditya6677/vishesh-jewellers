@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { Ref, CSSProperties } from 'react';
 import type { InvoicePreviewSnapshot } from './preview-types';
 
 const number = (value: string | number) => (Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -7,10 +7,10 @@ const weight = (value: string | number) => (parseFloat(String(value)) || 0).toLo
 
 export function InvoicePaper({ snapshot: s, paperRef }: { snapshot: InvoicePreviewSnapshot; paperRef?: Ref<HTMLDivElement> }) {
   const balance = s.totals.grand - s.paid;
-  return <div id="invoicePaper" ref={paperRef} data-invoice-renderer="react">
+  return <div id="invoicePaper" ref={paperRef} data-invoice-renderer="react" style={s.business.logo ? { '--invoice-logo-image': `url("${s.business.logo}")` } as CSSProperties : undefined}>
     <div className="paper-head"><div className="paper-brand">
-      <img src="/assets/vishesh-jewellers-logo.png" alt="Vishesh Jewellers" className="invoice-logo" />
-      <div><h2 id="p-biz-name">{s.business.name}</h2><p>Beginning... of Special Relationship...</p></div>
+      <img src={s.business.logo || '/assets/vishesh-jewellers-logo.png'} alt={s.business.name} className="invoice-logo" />
+      <div><h2 id="p-biz-name">{s.business.name}</h2><p>{s.business.tagline ?? 'Beginning... of Special Relationship...'}</p></div>
     </div><div className="paper-contact">
       <div className="gst-badge" id="p-gstin">{s.totals.gstPct === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (s.business.gstin || '—')}</div><br />
       <span id="p-phone">{s.business.phone ? 'Ph: ' + s.business.phone : ''}</span><br />

@@ -99,7 +99,7 @@
 
   label{display:block; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ivory-3); opacity:0.75; margin-bottom:5px;}
   .field{margin-bottom:14px;}
-  input:not([type]), input[type=text], input[type=search], input[type=number], input[type=date], input[type=tel], input[type=email], textarea, select{
+  input:not([type]), input[type=text], input[type=search], input[type=number], input[type=date], input[type=tel], input[type=email], input[type=password], textarea, select{
     width:100%; padding:9px 11px; border-radius:7px; border:1px solid rgba(198,154,58,0.28);
     background:rgba(0,0,0,0.22); color:var(--ivory); font-size:14px; outline:none;
     transition:border .2s, box-shadow .2s;
@@ -198,7 +198,7 @@
   #invoicePaper::before{
     content:""; position:absolute; z-index:2; inset:8px; border:1px solid rgba(198,154,58,0.5); border-radius:3px; pointer-events:none;
   }
-  #invoicePaper::after{content:""; position:absolute; z-index:0; inset:0; background:url('/assets/vishesh-jewellers-logo.png') center / 265px no-repeat; opacity:0.055; pointer-events:none;}
+  #invoicePaper::after{content:""; position:absolute; z-index:0; inset:0; background-image:var(--invoice-logo-image,url('/assets/vishesh-jewellers-logo.png')); background-position:center; background-size:265px; background-repeat:no-repeat; opacity:0.055; pointer-events:none;}
   #invoicePaper > *{position:relative; z-index:1;}
   .paper-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding-bottom:12px; border-bottom:2px solid var(--gold);}
   .paper-brand{display:flex; align-items:center; gap:12px;}
@@ -1111,6 +1111,7 @@ document.getElementById('gst-rate').addEventListener('change', renderPreview);
 
 async function persistBizInfo(){
   bizInfo = {
+    ...bizInfo,
     name: document.getElementById('biz-name').value,
     gstin: document.getElementById('biz-gstin').value,
     phone: document.getElementById('biz-phone').value,
@@ -1124,6 +1125,12 @@ async function persistBizInfo(){
 });
 
 async function nextInvoiceNo(){
+  if(window.vjDatabaseMode){
+    const saved = await window.storage.get('invoice-counter');
+    const current = saved ? Number(JSON.parse(saved.value)) : 1;
+    if(!Number.isSafeInteger(current) || current < 1) throw new Error('Saved invoice counter is invalid. Do not create an invoice until it is reviewed.');
+    invoiceCounter = current;
+  }
   const n = String(invoiceCounter).padStart(6,'0');
   return 'VJ' + n;
 }
@@ -1522,6 +1529,7 @@ async function init(){
   if(bizInfo.phone) document.getElementById('biz-phone').value = bizInfo.phone;
   if(bizInfo.email) document.getElementById('biz-email').value = bizInfo.email;
   if(bizInfo.address) document.getElementById('biz-address').value = bizInfo.address;
+  if(window.vjApplyBranding && bizInfo.name) window.vjApplyBranding({name:bizInfo.name,tagline:bizInfo.tagline ?? 'Beginning... of Special Relationship...',logo:bizInfo.logo || ''});
 
   renderItemsDatalist();
   renderItemsMasterTable();

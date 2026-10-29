@@ -57,7 +57,8 @@
       if (!response.ok) throw new Error(result.error || 'Could not save the invoice.');
       committed = true;
       invoiceSaveAttempt = null;
-      stockList = result.stock;
+      if (result.stockScope === 'affected-only') window.dispatchEvent(new CustomEvent('vj:stock-cache-merge', { detail: result.stock }));
+      else stockList = result.stock;
       invoiceCounter = result.nextCounter;
       await resetInvoiceForm(false);
       document.getElementById('invoiceType').value = 'sale';

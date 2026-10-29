@@ -1,0 +1,27 @@
+'use strict';
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+test('account UI password controls remain accessible, non-submitting and dynamically enhanced', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../lib/security/account-page.html'), 'utf8');
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  assert.doesNotThrow(() => new Function(script));
+  assert.match(script, /toggle\.type='button'/);
+  assert.match(script, /aria-controls/);
+  assert.match(script, /aria-pressed/);
+  assert.match(script, /Show password/);
+  assert.match(script, /Hide password/);
+  assert.match(script, /new MutationObserver\(enhancePasswords\)/);
+  assert.match(script, /document\.hidden\)maskPasswords/);
+  assert.match(script, /queueMicrotask\(maskPasswords\)/);
+  assert.match(script, /selectMenu\.setAttribute\('role','listbox'\)/);
+  assert.match(script, /trigger\.setAttribute\('role','combobox'\)/);
+  assert.match(script, /select\.dispatchEvent\(new Event\('change'/);
+  assert.match(script, /new MutationObserver\(enhanceSelects\)/);
+  assert.match(script, /\['ArrowDown','ArrowUp','Home','End'\]/);
+  assert.match(html, /@media\(max-width:760px\)/);
+  assert.match(html, /#store-account-brand>div\{display:flex;flex-direction:column;gap:5px/);
+  assert.match(html, /<button class="gold">Create user<\/button><small>The user must change this password on first login\.<\/small>/);
+  assert.ok(fs.existsSync(path.join(__dirname, '../public/vendor/fonts/jost-latin-400-normal.woff2')));
+});

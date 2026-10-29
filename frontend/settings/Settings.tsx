@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { settingsApi, type DataLocation } from '../api';
 import { Dialog } from '../components/Dialog';
+import { DatabaseBackups } from './DatabaseBackups';
+import { StoreBranding } from './StoreBranding';
+import { LicensePlan } from './LicensePlan';
 
 type Action = 'backup' | 'export' | 'folder' | 'restore';
 
@@ -72,24 +75,29 @@ export function Settings() {
   return <>
     <div className="page-head"><p className="eyebrow">Application settings</p><h2>Settings</h2><p className="sub">Manage encrypted data, backups, and readable reports.</p></div>
     {loadError && <p className="due-amount" role="alert">{loadError}</p>}
+    {window.vjAccountSession && <LicensePlan />}
+    {(!window.vjAccountSession || window.vjAccountSession.user.role === 'superadmin') && <StoreBranding />}
     <div className="panel"><h3><span className="dot" />Data Location</h3>
       <div className="record-info-grid" style={{ marginBottom: 18 }}><div className="record-info"><b>Current folder</b><span style={{ overflowWrap: 'anywhere' }}>{location?.path || (loadError ? 'Unavailable' : 'Loading…')}</span></div><div className="record-info"><b>Protection</b><span className="paid-amount">AES-256 encrypted</span></div></div>
-      <p className="sub">The desktop app copies existing data to the selected folder, then restarts. The old folder is not deleted.</p>
-      <div className="btn-row"><button className="btn btn-gold" disabled={disabled || !location?.desktop} onClick={() => setConfirmation('folder')}>Choose Data Folder</button><button className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { void reload(); }}>Refresh Settings</button></div>
-      {location && !location.desktop && <p className="sub">Changing the data folder is available in the desktop app.</p>}
+      <p className="sub">{window.vjDatabaseMode ? 'Database folder changes are disabled during this preview. Backups and restore do not change the configured data location.' : 'The desktop app copies existing data to the selected folder, then restarts. The old folder is not deleted.'}</p>
+      <div className="btn-row"><button className="btn btn-gold" disabled={disabled || !location?.desktop || window.vjDatabaseMode} onClick={() => setConfirmation('folder')}>Choose Data Folder</button><button className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { void reload(); }}>Refresh Settings</button></div>
+      {location && !location.desktop && !window.vjDatabaseMode && <p className="sub">Changing the data folder is available in the desktop app.</p>}
     </div>
     <div className="panel" style={{ marginTop: 18 }}><h3><span className="dot" />Encrypted Backups</h3>
+      {window.vjDatabaseMode ? <DatabaseBackups /> : <>
       <p className="sub">A backup is created automatically once per week when the {location?.desktop ? 'desktop app' : 'local server'} starts. You can also create one manually or restore a previous backup.</p>
       <p className="sub">{location?.desktop ? 'Backups include a key protected by this computer’s secure storage. Restore is intended for the same computer and OS account.' : 'Restore requires the matching app data key. Keep the original data folder and its key file together; the encrypted JSON file alone is not enough.'}</p>
       <p className="sub" style={{ overflowWrap: 'anywhere' }}>{latest ? 'Latest backup: ' + latest : location ? 'No saved backup has been found.' : 'Loading backup status…'}</p>
-      <div className="btn-row"><button className="btn btn-gold" disabled={disabled} onClick={() => { void run('backup'); }}>{busy === 'backup' ? 'Preparing backup…' : location?.desktop ? 'Create Backup Now' : 'Download Encrypted Backup'}</button>
-        <button className="btn" disabled={disabled} onClick={() => location?.desktop ? setConfirmation('restore') : fileInput.current?.click()}>Restore Backup…</button></div>
+      </>}
+      {!window.vjDatabaseMode && <div className="btn-row"><button className="btn btn-gold" disabled={disabled} onClick={() => { void run('backup'); }}>{busy === 'backup' ? 'Preparing backup…' : location?.desktop ? 'Create Backup Now' : 'Download Encrypted Backup'}</button>
+        <button className="btn" disabled={disabled} onClick={() => location?.desktop ? setConfirmation('restore') : fileInput.current?.click()}>Restore Backup…</button></div>}
       <input ref={fileInput} type="file" accept="application/json,.json" aria-label="Select encrypted backup" hidden onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) { setSelectedFile(file); setConfirmation('restore'); } }} />
     </div>
     <div className="panel" style={{ marginTop: 18 }}><h3><span className="dot" />Export All Data</h3>
       <p className="sub">Download a readable Excel workbook with a Business Snapshot dashboard and separate sheets for invoices, items, exchanges, settlements, returns, stock, purchases, payments, the old-metal ledger, and a complete saved-data reference.</p>
       <p className="sub">The Excel file is not encrypted and contains customer details. Store it securely.</p>
-      <button className="btn btn-gold" disabled={disabled} onClick={() => { void run('export'); }}>{busy === 'export' ? 'Preparing workbook…' : '↓ Export All Data to Excel'}</button>
+      {window.vjDatabaseMode && <p className="sub">SQLite preview Excel exports are limited to 10,000 rows / 25 MB. For a larger invoice report, use the streaming CSV export in Records.</p>}
+      <button data-permission="settings.export" className="btn btn-gold" disabled={disabled} onClick={() => { void run('export'); }}>{busy === 'export' ? 'Preparing workbook…' : '↓ Export All Data to Excel'}</button>
     </div>
     {busy && <p role="status" aria-live="polite">Working… Please keep this window open.</p>}
     {confirmation && <Dialog title={confirmation === 'restore' ? 'Restore Backup?' : 'Change Data Folder?'} confirmLabel={confirmation === 'restore' ? 'Continue with Restore' : 'Choose Folder'} busy={Boolean(busy)} onClose={() => { setConfirmation(undefined); setSelectedFile(undefined); }} onConfirm={() => { void run(confirmation); }}>

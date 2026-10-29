@@ -5,6 +5,19 @@
   window.addEventListener('vj:invoice-save-start', () => { invoiceItemsSaving = true; });
   window.addEventListener('vj:invoice-save-end', () => { invoiceItemsSaving = false; });
   const refreshInvoiceItems = () => { renderRowsTable(); renderPreview(); };
+  window.addEventListener('vj:stock-cache-merge', event => {
+    for (const stock of event.detail || []) { const index = stockList.findIndex(item => String(item.id) === String(stock.id)); if (index < 0) stockList.push(stock); else stockList[index] = stock; }
+    if (window.vjDatabaseMode && stockList.length > 500) { const selected = new Set(rows.map(row => String(row.stockId))); stockList = stockList.filter((stock, index) => selected.has(String(stock.id)) || index >= stockList.length - 200); }
+    refreshInvoiceItems();
+  });
+  window.addEventListener('vj:stocks-invalidated', () => {
+    if (!window.vjDatabaseMode) return;
+    Promise.all(rows.filter(row => row.stockId).map(async row => {
+      const response = await fetch('/api/stocks/' + encodeURIComponent(row.stockId));
+      if (response.ok) { const result = await response.json(); window.dispatchEvent(new CustomEvent('vj:stock-cache-merge', { detail: [result.item] })); }
+      else if (response.status === 404) { stockList = stockList.filter(stock => String(stock.id) !== String(row.stockId)); refreshInvoiceItems(); }
+    })).catch(() => {});
+  });
   window.vjInvoiceItems = {
     read: () => ({
       items: rows.map(row => ({ ...row, amount: rowAmount(row), available: Object.fromEntries(stockList.map(stock => [stock.id, availableQtyFor(stock, row.id)])) })),

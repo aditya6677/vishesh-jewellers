@@ -19,9 +19,13 @@ export function savedInvoiceMarkup(record: InvoiceRecord & { invoiceMarkup?: str
     for (const attribute of [...element.attributes]) {
       if (!['id', 'class', 'style', 'src', 'alt', 'colspan', 'rowspan', 'width', 'height'].includes(attribute.name)) element.removeAttribute(attribute.name);
     }
-    if (element.hasAttribute('src') && !/^\/assets\/[\w./-]+\.(png|jpg|jpeg|webp)$/i.test(element.getAttribute('src') || '')) element.removeAttribute('src');
+    const imageSource = element.getAttribute('src') || '';
+    const embeddedLogo = imageSource.length <= 1_400_000 && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageSource);
+    if (element.hasAttribute('src') && !/^\/assets\/[\w./-]+\.(png|jpg|jpeg|webp)$/i.test(imageSource) && !embeddedLogo) element.removeAttribute('src');
     if (/url\s*\(|expression\s*\(|@import|\\/i.test(element.getAttribute('style') || '')) element.removeAttribute('style');
   }
+  const savedLogo = paper.querySelector('.invoice-logo')?.getAttribute('src') || '';
+  if (/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(savedLogo)) paper.style.setProperty('--invoice-logo-image', `url("${savedLogo}")`);
   paper.querySelectorAll('#p-seal,.seal,.voided-invoice-watermark,.pending-invoice-watermark,.payment-summary-line,.regenerated-payment-line,.regenerated-settlement-history').forEach(element => element.remove());
   if (record.status === 'voided' || record.status === 'pending') {
     const watermark = document.createElement('div');

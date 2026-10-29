@@ -1,6 +1,8 @@
-# Vishesh Jewellers JSON-backed app
+# Vishesh Jewellers desktop and web app
 
-This server renders the supplied `index.html` unchanged in appearance and adds a JSON-backed implementation of its `window.storage` API. Catalogue entries, stock, business details, and the invoice counter are saved as readable JSON values in `data/store.json`.
+The app preserves the existing jewellery invoicing UI and business calculations. The default backend stores business data as encrypted JSON in `data/store.json`. An opt-in encrypted SQLite browser-preview backend now includes row-level repositories, SQL reporting, server-side pagination and React integration. It does not automatically migrate or replace existing JSON data.
+
+See [DATABASE-INTEGRATION.md](DATABASE-INTEGRATION.md) for the schema, preview setup, tests and remaining desktop-release gates.
 
 ## Run
 

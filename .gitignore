@@ -5,6 +5,20 @@ public/vendor/
 
 # Private app data and secrets
 data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.key
+*.app-lock
+*.db.accounts-enabled
+*.db.backup-location.json
+*.db.license-anchor.json
+*license-private*.pem
+*.db.restore-*
+*.sqlite.restore-*
+database-keys/
+portable-*/
 .env
 .env.*
 !.env.example

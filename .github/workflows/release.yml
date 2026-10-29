@@ -39,6 +39,10 @@ jobs:
         run: npm test
         env:
           BACKEND_MODE: legacy
+      - name: Verify native OS-protected database keys
+        run: npm run check:database-key
+      - name: Verify native setup and recovery
+        run: npm run check:setup-recovery
       - name: Build unsigned Windows x64 installer
         if: runner.os == 'Windows'
         run: npm run package:windows -- --x64 --publish never -c.win.signExecutable=false
@@ -51,6 +55,12 @@ jobs:
       - name: Verify packaged macOS backend
         if: runner.os == 'macOS'
         run: npm run check:packaged -- "${{ github.workspace }}/dist/mac-universal/Vishesh Jewellers.app/Contents/Resources/app.asar.unpacked"
+      - name: Verify packaged Windows database, accounts and recovery
+        if: runner.os == 'Windows'
+        run: npm run check:packaged:database -- "${{ github.workspace }}/dist/win-unpacked/resources/app.asar.unpacked"
+      - name: Verify packaged macOS database, accounts and recovery
+        if: runner.os == 'macOS'
+        run: npm run check:packaged:database -- "${{ github.workspace }}/dist/mac-universal/Vishesh Jewellers.app/Contents/Resources/app.asar.unpacked"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: installers-${{ runner.os }}

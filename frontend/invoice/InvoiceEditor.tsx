@@ -21,6 +21,17 @@ export function InvoiceEditor() {
       const current = ++generation;
       try {
         const [saved, stocks] = await Promise.all([recordsApi.get(number, version), stockApi.list(AbortSignal.timeout(20000))]);
+        if (window.vjDatabaseMode) {
+          const record = saved.record as EditableRecord;
+          const missing = [...new Set([...(record.soldItems || []), ...(record.orderItems || [])].map(item => item.stockId).filter(id => id && !stocks.items.some(stock => stock.id === id)))];
+          for (let offset = 0; offset < missing.length; offset += 10) await Promise.all(missing.slice(offset, offset + 10).map(async id => {
+            const response = await fetch('/api/stocks/' + encodeURIComponent(id), { signal: AbortSignal.timeout(20000) });
+            if (response.status === 404) return;
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Could not load invoice stock.');
+            stocks.items.push(result.item);
+          }));
+        }
         if (current !== generation) return;
         if (saved.record.status === 'voided') throw new Error('Voided invoices cannot be edited.');
         setSession({ record: saved.record, version: saved.version, stocks: editStocks(saved.record, stocks.items) });
@@ -39,7 +50,8 @@ export function InvoiceEditor() {
 }
 
 function InvoiceEditDialog({ session, close, done, setSaving }: { session: EditorSession; close: () => void; done: () => void; setSaving: (value: boolean) => void }) {
-  const { record, stocks } = session;
+  const { record } = session;
+  const [stocks, setStocks] = useState(session.stocks);
   const [draft, setDraft] = useState<EditDraft>(() => {
     const value = editDraft(record);
     if (!value.terms && record.invoiceMarkup) value.terms = new DOMParser().parseFromString(record.invoiceMarkup, 'text/html').querySelector('#p-terms')?.textContent || '';
@@ -84,7 +96,7 @@ function InvoiceEditDialog({ session, close, done, setSaving }: { session: Edito
           <div className="toolbar" style={{ marginTop: 20 }}><h4>Items</h4><button type="button" className="btn btn-ghost btn-sm" onClick={() => change({ items: [...draft.items, { lineId: crypto.randomUUID(), stockId: '', name: '', purity: '', hsn: '', gross: '', net: '', pcs: 1, rate: '', making: 0 }] })}>+ Add item</button></div>
           <div className="items-table-wrap"><table className="itable"><thead><tr>{['From stock', 'Item', 'Purity', 'Gross Wt (g) · total', 'Net Wt (g) · total', 'Pcs', 'Rate (₹/g)', 'Making %', 'Amount', ''].map((label, index) => <th key={index}>{label}</th>)}</tr></thead><tbody>
             {draft.items.map((item, index) => <tr key={item.lineId}>
-              <td><InvoiceStockPicker stocks={stocks} available={available} selectedId={item.stockId} rowNumber={index + 1} disabled={busy} required portalTarget={dialog || undefined} onSelect={id => { const stock = stocks.find(stock => stock.id === id)!; itemChange(item.lineId, { stockId: id, name: stock.item, purity: stock.purity }); }} /></td>
+              <td><InvoiceStockPicker stocks={stocks} available={available} selectedId={item.stockId} rowNumber={index + 1} disabled={busy} required portalTarget={dialog || undefined} onSelect={(id, remote) => { const stock = remote || stocks.find(stock => stock.id === id); if (!stock) return; setStocks(current => current.some(row => row.id === id) ? current : [...current, stock]); itemChange(item.lineId, { stockId: id, name: stock.item, purity: stock.purity }); }} /></td>
               <td>{item.name || '—'}</td><td>{item.purity || '—'}</td>
               {(['gross', 'net', 'pcs', 'rate', 'making'] as const).map(field => <td key={field}><input type="number" aria-label={`${({ gross: 'Gross weight', net: 'Net weight', pcs: 'Quantity', rate: 'Rate per gram', making: 'Making percentage' })[field]} edit item ${index + 1}`} min={field === 'pcs' ? 1 : 0} step={field === 'pcs' ? 1 : field === 'gross' || field === 'net' ? 0.001 : 0.01} required={field !== 'making'} value={item[field]} onChange={event => itemChange(item.lineId, { [field]: event.currentTarget.value })} /></td>)}
               <td>{money(window.vjInvoiceEditMath.totals([item], 0, 0).subtotal)}</td><td><button type="button" className="btn btn-ghost btn-sm" aria-label={`Remove edit item ${index + 1}`} onClick={() => change({ items: draft.items.filter(entry => entry.lineId !== item.lineId) })}>×</button></td>

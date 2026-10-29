@@ -21,7 +21,7 @@ export function TransactionForm({ kind, entry, busy, balances, save, cancel }: {
     <input id={kind + '-' + name} name={name} type="number" step={step} min={step} max={name === 'purity' ? 100 : undefined} aria-required="true" placeholder={step === '0.001' ? '0.000' : '0.00'} value={numbers[name]} onInput={event => { const value = event.currentTarget.value; setNumbers(previous => ({ ...previous, [name]: value })); }} />
   </div>;
   return <div className="panel"><h3><span className="dot" />{entry ? 'Edit ' : 'Add '}{purchase ? 'Old Metal Purchase' : 'Payment'}</h3>
-    <form noValidate onSubmit={event => {
+    <form data-permission={kind + (entry ? '.edit' : '.create')} noValidate onSubmit={event => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
       save({ type, metal, weight: Number(form.get('weight')), rate: Number(form.get('rate')), purity: Number(form.get('purity')), amount: Number(form.get('amount')), reason: String(form.get('reason') || '').trim() });

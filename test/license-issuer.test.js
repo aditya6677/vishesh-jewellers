@@ -1,0 +1,20 @@
+'use strict';
+const { test }=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const { execFileSync }=require('node:child_process');
+const { randomUUID }=require('node:crypto');
+const { verifyLicense }=require('../lib/services/license-service');
+test('vendor CLI encrypts private keys, refuses overwrite and issues store-bound signed licenses',t=>{
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'vj-issuer-test-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+  const publicFile=path.join(directory,'public.pem'),privateFile=path.join(directory,'license-private.pem'),script=path.join(__dirname,'../scripts/license-issuer.js');
+  const options={input:'Disposable issuer test passphrase!\n',encoding:'utf8',stdio:['pipe','pipe','pipe']};
+  execFileSync(process.execPath,[script,'keys','--public',publicFile,'--private',privateFile],options);
+  assert.match(fs.readFileSync(privateFile,'utf8'),/ENCRYPTED PRIVATE KEY/);
+  assert.throws(()=>execFileSync(process.execPath,[script,'keys','--public',publicFile,'--private',privateFile],options));
+  const store=randomUUID();
+  const token=execFileSync(process.execPath,[script,'issue','--private',privateFile,'--store',store,'--plan','Paid test','--limit','1000'],options).trim();
+  const license=verifyLicense(token,fs.readFileSync(publicFile,'utf8'),store);assert.equal(license.invoiceLimit,1000);assert.equal(license.expiresAt,null);
+  const files=JSON.parse(fs.readFileSync(path.join(__dirname,'../package.json'),'utf8')).build.files;
+  assert.equal(files.includes('scripts/license-issuer.js'),false);
+});

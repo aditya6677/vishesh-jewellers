@@ -211,7 +211,7 @@ nav.tabs button.workspace-logout:focus-visible { outline: 2px solid #ef9191; out
 .benchmark-chart-note { line-height: 1.6; margin-top: 12px; }
 /* Shared interactive states. PIN, file, checkbox and hidden controls retain
    their dedicated styles; table and date-range sizing stays compact. */
-input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="date"], input[type="tel"], input[type="email"], textarea {
+input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="date"], input[type="tel"], input[type="email"], input[type="password"], textarea {
   color-scheme: dark;
 }
 input::placeholder, textarea::placeholder { color: var(--ivory-3); opacity: .45; }

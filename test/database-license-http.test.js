@@ -1,0 +1,77 @@
+'use strict';
+const { test }=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const { randomBytes,generateKeyPairSync,sign,randomUUID }=require('node:crypto');
+const { once }=require('node:events');
+const { openDatabase }=require('../lib/database/database');
+const { importSnapshot }=require('../lib/database/snapshot-migration');
+const { createApplication }=require('../lib/app');
+const { createConfig }=require('../lib/config');
+const { DAY }=require('../lib/services/license-service');
+test('new-store trial starts on setup; expiry keeps reads/backups accessible and signed paid activation unlocks writes',async t=>{
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'vj-license-http-')),file=path.join(directory,'store.db'),key=randomBytes(32),pair=generateKeyPairSync('ed25519');
+  const db=openDatabase(file,key,{create:true});importSnapshot(db,{'invoice-records':[],'stock-list':[],'purchase-records':[],'payment-records':[],'old-gold-records':[],'invoice-counter':1},{storeId:'main',sourceSha256:'a'.repeat(64),acknowledgeLegacy:true});db.close();
+  const publicFile=path.join(directory,'public.pem');fs.writeFileSync(publicFile,pair.publicKey.export({type:'spki',format:'pem'}));
+  let now=Date.UTC(2026,9,29,12);
+  const app=createApplication({config:{...createConfig({DATA_BACKEND:'sqlite',DATABASE_FILE:file,DATABASE_KEY:key.toString('base64'),ACCOUNTS_ENABLED:'1',LICENSING_ENABLED:'1',BACKUP_DIR:path.join(directory,'backups'),PORT:'0'}),licensePublicKeyFile:publicFile},licenseClock:()=>now,desktop:{enabled:false}});
+  t.after(async()=>{app.server.closeAllConnections();await app.close();key.fill(0);fs.rmSync(directory,{recursive:true,force:true})});
+  await app.initialize();app.server.listen(0,'127.0.0.1');await once(app.server,'listening');const base='http://127.0.0.1:'+app.server.address().port;let cookie='';
+  const request=(url,body,method=body?'POST':'GET')=>fetch(base+url,{method,headers:{'content-type':'application/json',cookie},...(body?{body:JSON.stringify(body)}:{})});
+  const businessSnapshot=async()=>{
+    const data={};
+    for(const name of ['stock-list','invoice-records','purchase-records','payment-records','old-gold-records','invoice-counter']){
+      const response=await request('/api/storage/'+name);assert.equal(response.status,200);data[name]=JSON.parse((await response.json()).value);
+    }
+    data.dashboard=await(await request('/api/dashboard')).json();return data;
+  };
+  assert.equal((await(await request('/api/auth/status')).json()).license.state,'not-started');
+  const credentials={username:'trial-owner',name:'Trial owner',password:'Disposable trial owner password!',confirmPassword:'Disposable trial owner password!'};
+  assert.equal((await request('/api/auth/setup',credentials)).status,200);
+  const login=await request('/api/auth/login',credentials);cookie=login.headers.get('set-cookie').split(';')[0];
+  const trial=await(await request('/api/license')).json();assert.equal(trial.state,'trial');assert.equal(trial.daysRemaining,14);assert.equal(trial.invoiceLimit,null);
+  const stock={item:'Trial ring',purity:'22K',qty:10,gross:100,net:90};assert.equal((await request('/api/stocks',stock)).status,200);
+  const stockId=(await(await request('/api/stocks')).json()).items[0].id;
+  const sale={requestId:randomUUID(),number:'VJ000001',status:'completed',customer:'Trial customer',invoiceDate:'2026-10-29',items:[{stockId,name:'Trial ring',purity:'22K',gross:1,net:1,pcs:1,rate:100,making:0}],exchanges:[],manualDiscount:0,gstRate:3,paid:50,expectedTotal:103};
+  assert.equal((await request('/api/invoices',sale)).status,200);
+  assert.equal((await request('/api/invoices',sale)).status,200);
+  assert.equal((await(await request('/api/license')).json()).invoicesIssued,1);
+  assert.equal((await request('/api/invoices',{...sale,number:'VJ000002',requestId:randomUUID(),items:[{...sale.items[0],rate:0}]})).status,400);
+  assert.equal((await(await request('/api/license')).json()).invoicesIssued,1);
+  now+=14*DAY;
+  assert.equal((await(await request('/api/license')).json()).state,'expired');
+  assert.equal((await request('/api/stocks',stock)).status,402);
+  assert.equal((await request('/api/dashboard')).status,200);
+  assert.equal((await request('/api/export.xlsx')).status,200);
+  assert.equal((await request('/api/database-backup/portable',{passphrase:'Disposable trial recovery phrase!'})).status,200);
+  const expiredData=await businessSnapshot();
+  const payload=Buffer.from(JSON.stringify({version:1,installationId:trial.installationId,type:'paid',plan:'Paid test allowance',expiresAt:null,invoiceLimit:2})).toString('base64url');
+  const token=payload+'.'+sign(null,Buffer.from(payload),pair.privateKey).toString('base64url');
+  assert.equal((await request('/api/license/activate',{token})).status,200);
+  assert.equal((await(await request('/api/license')).json()).state,'paid');
+  assert.deepEqual(await businessSnapshot(),expiredData);
+  assert.equal((await request('/api/stocks',stock)).status,200);
+  const second={...sale,number:'VJ000002',requestId:randomUUID()};
+  assert.equal((await request('/api/invoices',second)).status,200);
+  assert.equal((await(await request('/api/license')).json()).state,'limit-reached');
+  assert.equal((await request('/api/invoices',second)).status,200);
+  assert.equal((await request('/api/invoices',{...sale,number:'VJ000003',requestId:randomUUID()})).status,402);
+  assert.equal((await(await request('/api/stocks/'+stockId)).json()).item.qty,8);
+  const cappedData=await businessSnapshot();
+  const activation=changes=>{const value=Buffer.from(JSON.stringify({version:1,installationId:trial.installationId,type:'paid',plan:'Acceptance renewal',expiresAt:now+DAY,invoiceLimit:3,...changes})).toString('base64url');return value+'.'+sign(null,Buffer.from(value),pair.privateKey).toString('base64url')};
+  for(const invalid of [token.slice(0,-5)+'aaaaa',activation({installationId:randomUUID()}),activation({expiresAt:now-1}),activation({invoiceLimit:0})]){
+    assert.equal((await request('/api/license/activate',{token:invalid})).status,400);
+    assert.equal((await(await request('/api/license')).json()).state,'limit-reached');
+    assert.deepEqual(await businessSnapshot(),cappedData);
+  }
+  const paidExpiry=now+DAY;
+  assert.equal((await request('/api/license/activate',{token:activation({expiresAt:paidExpiry})})).status,200);
+  assert.deepEqual(await businessSnapshot(),cappedData);
+  now=paidExpiry-1;assert.equal((await(await request('/api/license')).json()).state,'paid');
+  now=paidExpiry;assert.equal((await(await request('/api/license')).json()).state,'expired');
+  assert.equal((await request('/api/stocks',stock)).status,402);
+  assert.deepEqual(await businessSnapshot(),cappedData);
+  assert.equal((await request('/api/license/activate',{token:activation({expiresAt:null,invoiceLimit:null})})).status,200);
+  assert.equal((await(await request('/api/license')).json()).state,'paid');
+  assert.deepEqual(await businessSnapshot(),cappedData);
+});

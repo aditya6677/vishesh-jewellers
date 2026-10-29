@@ -2,7 +2,7 @@ import type { InvoiceItemRow } from './item-types';
 import type { InvoiceCanvasRenderer, InvoicePdfConstructor } from '../../lib/invoice-output.mjs';
 
 export interface InvoicePreviewSnapshot {
-  business: { name: string; gstin: string; phone: string; email: string; address: string };
+  business: { name: string; gstin: string; phone: string; email: string; address: string; tagline?: string; logo?: string };
   customer: { name: string; address: string; mobile: string };
   number: string; date: string; items: Omit<InvoiceItemRow, 'available'>[];
   totals: { subtotal: number; disc: number; cgst: number; sgst: number; gstPct: number; grand: number; roundOff: number };

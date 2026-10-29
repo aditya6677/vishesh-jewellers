@@ -19,10 +19,31 @@ import { PinLock } from './components/PinLock';
 import { Navigation } from './components/Navigation';
 
 const target = document.getElementById('react-dashboard');
+const canView = (permission: string) => !window.vjAccountSession || window.vjAccountSession.permissions.includes(permission);
 const navigationTarget = document.getElementById('react-navigation');
 if (navigationTarget) createRoot(navigationTarget).render(<Navigation />);
 const pinTarget = document.getElementById('react-pin-lock');
-if (pinTarget) createRoot(pinTarget).render(<PinLock />);
+if (pinTarget && !window.vjAccountSession) createRoot(pinTarget).render(<PinLock />);
+if (window.vjAccountSession) {
+  document.body.classList.remove('pin-locked');
+  const permissions = window.vjAccountSession.permissions;
+  const restricted = document.createElement('style');
+  const knownPermissions = ['stocks.create','stocks.edit','stocks.delete','payments.create','payments.edit','payments.delete','purchases.create','purchases.edit','purchases.delete','invoices.create','invoices.edit','invoices.void','invoices.delete','records.settle','records.export','dashboard.export','settings.backup','settings.restore','settings.export','settings.branding'];
+  restricted.textContent = knownPermissions.filter(permission => !permissions.includes(permission)).map(permission => `[data-permission="${permission}"]{display:none!important}`).join('\n') + (!permissions.includes('invoices.create') ? '#btnCompleteSale,#btnSavePendingOrder{display:none!important}' : '');
+  document.head.append(restricted);
+  const planBanner = document.createElement('aside');
+  planBanner.setAttribute('aria-live', 'polite');
+  planBanner.style.cssText = 'padding:10px 18px;margin:12px auto;max-width:1400px;border:1px solid #c8a86444;border-radius:10px;color:#dfc58e;background:#2a2118;font-size:13px;';
+  planBanner.hidden = true; document.querySelector('main')?.prepend(planBanner);
+  const refreshPlan = async () => { try { const response = await fetch('/api/license'); if (!response.ok) return; const plan = await response.json() as { state: string; daysRemaining?: number; message: string }; planBanner.hidden = plan.state === 'disabled' || plan.state === 'paid'; planBanner.textContent = plan.state === 'trial' ? `Full-feature trial · ${plan.daysRemaining} days remaining · Manage your plan in Settings` : plan.message; } catch { /* API guards remain authoritative when a status refresh fails. */ } };
+  void refreshPlan(); setInterval(() => { void refreshPlan(); }, 60000); window.addEventListener('vj:license-refresh', () => { void refreshPlan(); });
+  window.addEventListener('vj:lock-workspace', () => { void fetch('/api/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).finally(() => { location.href = '/login'; }); });
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => { const result = await originalFetch(...args); if (result.status === 401) location.href = '/login'; return result; };
+  let lastActivity = Date.now();
+  for (const event of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(event, () => { lastActivity = Date.now(); }, { passive: true });
+  setInterval(() => { if (Date.now() - lastActivity >= 30 * 60_000) window.dispatchEvent(new Event('vj:lock-workspace')); }, 10000);
+}
 const messagesTarget = document.getElementById('react-app-messages');
 if (messagesTarget) createRoot(messagesTarget).render(<AppMessages />);
 const successTarget = document.getElementById('react-invoice-success');
@@ -33,13 +54,13 @@ const editorTarget = document.getElementById('react-invoice-editor');
 if (editorTarget) createRoot(editorTarget).render(<InvoiceEditor />);
 const savedInvoiceTarget = document.getElementById('react-saved-invoice-viewer');
 if (savedInvoiceTarget) createRoot(savedInvoiceTarget).render(<SavedInvoiceViewer />);
-if (target) createRoot(target).render(<Dashboard />);
+if (target && canView('dashboard.view')) createRoot(target).render(<Dashboard />);
 const stockTarget = document.getElementById('react-stocks');
-if (stockTarget) createRoot(stockTarget).render(<Stocks />);
+if (stockTarget && canView('stocks.view')) createRoot(stockTarget).render(<Stocks />);
 const settingsTarget = document.getElementById('react-settings');
-if (settingsTarget) createRoot(settingsTarget).render(<Settings />);
+if (settingsTarget && canView('settings.view')) createRoot(settingsTarget).render(<Settings />);
 const recordsTarget = document.getElementById('react-records');
-if (recordsTarget) createRoot(recordsTarget).render(<Records />);
+if (recordsTarget && canView('records.view')) createRoot(recordsTarget).render(<Records />);
 const invoicePaymentTarget = document.getElementById('react-invoice-payment-summary');
 if (invoicePaymentTarget && !invoicePaymentTarget.hidden) createRoot(invoicePaymentTarget).render(<InvoicePaymentSummary />);
 const invoiceExchangeTarget = document.getElementById('react-invoice-exchange');
@@ -52,5 +73,5 @@ const invoicePreviewTarget = document.getElementById('react-invoice-preview');
 if (invoicePreviewTarget) createRoot(invoicePreviewTarget).render(<InvoicePreview />);
 for (const kind of ['purchases', 'payments'] as const) {
   const target = document.getElementById('react-' + kind);
-  if (target) createRoot(target).render(<Transactions kind={kind} />);
+  if (target && canView(kind + '.view')) createRoot(target).render(<Transactions kind={kind} />);
 }

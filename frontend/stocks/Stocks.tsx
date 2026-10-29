@@ -30,12 +30,12 @@ export function Stocks() {
     controller.current?.abort();
     const request = new AbortController(); controller.current = request;
     try {
-      const result = await stockApi.list(request.signal);
+      const result = await stockApi.list(request.signal, page, pageSize, search);
       if (revision === generation.current) { setData(result); setLoaded(true); setLoadError(''); }
     } catch (error) {
       if (!request.signal.aborted && revision === generation.current) setLoadError((error as Error).message);
     }
-  }, []);
+  }, [page, pageSize, search]);
 
   useEffect(() => {
     void reload();
@@ -46,6 +46,11 @@ export function Stocks() {
 
   function resetForm() { setEditor({ mode: 'add' }); setReset(value => value + 1); }
   function accept(result: StockSnapshot) {
+    if (result.refreshRequired) {
+      window.dispatchEvent(new CustomEvent('vj:stock-cache-merge', { detail: result.affected || [] }));
+      window.dispatchEvent(new Event('vj:stocks-invalidated'));
+      void reload(); return;
+    }
     ++generation.current; controller.current?.abort();
     setData(result); setLoaded(true); setLoadError('');
     window.dispatchEvent(new CustomEvent('vj:stocks-updated', { detail: result.items }));
@@ -82,31 +87,32 @@ export function Stocks() {
     } finally { lock.current = false; setBusy(false); }
   }
 
-  const filtered = data.items.filter(item => item.item.toLowerCase().includes(search.toLowerCase()));
-  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
+  const filtered = data.pagination ? data.items : data.items.filter(item => item.item.toLowerCase().includes(search.toLowerCase()));
+  const rowCount = data.pagination?.total ?? filtered.length;
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(rowCount / pageSize)));
   return <>
     <div className="page-head"><p className="eyebrow">Inventory</p><h2>Stocks</h2><p className="sub">Record the item count and total batch weights. Remaining stock is tracked by weight; gross and net weights below cover all pieces in the entered quantity.</p></div>
     <div className="stat-cards">{(['Gold', 'Silver'] as const).map(metal => {
       const items = data.items.filter(item => (item.purity === 'Silver') === (metal === 'Silver'));
       return <div className="stat-card" key={metal}><div className="lbl">{metal} Stock</div><div className="val stock-summary"><div className="stock-weight-pair">
-        {(['gross', 'net'] as const).map(field => <div className="stock-weight-item" key={field}><span>{field === 'gross' ? 'Gross' : 'Net'}</span><strong>{weight(items.reduce((sum, item) => sum + (Number(item[field]) || 0), 0))} g</strong></div>)}
-      </div><small className="stock-entry-count">{items.length} {items.length === 1 ? 'item' : 'items'}</small></div></div>;
+        {(['gross', 'net'] as const).map(field => <div className="stock-weight-item" key={field}><span>{field === 'gross' ? 'Gross' : 'Net'}</span><strong>{weight(data.totals?.[metal === 'Silver' ? 'silver' : 'gold'][field] ?? items.reduce((sum, item) => sum + (Number(item[field]) || 0), 0))} g</strong></div>)}
+      </div><small className="stock-entry-count">{data.totals?.[metal === 'Silver' ? 'silver' : 'gold'].count ?? items.length} items</small></div></div>;
     })}</div>
     {loadError && <p role="alert" className="due-amount">{loadError} <button className="btn btn-ghost btn-sm" type="button" onClick={() => { void reload(); }}>Refresh Stocks</button></p>}
     <div ref={formTop}><StockForm key={reset} editor={editor} initialPurity={purity} busy={busy || !loaded} save={input => { void save(input); }} cancel={resetForm} /></div>
     <div className="panel">
       <div className="toolbar"><div className="search-box"><input type="search" aria-label="Search stock by item name" placeholder="Search stock by item name…" value={search} onInput={event => { setSearch(event.currentTarget.value); setPage(1); }} /></div>
-        <span style={{ color: 'var(--ivory-3)', fontSize: 12, opacity: 0.7 }}>{filtered.length} of {data.items.length} shown</span>
+        <span style={{ color: 'var(--ivory-3)', fontSize: 12, opacity: 0.7 }}>{rowCount} of {data.total ?? data.items.length} shown</span>
         <button className="btn btn-ghost btn-sm" type="button" onClick={() => { void reload(); }} disabled={busy}>Refresh Stocks</button>
       </div>
       {!loaded ? <p role="status">Loading stock…</p> : <>
         <div className="data-table-wrap"><table className="data-table"><thead><tr>{['Item', 'Purity', 'Qty added', 'Total gross wt', 'Total net wt', 'Added', 'Actions'].map(label => <th key={label}>{label}</th>)}</tr></thead>
-          <tbody>{filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(item => <tr key={item.id}>
+          <tbody>{(data.pagination ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)).map(item => <tr key={item.id}>
             <td>{item.item}</td><td><span className="pill">{item.purity}</span></td><td>{item.qty}</td><td>{weight(item.gross)} g</td><td>{weight(item.net)} g</td><td>{item.added || '—'}</td>
-            <td className="actions-cell"><button type="button" className="btn btn-ghost btn-sm" onClick={() => select(item, 'batch')} disabled={busy}>Add Batch</button> <button type="button" className="btn btn-ghost btn-sm" onClick={() => select(item, 'edit')} disabled={busy}>Edit</button> <button type="button" className="btn btn-danger btn-sm" onClick={() => setDeleting({ item, version: data.versions[item.id] })} disabled={busy}>Delete</button></td>
+            <td className="actions-cell"><button data-permission="stocks.edit" type="button" className="btn btn-ghost btn-sm" onClick={() => select(item, 'batch')} disabled={busy}>Add Batch</button> <button data-permission="stocks.edit" type="button" className="btn btn-ghost btn-sm" onClick={() => select(item, 'edit')} disabled={busy}>Edit</button> <button data-permission="stocks.delete" type="button" className="btn btn-danger btn-sm" onClick={() => setDeleting({ item, version: data.versions[item.id] })} disabled={busy}>Delete</button></td>
           </tr>)}</tbody>
         </table></div>
-        <Pagination total={filtered.length} page={currentPage} pageSize={pageSize} setPage={setPage} setPageSize={value => { setPageSize(value); setPage(1); }} />
+        <Pagination total={rowCount} page={currentPage} pageSize={pageSize} setPage={setPage} setPageSize={value => { setPageSize(value); setPage(1); }} />
         {!filtered.length && <div className="empty-state"><div className="glyph">✦</div>{data.items.length ? 'No matching stock items.' : 'No stock items yet — add your first piece above.'}</div>}
       </>}
     </div>

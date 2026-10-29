@@ -3,7 +3,7 @@
     read: () => {
       const totals = computeTotals();
       return {
-        business: { name: previewField('biz-name') || 'Vishesh Jewellers', gstin: previewField('biz-gstin'), phone: previewField('biz-phone'), email: previewField('biz-email'), address: previewField('biz-address') },
+        business: { name: previewField('biz-name') || 'Vishesh Jewellers', gstin: previewField('biz-gstin'), phone: previewField('biz-phone'), email: previewField('biz-email'), address: previewField('biz-address'), ...(typeof bizInfo === 'undefined' ? {} : { tagline: bizInfo.tagline, logo: bizInfo.logo }) },
         customer: { name: previewField('cust-name') || 'Customer Name', address: previewField('cust-address'), mobile: previewField('cust-mobile') },
         number: previewField('inv-no') || '—', date: formatDateDisplay(previewField('inv-date')),
         items: rows.filter(row => row.name || row.net || row.rate).map(row => ({ ...row, amount: rowAmount(row) })),

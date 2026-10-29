@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"><title>Store setup</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#14110d;color:#eee7da;font:15px system-ui;display:grid;place-items:center;min-height:100vh;padding:28px}.card{width:min(100%,560px);background:#211c15;border:1px solid #493c28;border-radius:24px;padding:32px}h1{font-size:28px}p,small{color:#b9b0a0;line-height:1.5}small{display:block;margin-top:6px}button,input,select{font:inherit;border-radius:10px;padding:12px;border:1px solid #615035;background:#292219;color:#eee7da;width:100%}button{cursor:pointer}label{display:block;margin:16px 0 8px}#continue{background:#c8a864;color:#211809;font-weight:650;margin-top:16px}#error{color:#ffaaa1;min-height:20px}button:disabled{opacity:.55}input[type=checkbox]{width:auto}#folder{overflow-wrap:anywhere}[hidden]{display:none!important}
+</style></head><body><main class="card"><h1>Let’s set up your store</h1><p>Start fresh, or recover encrypted records. Existing files will never be replaced.</p>
+<label for="mode">Get started</label><select id="mode"><option value="new">Create new store</option><option value="restore">Restore encrypted backup</option></select>
+<section id="store-details"><label for="store-name">Store name *</label><input id="store-name" type="text" maxlength="100" placeholder="Your store name"><label for="store-tagline">Tagline (optional)</label><input id="store-tagline" type="text" maxlength="160" placeholder="Your store tagline"><small>Start your 14-day full-feature trial after creating the first administrator account. No payment details or trial invoice cap.</small></section>
+<label>Backup folder</label><button id="choose">Choose folder</button><small id="folder">Choose a location for your initial encrypted backup.</small>
+<label for="passphrase">Recovery passphrase</label><input id="passphrase" type="password" autocomplete="new-password">
+<section id="new-options"><small>Use at least 12 characters, not your app PIN. The passphrase is not stored in plaintext.</small><label for="confirm">Confirm recovery passphrase</label><input id="confirm" type="password" autocomplete="new-password">
+<label><input id="ack" type="checkbox"> I will keep my passphrase safely and copy backups off this computer.</label><small>A lost passphrase cannot be reset to unlock these backups. This initial backup contains an empty store; create regular backups in Settings as you add transactions.</small></section>
+<p id="error" role="alert"></p><button id="continue">Create store &amp; encrypted backup</button><small>Your database is protected by your OS account.</small></main>
+<script>
+const el=id=>document.getElementById(id);let backupDirectory='',busy=false;
+el('mode').onchange=()=>{backupDirectory='';el('folder').textContent=el('mode').value==='new'?'Choose a location for your initial encrypted backup.':'Select the backup folder containing database.db, recovery.json and manifest.json.';el('new-options').hidden=el('mode').value!=='new';el('store-details').hidden=el('mode').value!=='new';el('passphrase').value='';el('confirm').value='';el('ack').checked=false;el('error').textContent='';el('continue').textContent=el('mode').value==='new'?'Create store & encrypted backup':'Restore & open app'};
+el('choose').onclick=async()=>{try{const value=await window.storeSetup.chooseBackup();if(value){backupDirectory=value;el('folder').textContent=value}}catch{el('error').textContent='Could not open the folder picker. Please try again.'}};
+el('continue').onclick=async()=>{
+if(busy)return;const mode=el('mode').value,passphrase=el('passphrase').value;el('error').textContent='';
+if(!backupDirectory||!passphrase){el('error').textContent='Choose a folder and enter your recovery passphrase.';return}
+if(mode==='new'&&!el('store-name').value.trim()){el('error').textContent='Enter your store name to continue.';return}
+if(mode==='new'&&(passphrase.length<12||passphrase!==el('confirm').value||!el('ack').checked)){el('error').textContent='Use at least 12 characters, confirm the same passphrase, and acknowledge the recovery guidance.';return}
+busy=true;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=true);el('continue').textContent='Preparing encrypted store…';
+try{const result=await window.storeSetup.submit({mode,backupDirectory,passphrase,confirmPassphrase:el('confirm').value,recoveryAcknowledged:el('ack').checked,storeName:el('store-name').value,tagline:el('store-tagline').value});if(!result.ok)el('error').textContent=result.error}
+catch{el('error').textContent='Setup could not finish. Existing data has not been replaced.'}
+finally{el('passphrase').value='';el('confirm').value='';busy=false;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);el('continue').textContent=mode==='new'?'Create store & encrypted backup':'Restore & open app'}
+};
+</script></body></html>

@@ -17,7 +17,7 @@ export function StockForm({ editor, initialPurity, busy, save, cancel }: {
   }
   return <div className="panel" style={{ marginBottom: 20 }}>
     <h3><span className="dot" />{editor.mode === 'edit' ? 'Edit Stock Item' : editor.mode === 'batch' ? 'Add Batch to ' + editor.item.item : 'Add Stock Item'}</h3>
-    <form onSubmit={submit} noValidate>
+    <form data-permission={editor.mode === 'edit' || editor.mode === 'batch' ? 'stocks.edit' : 'stocks.create'} onSubmit={submit} noValidate>
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div className="row row-3">
           <div className="field"><label htmlFor="stock-name">Item (Gold / Silver) *</label><input id="stock-name" name="item" type="text" required placeholder="e.g. Gold Ring or Silver Chain" defaultValue={editor.mode === 'add' ? '' : editor.item.item} readOnly={editor.mode === 'batch'} /></div>

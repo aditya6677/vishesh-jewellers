@@ -71,6 +71,7 @@ export function Dashboard() {
         <div className="range-date"><label htmlFor="dashboardFrom">From</label><input type="date" id="dashboardFrom" name="from" /></div>
         <div className="range-date"><label htmlFor="dashboardTo">To</label><input type="date" id="dashboardTo" name="to" /></div>
         <button className="btn btn-gold btn-sm" type="submit">Apply</button><button className="btn btn-ghost btn-sm" type="button" onClick={() => { rangeForm.current?.reset(); setRange({ ...emptyRange }); }}>All time</button>
+        {window.vjDatabaseMode && <a data-permission="dashboard.export" className="btn btn-ghost btn-sm" href={'/api/reports/dashboard.csv?' + new URLSearchParams({ ...range })}>↓ Export CSV</a>}
         <span className="range-caption" id="dashboardRangeLabel" aria-live="polite">{range.from || range.to ? `${range.from || 'Beginning'} → ${range.to || 'Present'}` : ''}</span>
       </form>
       {error && <p role="alert" className="due-amount">{error} <button className="btn btn-ghost btn-sm" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}

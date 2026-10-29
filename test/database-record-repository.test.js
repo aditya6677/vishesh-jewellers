@@ -1,0 +1,55 @@
+'use strict';
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { randomBytes } = require('node:crypto');
+const { openDatabase: openOperationalDatabase } = require('../lib/database/database');
+const openDatabase = (file, key) => openOperationalDatabase(file, key, { create: !fs.existsSync(file) });
+const { importSnapshot, readSnapshot } = require('../lib/database/snapshot-migration');
+const { RecordRepository } = require('../lib/database/record-repository');
+const { RecordService } = require('../lib/services/record-service');
+const { CompatibilityStore } = require('../lib/database/compatibility-store');
+
+test('row-level settlement matches existing cash/metal rules and atomically rolls back ledger failures', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vj-record-repo-'));
+  const key = randomBytes(32), file = path.join(directory, 'records.db');
+  let db = openDatabase(file, key);
+  t.after(() => { if (db.open) db.close(); key.fill(0); fs.rmSync(directory, { recursive: true, force: true }); });
+  const invoice = { number: 'VJ000001', customer: 'Synthetic', total: '₹600.00', paid: 100, due: 500, status: 'completed', weightMode: 'line-total', invoiceDate: '2026-10-28', payments: [{ method: 'amount', amount: 100, initialPayment: true }] };
+  const snapshot = { 'invoice-records': [invoice, { ...invoice, number: 'VJ000002', status: 'voided', due: 0 }], 'stock-list': [], 'old-gold-records': [{ sourceId: 'existing', metal: 'gold', weight: 5 }], 'purchase-records': [], 'payment-records': [] };
+  importSnapshot(db, snapshot, { storeId: 'a', sourceSha256: 'a'.repeat(64), acknowledgeLegacy: true });
+  importSnapshot(db, { ...snapshot, 'invoice-records': [] }, { storeId: 'b', sourceSha256: 'b'.repeat(64), acknowledgeLegacy: true });
+  const dependencies = { now: () => new Date('2026-10-28T08:00:00Z'), id: () => 'settlement-test' };
+  const repository = new RecordRepository(db, 'a', dependencies);
+  let memory = structuredClone(snapshot);
+  const legacy = new RecordService({ read: () => structuredClone(memory), write: data => { memory = structuredClone(data); } }, dependencies);
+  assert.throws(() => new RecordRepository(db, 'b').get(invoice.number), error => error.statusCode === 404);
+  assert.equal(repository.page({ limit: 1 }).items.length, 1);
+  assert.equal(repository.page({ cursor: repository.page({ limit: 1 }).next }).items[0].number, 'VJ000002');
+  const bridge = new CompatibilityStore(db, 'a'), stale = bridge.read();
+  const version = repository.get(invoice.number).version;
+  const metal = { version, method: 'silver', weight: 2, rate: 50 };
+  assert.deepEqual(repository.settle(invoice.number, metal), legacy.settle(invoice.number, metal));
+  assert.deepEqual(readSnapshot(db, 'a'), memory);
+  assert.throws(() => bridge.write(stale), /changed/);
+  assert.throws(() => repository.settle(invoice.number, metal), /changed/);
+  const before = readSnapshot(db, 'a');
+  for (const values of [{ method: 'amount', amount: '' }, { method: 'amount', amount: 9999 }, { method: 'gold', weight: 0, rate: 1000 }]) {
+    assert.throws(() => repository.settle(invoice.number, { ...values, version: repository.get(invoice.number).version }));
+    assert.deepEqual(readSnapshot(db, 'a'), before);
+  }
+  db.exec("CREATE TRIGGER reject_receipt BEFORE INSERT ON documents WHEN NEW.collection='old-gold-records' BEGIN SELECT RAISE(ABORT,'receipt write failure'); END;");
+  assert.throws(() => repository.settle(invoice.number, { version: repository.get(invoice.number).version, method: 'gold', weight: .1, rate: 1000 }), /receipt write failure/);
+  assert.deepEqual(readSnapshot(db, 'a'), before);
+  db.exec('DROP TRIGGER reject_receipt');
+  const cash = { version: repository.get(invoice.number).version, fullyPaid: true };
+  assert.deepEqual(repository.settle(invoice.number, cash), legacy.settle(invoice.number, cash));
+  assert.deepEqual(readSnapshot(db, 'a'), memory);
+  assert.equal(repository.get(invoice.number).record.due, 0);
+  assert.throws(() => repository.settle(invoice.number, { version: repository.get(invoice.number).version, method: 'amount', amount: 1 }), /no outstanding/);
+  assert.throws(() => repository.settle('VJ000002', { version: repository.get('VJ000002').version, fullyPaid: true }), /Voided/);
+  db.close(); db = openDatabase(file, key);
+  assert.deepEqual(readSnapshot(db, 'a'), memory);
+});

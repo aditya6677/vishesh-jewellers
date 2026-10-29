@@ -84,6 +84,16 @@ test('non-GST paper omits tax rows and displays advance as plus amount', () => {
   assert.ok(markup.includes('Excess / Plus Amount'));
   assert.ok(markup.includes('₹750.00'));
 });
+test('custom store branding appears on invoice paper and its watermark without changing totals', () => {
+  const snapshot = previewBridge().bridge.read();
+  snapshot.business.tagline = 'A new store tagline';
+  snapshot.business.logo = 'data:image/png;base64,aGVsbG8=';
+  const markup = renderToStaticMarkup(React.createElement(paperComponent(), { snapshot }));
+  assert.ok(markup.includes('A new store tagline'));
+  assert.ok(markup.includes('data:image/png;base64,aGVsbG8='));
+  assert.ok(markup.includes('--invoice-logo-image'));
+  assert.ok(markup.includes('₹8,547.00'));
+});
 
 test('paper escapes user text and preview adapter rejects changed legacy boundaries', () => {
   const f = previewBridge();

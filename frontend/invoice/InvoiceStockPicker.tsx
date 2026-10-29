@@ -6,7 +6,7 @@ const weight = (value: number) => (Number(value) || 0).toLocaleString('en-IN', {
 
 export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, onSelect, disabled, required, portalTarget }: {
   stocks: StockItem[]; available: Record<string, number>; selectedId: string; rowNumber: number;
-  onSelect: (id: string) => void; disabled: boolean; required: boolean; portalTarget?: HTMLElement;
+  onSelect: (id: string, stock?: StockItem) => void; disabled: boolean; required: boolean; portalTarget?: HTMLElement;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -14,10 +14,15 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
   const [query, setQuery] = useState<string | null>(null);
   const [position, setPosition] = useState<{ left: number; top: number; width: number } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [remoteItems, setRemoteItems] = useState<StockItem[] | null>(null);
+  const [remoteError, setRemoteError] = useState('');
+  const [remoteBusy, setRemoteBusy] = useState(false);
   const selected = stocks.find(stock => stock.id === selectedId);
   const label = selected ? `${selected.item} · ${selected.purity} · ${available[selected.id] || 0} pcs · #${String(selected.id).slice(-4)}` : '';
   const search = (query || '').trim().toLowerCase();
-  const matches = stocks.filter(stock => ((available[stock.id] || 0) > 0 || stock.id === selectedId)
+  const options = window.vjDatabaseMode ? remoteItems || stocks : stocks;
+  const qty = (stock: StockItem) => available[stock.id] ?? stock.qty;
+  const matches = options.filter(stock => ((qty(stock) || 0) > 0 || stock.id === selectedId)
     && (!search || `${stock.item} ${stock.purity} ${stock.id} ${available[stock.id]} ${stock.gross} ${stock.net}`.toLowerCase().includes(search)));
 
   const close = () => { setPosition(null); setQuery(null); setActiveIndex(0); };
@@ -29,7 +34,24 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
     setPosition({ left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
       top: window.innerHeight - rect.bottom < height + 12 && rect.top > height + 12 ? rect.top - height - 6 : rect.bottom + 6, width });
   };
-  const choose = (id: string) => { onSelect(id); close(); };
+  const choose = (id: string) => { onSelect(id, options.find(stock => stock.id === id)); close(); };
+  useEffect(() => {
+    if (!window.vjDatabaseMode || !position) return;
+    const controller = new AbortController();
+    setRemoteBusy(true); setRemoteError('');
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/stocks?' + new URLSearchParams({ query: search, page: '1', pageSize: '50' }), { signal: controller.signal });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Stock search failed.');
+        if (controller.signal.aborted) return;
+        setRemoteItems(result.items);
+        window.dispatchEvent(new CustomEvent('vj:stock-cache-merge', { detail: result.items }));
+      } catch (error) { if (!controller.signal.aborted) { setRemoteItems([]); setRemoteError((error as Error).message); } }
+      finally { if (!controller.signal.aborted) setRemoteBusy(false); }
+    }, 200);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [Boolean(position), search]);
 
   useEffect(() => {
     if (!position) return;
@@ -63,12 +85,15 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
     <input type="hidden" className="f-stock" value={selectedId} />
     {position && createPortal(<div ref={menu} id={menuId} className="stock-picker-menu" role="listbox" aria-label={`Stock items for invoice row ${rowNumber}`}
       style={{ ...position, display: 'block' }} onPointerDown={event => event.preventDefault()}>
+      {remoteBusy && <div className="stock-picker-empty" role="status">Searching stock…</div>}
+      {remoteError && <div className="stock-picker-empty" role="alert">{remoteError}</div>}
       {matches.length ? matches.map((stock, index) => <button key={stock.id} type="button" className="stock-picker-option" role="option"
         data-stock-id={stock.id} aria-selected={stock.id === selectedId} style={index === activeIndex ? { background: 'rgba(255,255,255,.08)' } : undefined}
         onMouseEnter={() => setActiveIndex(index)} onClick={() => choose(stock.id)}>
         <span className="stock-option-name">{stock.item}</span>
-        <span className="stock-option-meta">{stock.purity} · {available[stock.id] || 0} pcs · Gross {weight(stock.gross)} g · Net {weight(stock.net)} g</span>
+        <span className="stock-option-meta">{stock.purity} · {qty(stock) || 0} pcs · Gross {weight(stock.gross)} g · Net {weight(stock.net)} g</span>
       </button>) : <div className="stock-picker-empty">No matching stock items</div>}
+      {window.vjDatabaseMode && remoteItems?.length === 50 && <div className="stock-picker-empty">Showing 50 matches. Type more to narrow the search.</div>}
     </div>, portalTarget || document.body)}
   </>;
 }

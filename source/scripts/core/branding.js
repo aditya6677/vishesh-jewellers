@@ -18,5 +18,24 @@
   });
   const appFooter = document.createElement('footer');
   appFooter.className = 'app-footer';
-  appFooter.innerHTML = '<span>© ' + new Date().getFullYear() + ' <strong>Vishesh Jewellers</strong></span><span class="footer-separator">•</span><span>Invoice &amp; Inventory Management</span><span class="footer-separator">•</span><span>Records saved locally</span>';
+  appFooter.innerHTML = '<span>© ' + new Date().getFullYear() + ' <strong>Vishesh Jewellers</strong></span><span class="footer-separator">•</span><span>Invoice &amp; Inventory Management</span><span class="footer-separator">•</span><span>' + (window.vjDatabaseMode ? 'Encrypted SQLite · Preview copy' : 'Records saved locally') + '</span>';
   document.body.appendChild(appFooter);
+  window.vjApplyBranding = branding => {
+    bizInfo = { ...bizInfo, ...branding };
+    const name = branding.name || 'Vishesh Jewellers';
+    const logo = branding.logo || '/assets/vishesh-jewellers-logo.png';
+    document.title = name;
+    const heading = document.querySelector('.brand-text h1');
+    if (heading) heading.textContent = name;
+    document.querySelectorAll('.brand-text p').forEach(element => { element.textContent = branding.tagline; });
+    document.querySelectorAll('.brand-logo').forEach(element => { element.src = logo; element.alt = name; });
+    document.querySelectorAll('#page-home .paper-brand p').forEach(element => { element.textContent = branding.tagline; });
+    document.querySelectorAll('#page-home .invoice-logo').forEach(element => { element.src = logo; element.alt = name; });
+    document.querySelectorAll('#page-home #invoicePaper').forEach(element => { if (branding.logo) element.style.setProperty('--invoice-logo-image', 'url("' + branding.logo + '")'); else element.style.removeProperty('--invoice-logo-image'); });
+    appFooter.querySelector('strong').textContent = name;
+    const field = document.getElementById('biz-name');
+    if (field) field.value = name;
+    if (window.vjAccountSession && window.vjAccountSession.user.role !== 'superadmin') ['biz-name','biz-gstin','biz-phone','biz-email','biz-address'].forEach(id => { const input = document.getElementById(id); if (input) input.readOnly = true; });
+    window.dispatchEvent(new Event('vj:invoice-preview-sync'));
+  };
+  fetch('/api/branding', { cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(value => { if (value) window.vjApplyBranding(value); }).catch(() => {});

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, safeStorage } = require('electron');
+const { app, BrowserWindow, dialog, safeStorage, ipcMain } = require('electron');
 const { fork } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -7,6 +7,14 @@ const { createJsonStore } = require('./lib/json-store');
 const { replaceDesktopData } = require('./lib/desktop-data-files');
 
 let serverProcess;
+let serverUrl;
+let settingUp = false;
+const desktopUserData = app.getPath('userData');
+const sqliteDesktop = require('./lib/database/desktop-startup').desktopBackend({ backend: process.env.DATA_BACKEND, isPackaged: app.isPackaged, userData: desktopUserData }) === 'sqlite';
+if (sqliteDesktop) {
+  process.env.DATA_BACKEND = 'sqlite';
+  if (app.isPackaged || fs.existsSync(path.join(desktopUserData, 'database-installation.json'))) process.env.VJ_ENABLE_SQLITE_DESKTOP = '1';
+}
 
 function runtimeRoot() {
   return app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked') : __dirname;
@@ -169,35 +177,51 @@ function dataEncryptionKey() {
 }
 
 function startLocalServer() {
+  if (serverProcess && !serverProcess.killed && serverUrl) return Promise.resolve(serverUrl);
   return new Promise((resolve, reject) => {
     const appRoot = runtimeRoot();
     const serverPath = path.join(appRoot, 'server.js');
     const dataDir = configuredDataDir();
-    const encryptionKey = dataEncryptionKey();
+    if (sqliteDesktop && process.env.VJ_ENABLE_SQLITE_DESKTOP !== '1') return reject(new Error('SQLite desktop mode is opt-in. Set VJ_ENABLE_SQLITE_DESKTOP=1 only for a prepared database copy.'));
+    let protectedKey;
+    try {
+      if (sqliteDesktop) protectedKey = require('./lib/database/desktop-key').desktopDatabaseKey({ safeStorage, userData: app.getPath('userData'), databaseFile: process.env.DATABASE_FILE || '', bootstrapKeyFile: process.env.DATABASE_KEY_FILE });
+    } catch (error) { return reject(error); }
+    const encryptionKey = sqliteDesktop ? undefined : dataEncryptionKey();
+    const environment = { ...process.env };
+    // Database keys cross the private parent/child pipe, never the inherited
+    // process environment or renderer. JSON's established path is unchanged.
+    if (sqliteDesktop) { delete environment.DATABASE_KEY; delete environment.DATABASE_KEY_FILE; delete environment.DATA_ENCRYPTION_KEY; }
     serverProcess = fork(serverPath, [], {
       env: {
-        ...process.env,
+        ...environment,
         PORT: '0',
         HOST: '127.0.0.1',
         DATA_DIR: dataDir,
         BACKUP_DIR: backupsDir(),
-        DATA_ENCRYPTION_KEY: encryptionKey,
+        ...(sqliteDesktop ? { VJ_DATABASE_KEY_IPC: '1', BACKUP_DIR: process.env.BACKUP_DIR || path.join(path.dirname(process.env.DATABASE_FILE), 'backups') } : { DATA_ENCRYPTION_KEY: encryptionKey }),
         SOURCE_HTML: path.join(appRoot, 'source', 'index.html')
       },
-      silent: true
+      silent: true,
+      serialization: 'advanced'
     });
+    if (protectedKey) serverProcess.send({ type: 'protected-database-key', key: protectedKey.key }, error => { protectedKey.key.fill(0); if (error) reject(error); });
 
-    const timeout = setTimeout(() => reject(new Error('The local app server did not start in time.')), 10_000);
+    const timeout = setTimeout(() => { serverProcess.kill(); reject(new Error('The local app server did not start in time.')); }, 30_000);
     serverProcess.once('message', message => {
       if (message?.type !== 'server-ready') return;
       clearTimeout(timeout);
+      serverUrl = message.url;
       resolve(message.url);
     });
-    serverProcess.once('error', reject);
+    serverProcess.once('error', error => { clearTimeout(timeout); protectedKey?.key.fill(0); reject(error); });
     serverProcess.once('exit', code => {
-      if (code && code !== 0) reject(new Error('The local app server stopped unexpectedly.'));
+      const wasReady = Boolean(serverUrl);
+      clearTimeout(timeout); serverUrl = null; protectedKey?.key.fill(0);
+      if (!wasReady || (code && code !== 0)) reject(new Error('The local app server stopped unexpectedly.'));
     });
     serverProcess.on('message', message => {
+      if (sqliteDesktop) return; // JSON-only desktop actions must not touch the database store.
       if (message?.type === 'choose-data-location') chooseDataLocation(dataDir).catch(error => dialog.showErrorBox('Could not change data location', error.message));
       if (message?.type === 'create-backup') createManualBackup(dataDir).catch(error => dialog.showErrorBox('Could not create backup', error.message));
       if (message?.type === 'restore-backup') restoreBackup(dataDir).catch(error => dialog.showErrorBox('Could not restore backup', error.message));
@@ -223,11 +247,48 @@ function createWindow(url) {
   window.loadURL(url);
 }
 
+async function configureFirstRun() {
+  if (!sqliteDesktop || process.env.VJ_ENABLE_SQLITE_DESKTOP !== '1' || process.env.DATABASE_FILE) return;
+  const { readInstallation, provisionStore } = require('./lib/database/first-run');
+  let installation = readInstallation(app.getPath('userData'));
+  if (!installation) installation = await new Promise((resolve, reject) => {
+    settingUp = true;
+    const setup = new BrowserWindow({ width: 700, height: 790, title: 'Store setup', webPreferences: { preload: path.join(__dirname, 'scripts/setup-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    let busy = false, completed = false;
+    const authorized = event => event.sender === setup.webContents && event.senderFrame === setup.webContents.mainFrame;
+    ipcMain.handle('store-setup-choose', async event => {
+      if (!authorized(event) || busy) return null;
+      const chosen = await dialog.showOpenDialog(setup, { title: 'Choose encrypted backup folder', properties: ['openDirectory'] });
+      return chosen.canceled ? null : chosen.filePaths[0];
+    });
+    ipcMain.handle('store-setup-submit', async (event, request) => {
+      if (!authorized(event) || busy) return { ok: false, error: 'Setup is already running.' };
+      busy = true;
+      try {
+        const config = await provisionStore({ userData: app.getPath('userData'), safeStorage, mode: request?.mode, backupDirectory: request?.backupDirectory, passphrase: request?.passphrase, confirmPassphrase: request?.confirmPassphrase, recoveryAcknowledged: request?.recoveryAcknowledged, storeName: request?.storeName, tagline: request?.tagline });
+        completed = true; resolve(config); setup.close(); return { ok: true };
+      } catch (error) { return { ok: false, error: error.message }; }
+      finally { busy = false; }
+    });
+    setup.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    setup.webContents.on('will-navigate', event => event.preventDefault());
+    setup.on('close', event => { if (busy && !completed) event.preventDefault(); });
+    setup.on('closed', () => { ipcMain.removeHandler('store-setup-choose'); ipcMain.removeHandler('store-setup-submit'); if (!completed) reject(new Error('Store setup was cancelled.')); });
+    setup.loadFile(path.join(__dirname, 'scripts/setup.html'));
+  });
+  process.env.DATABASE_FILE = installation.databaseFile;
+  process.env.STORE_ID = installation.storeId;
+  if (installation.accountsEnabled) process.env.ACCOUNTS_ENABLED = '1';
+  if (installation.licensingEnabled) process.env.LICENSING_ENABLED = '1';
+}
+
 app.whenReady().then(async () => {
   try {
+    await configureFirstRun();
     const url = await startLocalServer();
-    try { createWeeklyBackup(configuredDataDir()); } catch (error) { dialog.showErrorBox('Weekly backup could not be created', error.message); }
+    if (!sqliteDesktop) try { createWeeklyBackup(configuredDataDir()); } catch (error) { dialog.showErrorBox('Weekly backup could not be created', error.message); }
     createWindow(url);
+    settingUp = false;
   } catch (error) {
     dialog.showErrorBox('Vishesh Jewellers could not start', error.message);
     app.quit();
@@ -235,6 +296,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  if (settingUp) return;
   if (process.platform !== 'darwin') app.quit();
 });
 

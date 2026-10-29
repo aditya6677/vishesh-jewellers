@@ -1,0 +1,38 @@
+'use strict';
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { randomBytes, createCipheriv } = require('node:crypto');
+const { prepareDatabase } = require('../scripts/prepare-database');
+const { verifyDatabase } = require('../scripts/verify-database');
+const { openDatabase } = require('../lib/database/database');
+
+test('migration verification is read-only and rejects drift, wrong keys and missing files', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vj-verification-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const options = { source: path.join(dir, 'source.json'), sourceKeyFile: path.join(dir, 'source.key'), target: path.join(dir, 'copy.db'), targetKeyFile: path.join(dir, 'copy.key') };
+  const key = randomBytes(32), iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const snapshot = { 'stock-list': [{ id: 'ring', item: 'Ring', purity: '22K', qty: 4, gross: 10, net: 9 }], 'invoice-records': [], 'old-gold-records': [], 'purchase-records': [], 'payment-records': [], 'invoice-counter': 1 };
+  const ciphertext = Buffer.concat([cipher.update(JSON.stringify(snapshot)), cipher.final()]);
+  fs.writeFileSync(options.source, JSON.stringify({ format: 'vishesh-jewellers-encrypted-v1', algorithm: 'aes-256-gcm', iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), ciphertext: ciphertext.toString('base64') }));
+  fs.writeFileSync(options.sourceKeyFile, key.toString('base64')); key.fill(0);
+  prepareDatabase(options);
+  const sourceBefore = fs.readFileSync(options.source), targetBefore = fs.readFileSync(options.target);
+  const result = verifyDatabase(options);
+  assert.equal(result.migrationDataVerified, true);
+  assert.equal(result.activated, false);
+  assert.deepEqual(fs.readFileSync(options.source), sourceBefore);
+  assert.deepEqual(fs.readFileSync(options.target), targetBefore);
+  assert.throws(() => verifyDatabase({ ...options, storeId: 'missing' }), /Store not found/);
+  assert.throws(() => verifyDatabase({ ...options, target: path.join(dir, 'missing.db') }));
+  assert.equal(fs.existsSync(path.join(dir, 'missing.db')), false);
+  assert.throws(() => verifyDatabase({ ...options, targetKeyFile: options.sourceKeyFile }));
+  const dbKey = Buffer.from(fs.readFileSync(options.targetKeyFile, 'utf8').trim(), 'base64');
+  const db = openDatabase(options.target, dbKey);
+  db.prepare("UPDATE store_properties SET payload='2' WHERE name='invoice-counter'").run();
+  db.close(); dbKey.fill(0);
+  assert.throws(() => verifyDatabase(options), /Canonical records/);
+});
