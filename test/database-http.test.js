@@ -13,7 +13,6 @@ const { createApplication } = require('../lib/app');
 
 test('SQLite HTTP/React path has bounded pages, filters, transactional mutations and streaming exports', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vj-sqlite-http-'));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const key = randomBytes(32), file = path.join(directory, 'store.db');
   const db = openDatabase(file, key, { create: true });
   const snapshot = {
@@ -25,7 +24,14 @@ test('SQLite HTTP/React path has bounded pages, filters, transactional mutations
   const config = createConfig({ DATA_BACKEND: 'sqlite', DATABASE_FILE: file, DATABASE_KEY: key.toString('base64'), DATA_DIR: path.join(directory, 'json-never-used'), BACKUP_DIR: path.join(directory, 'backups'), BACKEND_MODE: process.env.BACKEND_MODE, PORT: '0' });
   const errors = [];
   const app = createApplication({ config, desktop: { enabled: false }, logger: { error: (...args) => errors.push(args) } });
-  t.after(async () => { app.server.closeAllConnections(); await app.close(); key.fill(0); });
+  t.after(async () => {
+    app.server.closeAllConnections();
+    try { await app.close(); }
+    finally {
+      key.fill(0);
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
   await app.initialize(); app.server.listen(0, '127.0.0.1'); await once(app.server, 'listening');
   const base = 'http://127.0.0.1:' + app.server.address().port;
   const request = (url, method = 'GET', body) => fetch(base + url, { method, headers: { 'content-type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
