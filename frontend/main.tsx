@@ -17,11 +17,22 @@ import { InvoiceSuccess } from './invoice/InvoiceSuccess';
 import { AppMessages } from './components/AppMessages';
 import { PinLock } from './components/PinLock';
 import { Navigation } from './components/Navigation';
+import { restoreTheme } from './theme';
+
+restoreTheme();
 
 const target = document.getElementById('react-dashboard');
 const canView = (permission: string) => !window.vjAccountSession || window.vjAccountSession.permissions.includes(permission);
 const navigationTarget = document.getElementById('react-navigation');
-if (navigationTarget) createRoot(navigationTarget).render(<Navigation />);
+if (navigationTarget) {
+  const actions = document.createElement('div');
+  actions.id = 'workspace-account-actions';
+  actions.className = 'workspace-account-actions';
+  actions.setAttribute('role', 'group');
+  actions.setAttribute('aria-label', 'Account actions');
+  navigationTarget.before(actions);
+  createRoot(navigationTarget).render(<Navigation />);
+}
 const pinTarget = document.getElementById('react-pin-lock');
 if (pinTarget && !window.vjAccountSession) createRoot(pinTarget).render(<PinLock />);
 if (window.vjAccountSession) {
@@ -33,7 +44,7 @@ if (window.vjAccountSession) {
   document.head.append(restricted);
   const planBanner = document.createElement('aside');
   planBanner.setAttribute('aria-live', 'polite');
-  planBanner.style.cssText = 'padding:10px 18px;margin:12px auto;max-width:1400px;border:1px solid #c8a86444;border-radius:10px;color:#dfc58e;background:#2a2118;font-size:13px;';
+  planBanner.className = 'license-status-banner';
   planBanner.hidden = true; document.querySelector('main')?.prepend(planBanner);
   const refreshPlan = async () => { try { const response = await fetch('/api/license'); if (!response.ok) return; const plan = await response.json() as { state: string; daysRemaining?: number; message: string }; planBanner.hidden = plan.state === 'disabled' || plan.state === 'paid'; planBanner.textContent = plan.state === 'trial' ? `Full-feature trial · ${plan.daysRemaining} days remaining · Manage your plan in Settings` : plan.message; } catch { /* API guards remain authoritative when a status refresh fails. */ } };
   void refreshPlan(); setInterval(() => { void refreshPlan(); }, 60000); window.addEventListener('vj:license-refresh', () => { void refreshPlan(); });

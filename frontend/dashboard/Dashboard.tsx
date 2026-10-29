@@ -3,6 +3,7 @@ import { dashboardApi } from '../api';
 import { Metric } from '../components/Metric';
 import { Snapshot } from './Snapshot';
 import { MarketRates } from './MarketRates';
+import { BusinessCharts } from './BusinessCharts';
 import type { DashboardSnapshot, DateRange, Metal, Rates } from '../types';
 
 const emptyRange: DateRange = { from: '', to: '' };
@@ -45,10 +46,14 @@ export function Dashboard() {
     dashboardApi.snapshot(range, controller.signal).then(setSnapshot).catch((cause: Error) => {
       if (!controller.signal.aborted) { setSnapshot(null); setError(cause.message); }
     });
-    if (navigator.onLine) void loadRates(forceRates.current);
-    forceRates.current = false;
     return () => controller.abort();
   }, [range, revision]);
+
+  // Business date filters do not change today's market quotes.
+  useEffect(() => {
+    if (navigator.onLine) void loadRates(forceRates.current);
+    forceRates.current = false;
+  }, [revision]);
 
   function applyRange(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +80,7 @@ export function Dashboard() {
         <span className="range-caption" id="dashboardRangeLabel" aria-live="polite">{range.from || range.to ? `${range.from || 'Beginning'} → ${range.to || 'Present'}` : ''}</span>
       </form>
       {error && <p role="alert" className="due-amount">{error} <button className="btn btn-ghost btn-sm" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
-      {snapshot ? <><Snapshot value={snapshot.summary} /><p className="dashboard-note">{summaryNote}</p></> : !error && <p role="status">Loading business snapshot…</p>}
+      {snapshot ? <><BusinessCharts value={snapshot.summary} /><Snapshot value={snapshot.summary} /><p className="dashboard-note">{summaryNote}</p></> : !error && <p role="status">Loading business snapshot…</p>}
     </div>
     {snapshot && <>
       <div className="dashboard-metal-grid">

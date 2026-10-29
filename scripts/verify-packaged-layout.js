@@ -10,6 +10,8 @@ function verifyRoot(root) {
   }
   const fastify = createRequire(path.join(root, 'server.js')).resolve('fastify');
   if (!fastify.startsWith(path.join(root, 'node_modules') + path.sep)) throw new Error('Packaged backend dependency resolved outside its runtime.');
+  const pdfParser = createRequire(path.join(root, 'server.js')).resolve('pdf2json');
+  if (!pdfParser.startsWith(path.join(root, 'node_modules') + path.sep) || !pdfParser.endsWith('.cjs')) throw new Error('Packaged history parser is missing its CommonJS runtime.');
 }
 
 module.exports = async function verifyPackagedLayout(context) {

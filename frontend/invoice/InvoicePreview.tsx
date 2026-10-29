@@ -57,6 +57,7 @@ export function InvoicePreview() {
   const busy = saving || exporting;
 
   return <>
+    <div className="invoice-preview-heading"><h3>Live invoice preview</h3><span>Updates as you enter details</span></div>
     {snapshot ? <InvoicePaper snapshot={snapshot} paperRef={paper} /> : <p role="status">Loading invoice preview…</p>}
     {snapshot && taxTarget && createPortal(<div className="field"><label>Tax treatment</label><Select label="Tax treatment"
       value={snapshot.taxValue === '0' ? 'Non-GST Invoice — No GST charged' : 'GST Invoice — 3% (CGST + SGST)'}

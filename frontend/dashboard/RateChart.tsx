@@ -35,7 +35,7 @@ export function RateChart({ rates }: { rates: Rates }) {
         <path d={line} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
         <line x1={x(selected)} x2={x(selected)} y1="25" y2="180" className="benchmark-guide" />
         {points.map((point, index) => <g key={point.quoteDate}><circle cx={x(index)} cy={y(point[key])} r={index === selected ? 5 : 3} fill="currentColor" />
-          <circle cx={x(index)} cy={y(point[key])} r="16" fill="transparent" tabIndex={0} role="button" aria-label={`${point.quoteDate} ${point.session}: ${money(point[key])} per gram`} onFocus={() => setActive(index)} onMouseEnter={() => setActive(index)} onClick={() => setActive(index)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActive(index); } }}><title>{point.quoteDate}: {money(point[key])}/g</title></circle>
+          <circle cx={x(index)} cy={y(point[key])} r="16" fill="transparent" tabIndex={0} role="button" aria-label={`${point.quoteDate} ${point.session}: ${money(point[key])} per gram`} onFocus={() => setActive(index)} onMouseEnter={() => setActive(index)} onClick={() => setActive(index)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActive(index); } }}><title>{`${point.quoteDate}: ${money(point[key])}/g`}</title></circle>
         </g>)}
         <text x="76" y="210" className="benchmark-axis">{points[0].quoteDate}</text><text x="766" y="210" textAnchor="end" className="benchmark-axis">{points[points.length - 1].quoteDate}</text>
       </svg>

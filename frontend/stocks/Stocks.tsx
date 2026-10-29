@@ -102,7 +102,7 @@ export function Stocks() {
     <div ref={formTop}><StockForm key={reset} editor={editor} initialPurity={purity} busy={busy || !loaded} save={input => { void save(input); }} cancel={resetForm} /></div>
     <div className="panel">
       <div className="toolbar"><div className="search-box"><input type="search" aria-label="Search stock by item name" placeholder="Search stock by item name…" value={search} onInput={event => { setSearch(event.currentTarget.value); setPage(1); }} /></div>
-        <span style={{ color: 'var(--ivory-3)', fontSize: 12, opacity: 0.7 }}>{rowCount} of {data.total ?? data.items.length} shown</span>
+        <span className="table-result-count">{rowCount} of {data.total ?? data.items.length} shown</span>
         <button className="btn btn-ghost btn-sm" type="button" onClick={() => { void reload(); }} disabled={busy}>Refresh Stocks</button>
       </div>
       {!loaded ? <p role="status">Loading stock…</p> : <>

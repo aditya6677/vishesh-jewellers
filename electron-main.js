@@ -253,7 +253,7 @@ async function configureFirstRun() {
   let installation = readInstallation(app.getPath('userData'));
   if (!installation) installation = await new Promise((resolve, reject) => {
     settingUp = true;
-    const setup = new BrowserWindow({ width: 700, height: 790, title: 'Store setup', webPreferences: { preload: path.join(__dirname, 'scripts/setup-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    const setup = new BrowserWindow({ width: 920, height: 760, minWidth: 540, minHeight: 620, title: 'Store setup', webPreferences: { preload: path.join(__dirname, 'scripts/setup-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
     let busy = false, completed = false;
     const authorized = event => event.sender === setup.webContents && event.senderFrame === setup.webContents.mainFrame;
     ipcMain.handle('store-setup-choose', async event => {
@@ -284,6 +284,12 @@ async function configureFirstRun() {
 
 app.whenReady().then(async () => {
   try {
+    app.setAboutPanelOptions({
+      applicationName: app.getName(),
+      applicationVersion: app.getVersion(),
+      copyright: `Copyright © ${new Date().getFullYear()} Tech Aditya`,
+      credits: 'Software solutions & products by Tech Aditya'
+    });
     await configureFirstRun();
     const url = await startLocalServer();
     if (!sqliteDesktop) try { createWeeklyBackup(configuredDataDir()); } catch (error) { dialog.showErrorBox('Weekly backup could not be created', error.message); }
