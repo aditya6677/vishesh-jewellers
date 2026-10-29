@@ -15,6 +15,7 @@
 <script>
 const provider=document.createElement('footer');provider.className='setup-footer';provider.innerHTML='Software by <strong>Tech Aditya</strong><small>Software solutions &amp; products · © '+new Date().getFullYear()+' Tech Aditya</small>';document.querySelector('main').append(provider);
 const el=id=>document.getElementById(id);let backupDirectory='',busy=false;
+const recoveryMode=window.location?new URLSearchParams(window.location.search).get('mode'):null;
 function closeMode(focus=false){el('mode-options').hidden=true;el('mode-trigger').setAttribute('aria-expanded','false');if(focus)el('mode-trigger').focus()}
 function syncMode(){const restoring=el('mode').value==='restore';el('mode-value').textContent=restoring?'Restore encrypted backup':'Create new store';el('mode-new').setAttribute('aria-selected',String(!restoring));el('mode-restore').setAttribute('aria-selected',String(restoring));closeMode()}
 function openMode(){if(busy)return;el('mode-options').hidden=false;el('mode-trigger').setAttribute('aria-expanded','true');el(el('mode').value==='restore'?'mode-restore':'mode-new').focus()}
@@ -34,6 +35,7 @@ if(mode==='new'&&(passphrase.length<12||passphrase!==el('confirm').value||!el('a
 busy=true;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=true);el('continue').textContent='Preparing encrypted store…';
 try{const result=await window.storeSetup.submit({mode,backupDirectory,passphrase,confirmPassphrase:el('confirm').value,recoveryAcknowledged:el('ack').checked,storeName:el('store-name').value,tagline:el('store-tagline').value});if(!result.ok)el('error').textContent=result.error}
 catch{el('error').textContent='Setup could not finish. Existing data has not been replaced.'}
-finally{el('passphrase').value='';el('confirm').value='';busy=false;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);el('continue').textContent=mode==='new'?'Create store & encrypted backup':'Restore & open app'}
+finally{el('passphrase').value='';el('confirm').value='';busy=false;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);if(recoveryMode)el('mode-trigger').disabled=true;el('continue').textContent=mode==='new'?'Create store & encrypted backup':'Restore & open app'}
 };
+if(['new','restore'].includes(recoveryMode)){el('mode').value=recoveryMode;el('mode').onchange();el('mode-trigger').disabled=true}
 </script></body></html>

@@ -26,7 +26,8 @@ test('new-store trial starts on setup; expiry keeps reads/backups accessible and
     data.dashboard=await(await request('/api/dashboard')).json();return data;
   };
   assert.equal((await(await request('/api/auth/status')).json()).license.state,'not-started');
-  const credentials={username:'trial-owner',name:'Trial owner',password:'Disposable trial owner password!',confirmPassword:'Disposable trial owner password!'};
+  const {manifest}=require('../lib/legal/documents');
+  const credentials={username:'trial-owner',name:'Trial owner',password:'Disposable trial owner password!',confirmPassword:'Disposable trial owner password!',legalAcceptance:{accepted:true,acceptanceVersion:manifest.acceptanceVersion,documentHash:manifest.documentHash}};
   assert.equal((await request('/api/auth/setup',credentials)).status,200);
   const login=await request('/api/auth/login',credentials);cookie=login.headers.get('set-cookie').split(';')[0];
   const trial=await(await request('/api/license')).json();assert.equal(trial.state,'trial');assert.equal(trial.daysRemaining,14);assert.equal(trial.invoiceLimit,null);
@@ -47,6 +48,10 @@ test('new-store trial starts on setup; expiry keeps reads/backups accessible and
   const expiredData=await businessSnapshot();
   const payload=Buffer.from(JSON.stringify({version:1,installationId:trial.installationId,type:'paid',plan:'Paid test allowance',expiresAt:null,invoiceLimit:2})).toString('base64url');
   const token=payload+'.'+sign(null,Buffer.from(payload),pair.privateKey).toString('base64url');
+  const previewResponse=await request('/api/license/preview',{token});
+  assert.equal(previewResponse.status,200);
+  assert.equal((await previewResponse.json()).installationId,trial.installationId);
+  assert.equal((await(await request('/api/license')).json()).state,'expired');
   assert.equal((await request('/api/license/activate',{token})).status,200);
   assert.equal((await(await request('/api/license')).json()).state,'paid');
   assert.deepEqual(await businessSnapshot(),expiredData);

@@ -19,6 +19,7 @@ import { PinLock } from './components/PinLock';
 import { Navigation } from './components/Navigation';
 import { restoreTheme } from './theme';
 import { Workspace } from './workspace/Workspace';
+import { LegalGate } from './legal/LegalGate';
 
 restoreTheme();
 
@@ -37,7 +38,7 @@ if (navigationTarget) {
   createRoot(navigationTarget).render(<Navigation />);
   const workspace = document.createElement('div');
   document.body.append(workspace);
-  createRoot(workspace).render(<Workspace />);
+  createRoot(workspace).render(<><Workspace /><LegalGate /></>);
 }
 const pinTarget = document.getElementById('react-pin-lock');
 if (pinTarget && !window.vjAccountSession) createRoot(pinTarget).render(<PinLock />);
@@ -56,7 +57,7 @@ if (window.vjAccountSession) {
   void refreshPlan(); setInterval(() => { void refreshPlan(); }, 60000); window.addEventListener('vj:license-refresh', () => { void refreshPlan(); });
   window.addEventListener('vj:lock-workspace', () => { void fetch('/api/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).finally(() => { location.href = '/login'; }); });
   const originalFetch = window.fetch.bind(window);
-  window.fetch = async (...args) => { const result = await originalFetch(...args); if (result.status === 401) location.href = '/login'; return result; };
+  window.fetch = async (...args) => { const result = await originalFetch(...args); if (result.status === 401) location.href = '/login'; if (result.status === 428) window.dispatchEvent(new Event('vj:legal-review')); return result; };
   let lastActivity = Date.now();
   for (const event of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(event, () => { lastActivity = Date.now(); }, { passive: true });
   setInterval(() => { if (Date.now() - lastActivity >= 30 * 60_000) window.dispatchEvent(new Event('vj:lock-workspace')); }, 10000);

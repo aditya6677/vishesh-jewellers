@@ -22,6 +22,10 @@ test('account UI password controls remain accessible, non-submitting and dynamic
   assert.match(script, /\['ArrowDown','ArrowUp','Home','End'\]/);
   assert.match(html, /@media\(max-width:760px\)/);
   assert.match(html, /#store-account-brand>div\{display:flex;flex-direction:column;gap:5px/);
-  assert.match(html, /<button class="gold">Create user<\/button><small>The user must change this password on first login\.<\/small>/);
+  assert.match(html, /<button class="gold">Create user<\/button><small class="form-note">Share this password privately\. The user must change it on first login\.<\/small>/);
+  assert.match(html, /People &amp; access/);
+  assert.match(html, /What can each role do\?/);
+  assert.match(script, /role:user.role,active:!user.active/);
+  assert.match(script, /role:role.value,active:user.active/);
   assert.ok(fs.existsSync(path.join(__dirname, '../public/vendor/fonts/jost-latin-400-normal.woff2')));
 });

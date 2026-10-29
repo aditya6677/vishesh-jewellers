@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'"><title>Safe recovery · Tech Aditya</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#17130e;color:#f6eedc;font:14px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:28px}main{max-width:700px;margin:auto}.eyebrow{color:#d4b66f;font-size:11px;letter-spacing:.15em;text-transform:uppercase}h1{font-size:28px;line-height:1.2;margin:10px 0 16px}p{color:#d8cdb7}.safe{padding:12px 16px;background:#263027;border:1px solid #435b43;border-radius:10px;color:#c8dfc4}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}button{font:inherit;min-height:42px;padding:10px 16px;border-radius:9px;border:1px solid #6d5b35;background:#2a2318;color:#f6eedc;cursor:pointer}button.primary{background:#ddba65;color:#282012;border-color:#ddba65;font-weight:600}button:disabled{opacity:.5;cursor:wait}button:focus-visible,input:focus-visible{outline:2px solid #e6c878;outline-offset:3px}.secondary{font-size:12px}.folder{overflow-wrap:anywhere;font-size:12px;color:#bcaf94}details{border-top:1px solid #473c28;padding-top:16px;margin-top:22px}summary{cursor:pointer;color:#d7bd80}input{display:block;width:100%;margin:12px 0;background:#231d15;color:#f6eedc;border:1px solid #6d5b35;border-radius:8px;padding:11px;font:inherit}label{display:block;margin-top:14px}#message{color:#e7bc79;min-height:22px}footer{margin-top:24px;color:#a99a7e;font-size:11px}small{color:#bcaf94}[hidden]{display:none!important}
+</style></head><body><main>
+<div class="eyebrow">Tech Aditya · Safe startup recovery</div><h1 id="title">Your store couldn’t start</h1>
+<div class="safe">No automatic reset. Existing databases and encryption keys are kept in place.</div>
+<p id="explanation">Loading recovery options…</p><p id="guidance"></p>
+<div class="actions"><button id="restore" class="primary">Restore portable backup</button><button id="retry">Retry startup</button><button id="folder">Open data folder</button></div>
+<p class="folder" id="data-folder"></p>
+<details id="fresh-options"><summary>Fresh installation with no records to recover?</summary><p>You can create a separate empty store. Old databases, keys and settings are preserved, but their records will not appear in the new store. This does not decrypt or recover them.</p>
+<label for="confirmation">Type CREATE NEW STORE to continue</label><input id="confirmation" type="text" autocomplete="off" spellcheck="false"><button id="fresh" class="secondary">Set up a separate new store</button></details>
+<p id="message" role="status" aria-live="polite"></p><div class="actions"><button id="restart" class="primary" hidden>Restart and open recovered store</button><button id="quit">Close app</button></div>
+<footer>Software solutions &amp; products by Tech Aditya · Keep encrypted portable backups and their recovery passphrase safely.</footer>
+</main><script src="recovery-ui.js"></script></body></html>

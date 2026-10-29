@@ -7,7 +7,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '../scripts/setup.html'), 'utf8');
 
-function preview() {
+function preview(search) {
   const fields = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(([, id]) => [id, { value: '', textContent: '', checked: false, hidden: false, disabled: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, focus() { context.document.activeElement = this; }, addEventListener() {}, contains(value) { return value === this; } }]));
   fields['mode-options'].hidden = true;
   fields.mode.value = 'new';
@@ -20,7 +20,8 @@ function preview() {
       querySelector: () => ({ append() {} }),
       querySelectorAll: () => Object.values(fields)
     },
-    window: { storeSetup: { chooseBackup: async () => '/synthetic/backup', submit: async value => { submitted.push(value); return { ok: true }; } } }
+    URLSearchParams,
+    window: { ...(search ? { location: { search } } : {}), storeSetup: { chooseBackup: async () => '/synthetic/backup', submit: async value => { submitted.push(value); return { ok: true }; } } }
   };
   vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], context);
   return { fields, submitted, document: context.document };
@@ -34,6 +35,15 @@ test('compact onboarding keeps responsive columns and every setup field accessib
   for (const id of ['mode', 'store-name', 'store-tagline', 'choose', 'folder', 'passphrase', 'confirm', 'ack', 'continue', 'error']) {
     assert.equal([...html.matchAll(new RegExp(`id="${id}"`, 'g'))].length, 1);
   }
+});
+
+test('startup recovery opens the requested setup mode and keeps it locked after validation', async () => {
+  const { fields: f, submitted } = preview('?recovery=1&mode=restore');
+  assert.equal(f.mode.value, 'restore'); assert.equal(f['mode-trigger'].disabled, true);
+  assert.equal(f['new-options'].hidden, true); assert.match(f.continue.textContent, /Restore/);
+  await f.choose.onclick(); f.passphrase.value = 'Synthetic portable recovery phrase!';
+  await f.continue.onclick(); assert.equal(submitted[0].mode, 'restore');
+  assert.equal(f['mode-trigger'].disabled, true); assert.equal(f.passphrase.value, '');
 });
 
 test('new layout retains validation, secure setup payload and passphrase clearing', async () => {

@@ -4,6 +4,7 @@ import { Dialog } from '../components/Dialog';
 import { DatabaseBackups } from './DatabaseBackups';
 import { StoreBranding } from './StoreBranding';
 import { LicensePlan } from './LicensePlan';
+import { LegalSupport } from '../legal/LegalSupport';
 
 type Action = 'backup' | 'export' | 'folder' | 'restore';
 
@@ -99,6 +100,7 @@ export function Settings() {
       {window.vjDatabaseMode && <p className="sub">SQLite preview Excel exports are limited to 10,000 rows / 25 MB. For a larger invoice report, use the streaming CSV export in Records.</p>}
       <button data-permission="settings.export" className="btn btn-gold" disabled={disabled} onClick={() => { void run('export'); }}>{busy === 'export' ? 'Preparing workbook…' : '↓ Export All Data to Excel'}</button>
     </div>
+    <LegalSupport />
     {busy && <p role="status" aria-live="polite">Working… Please keep this window open.</p>}
     {confirmation && <Dialog title={confirmation === 'restore' ? 'Restore Backup?' : 'Change Data Folder?'} confirmLabel={confirmation === 'restore' ? 'Continue with Restore' : 'Choose Folder'} busy={Boolean(busy)} onClose={() => { setConfirmation(undefined); setSelectedFile(undefined); }} onConfirm={() => { void run(confirmation); }}>
       <p>{confirmation === 'restore' ? `Restoring ${selectedFile ? '“' + selectedFile.name + '”' : 'a backup'} replaces the current app data. A safety backup is saved first. The matching encryption key is required.` : 'Your existing data will be copied to the chosen folder and the desktop app will restart. Finish any unsaved work before continuing.'}</p>

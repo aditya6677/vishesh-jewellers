@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, safeStorage, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, dialog, safeStorage, ipcMain, screen, shell } = require('electron');
 const { fork } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -9,6 +9,7 @@ const { replaceDesktopData } = require('./lib/desktop-data-files');
 let serverProcess;
 let serverUrl;
 let settingUp = false;
+let launchingWorkspace = false;
 let desktopCloseForQuit;
 const desktopUserData = app.getPath('userData');
 const sqliteDesktop = require('./lib/database/desktop-startup').desktopBackend({ backend: process.env.DATA_BACKEND, isPackaged: app.isPackaged, userData: desktopUserData }) === 'sqlite';
@@ -286,13 +287,16 @@ function createWindow(url) {
   window.loadURL(url);
 }
 
-async function configureFirstRun() {
-  if (!sqliteDesktop || process.env.VJ_ENABLE_SQLITE_DESKTOP !== '1' || process.env.DATABASE_FILE) return;
+async function configureFirstRun({ recovery = false, mode, parent } = {}) {
+  if (!recovery && (!sqliteDesktop || process.env.VJ_ENABLE_SQLITE_DESKTOP !== '1' || process.env.DATABASE_FILE)) return;
   const { readInstallation, provisionStore } = require('./lib/database/first-run');
-  let installation = readInstallation(app.getPath('userData'));
+  const userData = app.getPath('userData');
+  if (recovery) fs.mkdirSync(userData, { recursive: true, mode: 0o700 });
+  const setupDirectory = recovery ? fs.mkdtempSync(path.join(userData, 'recovery-')) : userData;
+  let installation = recovery ? null : readInstallation(userData);
   if (!installation) installation = await new Promise((resolve, reject) => {
     settingUp = true;
-    const setup = new BrowserWindow({ width: 920, height: 760, minWidth: 540, minHeight: 620, title: 'Store setup', webPreferences: { preload: path.join(__dirname, 'scripts/setup-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    const setup = new BrowserWindow({ width: 920, height: 760, minWidth: 540, minHeight: 620, ...(parent ? { parent, modal: true } : {}), title: 'Store setup', webPreferences: { preload: path.join(__dirname, 'scripts/setup-preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
     let busy = false, completed = false;
     const authorized = event => event.sender === setup.webContents && event.senderFrame === setup.webContents.mainFrame;
     ipcMain.handle('store-setup-choose', async event => {
@@ -304,7 +308,9 @@ async function configureFirstRun() {
       if (!authorized(event) || busy) return { ok: false, error: 'Setup is already running.' };
       busy = true;
       try {
-        const config = await provisionStore({ userData: app.getPath('userData'), safeStorage, mode: request?.mode, backupDirectory: request?.backupDirectory, passphrase: request?.passphrase, confirmPassphrase: request?.confirmPassphrase, recoveryAcknowledged: request?.recoveryAcknowledged, storeName: request?.storeName, tagline: request?.tagline });
+        if (recovery && request?.mode !== mode) throw new Error('Use the recovery mode selected on the previous screen.');
+        const config = await provisionStore({ userData: setupDirectory, safeStorage, mode: request?.mode, backupDirectory: request?.backupDirectory, passphrase: request?.passphrase, confirmPassphrase: request?.confirmPassphrase, recoveryAcknowledged: request?.recoveryAcknowledged, storeName: request?.storeName, tagline: request?.tagline });
+        if (recovery) require('./lib/database/startup-recovery').activateRecovery({ userData, recoveryDirectory: setupDirectory, safeStorage });
         completed = true; resolve(config); setup.close(); return { ok: true };
       } catch (error) { return { ok: false, error: error.message }; }
       finally { busy = false; }
@@ -313,7 +319,7 @@ async function configureFirstRun() {
     setup.webContents.on('will-navigate', event => event.preventDefault());
     setup.on('close', event => { if (busy && !completed) event.preventDefault(); });
     setup.on('closed', () => { ipcMain.removeHandler('store-setup-choose'); ipcMain.removeHandler('store-setup-submit'); if (!completed) reject(new Error('Store setup was cancelled.')); });
-    setup.loadFile(path.join(__dirname, 'scripts/setup.html'));
+    setup.loadFile(path.join(__dirname, 'scripts/setup.html'), recovery ? { query: { mode, recovery: '1' } } : undefined);
   });
   process.env.DATABASE_FILE = installation.databaseFile;
   process.env.STORE_ID = installation.storeId;
@@ -321,23 +327,36 @@ async function configureFirstRun() {
   if (installation.licensingEnabled) process.env.LICENSING_ENABLED = '1';
 }
 
-app.whenReady().then(async () => {
+async function launchWorkspace() {
+  if (launchingWorkspace) return;
+  launchingWorkspace = true;
   try {
-    app.setAboutPanelOptions({
-      applicationName: app.getName(),
-      applicationVersion: app.getVersion(),
-      copyright: `Copyright © ${new Date().getFullYear()} Tech Aditya`,
-      credits: 'Software solutions & products by Tech Aditya'
-    });
-    await configureFirstRun();
-    const url = await startLocalServer();
-    if (!sqliteDesktop) try { createWeeklyBackup(configuredDataDir()); } catch (error) { dialog.showErrorBox('Weekly backup could not be created', error.message); }
-    createWindow(url);
-    settingUp = false;
-  } catch (error) {
-    dialog.showErrorBox('Vishesh Jewellers could not start', error.message);
-    app.quit();
-  }
+    for (;;) {
+      try {
+        await configureFirstRun();
+        const url = await startLocalServer();
+        if (!sqliteDesktop) try { createWeeklyBackup(configuredDataDir()); } catch (error) { dialog.showErrorBox('Weekly backup could not be created', error.message); }
+        createWindow(url);
+        settingUp = false;
+        return;
+      } catch (error) {
+        serverProcess?.kill(); serverUrl = null;
+        settingUp = true;
+        const action = await require('./lib/desktop-recovery-window').showStartupRecovery({ app, BrowserWindow, ipcMain, shell, scriptRoot: __dirname, setup: configureFirstRun, error });
+        if (action !== 'retry') { settingUp = false; app.quit(); return; }
+      }
+    }
+  } finally { launchingWorkspace = false; }
+}
+
+app.whenReady().then(async () => {
+  app.setAboutPanelOptions({
+    applicationName: app.getName(),
+    applicationVersion: app.getVersion(),
+    copyright: `Copyright © ${new Date().getFullYear()} Tech Aditya`,
+    credits: 'Software solutions & products by Tech Aditya'
+  });
+  await launchWorkspace();
 });
 
 app.on('window-all-closed', () => {
@@ -353,5 +372,5 @@ app.on('before-quit', event => {
 
 app.on('activate', async () => {
   if (BrowserWindow.getAllWindows().length) return;
-  try { createWindow(await startLocalServer()); } catch { app.quit(); }
+  await launchWorkspace();
 });

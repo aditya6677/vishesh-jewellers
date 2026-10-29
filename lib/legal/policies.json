@@ -1,0 +1,231 @@
+{
+  "version": "2026-10-30",
+  "acceptanceVersion": "2026-10-30.1",
+  "business": {
+    "name": "Tech Aditya",
+    "address": "Siddharth Nagar, Uttar Pradesh, India 272207",
+    "email": "6677aditya@gmail.com"
+  },
+  "policies": [
+    {
+      "slug": "privacy",
+      "title": "Privacy Policy",
+      "kicker": "YOUR INFORMATION, EXPLAINED",
+      "lead": "What this website and our support process collect—and how that differs from the records on your desktop.",
+      "summary": "KaratDesk is local-first desktop software. This marketing website does not automatically receive your store database. Hosting, downloads and communications still involve third-party services.",
+      "sections": [
+        {
+          "id": "operator",
+          "title": "1. Who we are and what this covers",
+          "html": "<p>Tech Aditya provides KaratDesk and operates this product website. Our business address is Siddharth Nagar, Uttar Pradesh, India 272207. For privacy questions or requests, email <a href=\"mailto:6677aditya@gmail.com\">6677aditya@gmail.com</a>.</p><p>This notice covers the website and information we handle for enquiries, licensing and support. Your use of third-party services is also subject to their own privacy notices.</p>"
+        },
+        {
+          "id": "website-data",
+          "title": "2. Information involved in visiting or contacting us",
+          "html": "<ul><li><strong>Website visits:</strong> the hosting and security infrastructure may process IP addresses, browser/device information, requested URLs, timestamps and operational logs to deliver and protect the site.</li><li><strong>Enquiries and support:</strong> when you email us, we receive your email address, name if provided, message and any attachments you choose to send.</li><li><strong>Paid licensing or refunds:</strong> we may request your store name, store activation ID, contact details, purchase/payment reference and the licence terms needed to issue activation or verify a transaction.</li></ul><p>This website currently has no customer account system, payment-card checkout, advertising pixels or separate analytics scripts added by Tech Aditya. The download-agreement checkbox is held only in the current page state; it is not sent to us or stored as a server-side acceptance record.</p>"
+        },
+        {
+          "id": "desktop-data",
+          "title": "3. Your local desktop records",
+          "html": "<p>KaratDesk stores business records locally, including information you enter about customers, staff, stock, invoices, purchases and payments. The store operator controls the device, user access and collection/use of those records. You are responsible for giving your own customers and staff any notices required for your business.</p><p>The website does not provide cloud synchronisation of your business database or automatically upload it to Tech Aditya. Desktop encryption keys use operating-system protection. Portable encrypted backups require a recovery passphrase. Device security, account access and tested backups remain important; encryption cannot eliminate every risk.</p><p>If you request support, share only what is necessary and redact customer information where possible. Do not email passwords, full payment-card details, database encryption keys, recovery passphrases or unredacted customer databases. Any need for access to business records must be separately discussed and limited to an agreed support purpose.</p><p>When an authorised administrator accepts the software licence in this app, the app records the accepted policy version, document fingerprint, acceptance time and accepting administrator identity in the encrypted local database. This acceptance history is included in database backups; it is not automatically uploaded to Tech Aditya.</p>"
+        },
+        {
+          "id": "purpose",
+          "title": "4. Why we use information",
+          "html": "<p>We use information to deliver and secure the website, respond to enquiries, provide requested support, issue or verify licences, process payments/refunds, maintain necessary business records and meet applicable legal obligations. We do not sell personal information or use your local store records for advertising.</p><p>Where consent is required by applicable law, we will seek it for the specific activity. Contacting us for support is not consent to unrelated promotional messages.</p>"
+        },
+        {
+          "id": "providers",
+          "title": "5. Service providers, external links and cookies",
+          "html": "<p>This website is published using OpenAI Sites, with hosting/security infrastructure that may involve Cloudflare. Installer files and release pages are hosted on GitHub. Our listed support address uses Gmail. These providers may process connection, download or communication information, including outside India, according to their services and policies. We do not determine all of their infrastructure retention periods.</p><p>Our website code does not set marketing cookies or local-storage tracking identifiers. Hosting or external services may use their own essential storage, cookies or logs. Following a download or other external link takes you to that provider.</p><p>Provider information: <a href=\"https://openai.com/policies/privacy-policy/\" target=\"_blank\" rel=\"noopener noreferrer\">OpenAI privacy policy</a>, <a href=\"https://www.cloudflare.com/privacypolicy/\" target=\"_blank\" rel=\"noopener noreferrer\">Cloudflare privacy policy</a>, <a href=\"https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub privacy statement</a>, and <a href=\"https://policies.google.com/privacy\" target=\"_blank\" rel=\"noopener noreferrer\">Google privacy policy</a>.</p><p>Optional online benchmark-rate features in the desktop app require a connection to a rate source. That source can receive normal connection information. Core local workflows do not require those online rates.</p>"
+        },
+        {
+          "id": "retention",
+          "title": "6. Retention, sharing and safeguards",
+          "html": "<p>We keep enquiry, support, licensing and transaction information only for the relevant relationship or request, reasonable record-keeping/security needs, and applicable legal/accounting requirements. The period depends on the type of record. You can ask about retention or request deletion using the email below; some records may need to be retained for legal obligations or disputes.</p><p>We limit access to information handled for these purposes and use reasonable safeguards. Information may be shared with service providers needed to fulfil a request, professional advisers, or authorities where lawfully required—not for unrelated advertising. No website, email system or device can be promised completely secure.</p>"
+        },
+        {
+          "id": "rights",
+          "title": "7. Requests, children and changes",
+          "html": "<p>Subject to applicable law, you may request information about our handling of your data, correction or deletion, withdraw consent where relevant, or raise a privacy complaint. Email <a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20privacy%20request\">6677aditya@gmail.com</a> with the subject “KaratDesk privacy request”. We may reasonably verify identity before acting. Withdrawal does not undo earlier lawful processing or eliminate legal retention obligations.</p><p>The product and website are intended for adult business users, not directed at children. If you believe a child has provided personal information to us, please contact us.</p><p>We may update this notice when our actual practices change. The version date will change, and we will provide any further notice or consent required by applicable law. A policy update does not itself authorise an unrelated new use of previously collected information.</p>"
+        }
+      ]
+    },
+    {
+      "slug": "terms",
+      "title": "Terms of Use",
+      "kicker": "CLEAR EXPECTATIONS",
+      "lead": "The terms for visiting this website, exploring KaratDesk and dealing with Tech Aditya.",
+      "summary": "Read these alongside the Software Licence, Privacy Policy and Trial & Refund Policy. Mandatory legal rights always take priority over conflicting wording.",
+      "sections": [
+        {
+          "id": "business",
+          "title": "1. Operator and scope",
+          "html": "<p>This website is operated by Tech Aditya, Siddharth Nagar, Uttar Pradesh, India 272207. Email: <a href=\"mailto:6677aditya@gmail.com\">6677aditya@gmail.com</a>.</p><p>These terms cover website use and general dealings with us. Installation/use of the proprietary software is covered by the <a href=\"/licence.html\">Software Licence</a>. Purchases are also subject to the written quotation/order terms presented before payment and the <a href=\"/refunds.html\">Trial & Refund Policy</a>. No wording here removes rights that cannot lawfully be excluded.</p>"
+        },
+        {
+          "id": "accurate",
+          "title": "2. Product information and downloads",
+          "html": "<p>Illustrations and sample figures on this site are demonstrations, not actual customer records, testimonials or promises of a particular business result. Features depend on the version installed, permissions and licence issued.</p><p>The download section identifies the published version. Existing v1.2.3 installer filenames/display branding may say “Vishesh Jewellers”; KaratDesk is the product name. A website change does not update an already-installed application or mean an unreleased feature is included.</p><p>Download from the official release links, read compatibility/release notes and verify checksums where provided. Current installers are unsigned and may trigger publisher warnings. Keep antivirus protection enabled. Do not bypass security protections merely to install the app.</p>"
+        },
+        {
+          "id": "orders",
+          "title": "3. Quotes, paid licences and payments",
+          "html": "<p>The website currently offers trial downloads, not an integrated payment checkout. Contact Tech Aditya for a paid quotation. Before paying, obtain written confirmation of the price, applicable taxes, licence duration, store/device or invoice allowances, included support and any separate service charges. Do not assume unlimited use, a lifetime licence, automatic renewals or future upgrades unless expressly stated.</p><p>Use only payment details confirmed through the official support email. We do not need your banking password, OTP, full card credentials or recovery passphrase. Refund requests follow the published policy, without limiting other remedies available under applicable law.</p>"
+        },
+        {
+          "id": "acceptable",
+          "title": "4. Lawful use and ownership",
+          "html": "<p>Do not attack or disrupt the website, impersonate another person, distribute malicious files, misuse support channels or infringe others’ rights. You must be authorised to act for a business when placing an order on its behalf.</p><p>The proprietary website content and product branding belong to Tech Aditya or their respective rights holders. Customer store names, logos and business records remain the property of their respective owners. Third-party and open-source materials retain their own licences and notices.</p>"
+        },
+        {
+          "id": "responsibilities",
+          "title": "5. Business, backup and tax responsibilities",
+          "html": "<p>KaratDesk assists with operational records; it is not tax, legal, investment or accounting advice. Verify invoice details, GST treatment, rates, reports and statutory compliance with qualified advisers as appropriate. Cash flow is not profit, and market benchmarks are not guaranteed selling or buying prices.</p><p>Protect your devices and user accounts, control staff permissions, keep current portable backups off the original device and test recovery. Keep recovery passphrases separately. We cannot promise recovery where all usable backups, keys or passphrases are unavailable. These responsibilities do not excuse defects or other obligations that law places on Tech Aditya.</p>"
+        },
+        {
+          "id": "availability",
+          "title": "6. Availability, support and external services",
+          "html": "<p>We use reasonable efforts to maintain accurate information and assist with reported issues, but do not promise uninterrupted website access, a particular repair deadline or compatibility with every device. Any separately agreed support commitment will be described in writing. Core desktop operations are local; downloading files, contacting support and optional market-rate features require appropriate connectivity.</p><p>External hosting, download and rate providers have their own services and terms. Report broken links or suspected security issues to our official email. Please do not send secrets or exploit a suspected issue against other users.</p>"
+        },
+        {
+          "id": "liability",
+          "title": "7. Liability and mandatory protections",
+          "html": "<p>To the extent permitted by applicable law, we do not accept responsibility for indirect or consequential losses arising from misuse, unsupported modifications or circumstances outside our reasonable control. This is not a blanket exclusion of responsibility for our own defects or breaches.</p><p>Nothing in these terms excludes or restricts liability or remedies that cannot lawfully be excluded, including applicable consumer protections, fraud, wilful misconduct or gross negligence. Any limitation is subject to those protections. If a provision is unenforceable, the remaining lawful provisions continue to apply.</p>"
+        },
+        {
+          "id": "complaints",
+          "title": "8. Complaints, governing law and updates",
+          "html": "<p>Email <a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20complaint\">6677aditya@gmail.com</a> with your purchase reference and a clear description of the issue. We aim to acknowledge complaints within 48 hours and address them within one month, or any shorter period required by applicable law. You retain the right to approach a competent authority or forum.</p><p>Indian law applies, subject to any mandatory protections applicable to you. Courts and forums with jurisdiction under applicable law may hear disputes; this does not force consumers to waive a legally available forum.</p><p>We may update these website terms prospectively. Material changes to an existing paid order require any notice or agreement required by law. Updated website wording does not retroactively remove promised refunds or paid entitlements.</p>"
+        }
+      ]
+    },
+    {
+      "slug": "licence",
+      "title": "Software Licence",
+      "kicker": "KARATDESK · END-USER LICENCE",
+      "lead": "Permission to use KaratDesk, with clear boundaries for trials, paid activation and your own business data.",
+      "summary": "Tech Aditya licences the proprietary software; it does not take ownership of your store records. Third-party and open-source licences remain in force for their respective components.",
+      "sections": [
+        {
+          "id": "agreement",
+          "title": "1. Parties and review before use",
+          "html": "<p>This licence is between Tech Aditya, Siddharth Nagar, Uttar Pradesh, India 272207, and the person or authorised business using KaratDesk. Contact <a href=\"mailto:6677aditya@gmail.com\">6677aditya@gmail.com</a> with questions before purchasing or using it.</p><p>Review this licence and the <a href=\"/terms.html\">Terms of Use</a> before downloading/installing. If you do not agree, do not install or use the proprietary software. The website asks you to acknowledge these documents before following a download link; that acknowledgement is not a substitute for any acceptance process required for a separately issued licence or order.</p>"
+        },
+        {
+          "id": "grant",
+          "title": "2. Limited permission to use",
+          "html": "<p>Subject to the trial or paid entitlement issued for your store, Tech Aditya grants a non-exclusive licence to install and use the proprietary parts of KaratDesk for your lawful internal business operations. Software ownership is not transferred.</p><p>Your written licence/order defines any duration, authorised store/devices, invoice allowance and included support. Do not assume that a licence can be shared with unrelated businesses, transferred between stores or used beyond its stated allowance. Contact us about a legitimate transfer or replacement device.</p>"
+        },
+        {
+          "id": "trial",
+          "title": "3. Trial, activation and expiry",
+          "html": "<p>A newly configured store may receive a 14-day full-feature trial, subject to the version’s trial controls. Paid activation uses a store-bound licence. Activating the same store should preserve its records; take and verify a portable backup before important changes.</p><p>After expiry or a reached allowance, restrictions can apply to new activity. The app’s available read, export and backup options may also depend on the installed version and user permissions. Contact us if you need help preserving records. A website policy cannot restore a lost key or passphrase.</p><p>Do not bypass licence checks, alter entitlement records, share paid activation credentials or reset trials to evade payment. Offline licensing does not mean unlimited entitlement.</p>"
+        },
+        {
+          "id": "restrictions",
+          "title": "4. Restrictions and third-party rights",
+          "html": "<p>Except where applicable law or a component’s own licence permits it, do not sell or redistribute the proprietary app or activation credentials, remove ownership notices, impersonate Tech Aditya, or modify/circumvent security and licensing controls. Reverse-engineering restrictions apply only to the extent law permits.</p><p>Electron, database libraries, fonts and other third-party components retain their own copyright and licence terms. This agreement does not cancel rights granted by those licences. Public availability of a repository or release does not by itself grant additional rights to proprietary material.</p>"
+        },
+        {
+          "id": "records",
+          "title": "5. Your records and security",
+          "html": "<p>Your store identity, logos and business records remain yours or their respective owners’. You are responsible for authorising staff access, lawful handling of customer/staff information, reliable devices and recovery arrangements. The <a href=\"/privacy.html\">Privacy Policy</a> explains our website/support practices.</p><p>Keep encrypted portable backups off the original device and keep their recovery passphrase separately. Operating-system-wrapped keys are not a substitute for portable recovery. Never delete AppData or replace a key to unlock important records. Seek support first.</p><p>Encryption and access controls reduce risk; they cannot guarantee that malware, device compromise, mistakes or every form of tampering will be prevented.</p>"
+        },
+        {
+          "id": "support",
+          "title": "6. Features, updates and support",
+          "html": "<p>Capabilities vary by published version and licence. Preview illustrations or announced improvements are not promises that an older installer includes them. Paid custom work, major upgrades, maintenance and installation services are included only when agreed in writing.</p><p>We will consider reproducible defect reports and provide reasonable assistance, subject to any agreed support terms. No guarantee of error-free operation or a particular business, tax or financial outcome is made. Mandatory legal warranties and remedies remain unaffected.</p>"
+        },
+        {
+          "id": "ending",
+          "title": "7. Refunds, termination and continued data ownership",
+          "html": "<p>Refunds follow the <a href=\"/refunds.html\">Trial & Refund Policy</a>. Following a refund, stop using the refunded paid entitlement. If your licence expires or ends, you still own your records and should keep lawful copies and backups. We do not remotely erase your local database as a refund condition.</p><p>For a material licence breach, we may require you to stop unauthorised use, subject to applicable law and any required notice or opportunity to remedy. Ask us about available export/recovery options before changing an installation.</p>"
+        },
+        {
+          "id": "legal",
+          "title": "8. Legal safeguards and contact",
+          "html": "<p>The lawful liability, complaints and governing-law provisions in the <a href=\"/terms.html#liability\">Terms of Use</a> also apply. Nothing here removes non-waivable consumer, privacy or other statutory rights. Separate written order terms can add specific paid entitlements but cannot remove mandatory protections.</p><p>Questions about a licence, activation or replacement computer: <a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20licence%20enquiry\">6677aditya@gmail.com</a>.</p>"
+        }
+      ]
+    },
+    {
+      "slug": "refunds",
+      "title": "Trial & Refund Policy",
+      "kicker": "TRY IT PROPERLY. BUY WITH CLARITY.",
+      "lead": "A 14-day trial for new stores, plus a 7-day refund window on your first paid software licence.",
+      "summary": "This policy applies to new orders made on or after 30 October 2026. It adds voluntary refund rights without limiting rights or remedies available under applicable law.",
+      "sections": [
+        {
+          "id": "free-trial",
+          "title": "1. The 14-day trial",
+          "html": "<p>A newly configured store may use the full-feature trial for 14 days, subject to the version’s trial controls. Downloading the trial through this website does not require payment-card details and does not automatically charge you or create an automatic paid renewal.</p><p>Use the trial to check compatibility and important workflows. Before a paid purchase, confirm your required features, support, price/taxes, licence duration and invoice/store/device allowances with Tech Aditya in writing.</p>"
+        },
+        {
+          "id": "first-purchase",
+          "title": "2. First paid licence: 7-day refund window",
+          "html": "<p>If KaratDesk does not meet your needs, email a refund request within <strong>7 calendar days after your first paid software-licence purchase</strong>. We offer a full refund of the amount paid for that covered licence, after verifying the transaction and purchaser. You do not have to prove a software defect to use this initial window.</p><p>A brief reason can help improve the product but is optional. We may offer troubleshooting, but accepting it is not a condition of a valid refund request made within the window. Requests sent in time remain in time even if verification is completed later.</p>"
+        },
+        {
+          "id": "other-issues",
+          "title": "3. Activation problems, duplicate payments and later requests",
+          "html": "<p>If you paid twice for the same order, or a promised activation cannot be supplied, contact us so we can correct the issue or refund the affected payment. These cases are not dismissed simply because the initial seven days have passed.</p><p>After the voluntary first-purchase window, we review other requests individually, including material defects, services not supplied or a product that does not match agreed features. Any remedy required by applicable law remains available. A change of mind after the window is not automatically refundable.</p>"
+        },
+        {
+          "id": "separate-services",
+          "title": "4. Renewals, upgrades and separate services",
+          "html": "<p>The voluntary seven-day offer is for the first paid software licence, not automatically each renewal, additional licence or upgrade. Any separate refund/cancellation terms must be clearly agreed before payment, and statutory rights remain unaffected.</p><p>Custom development, migration, training or installation work must have its own written scope, price and cancellation terms before work begins. The software-licence refund does not silently change those separate terms. We will not use an undisclosed “service fee” to reduce an otherwise full licence refund.</p>"
+        },
+        {
+          "id": "request",
+          "title": "5. How to request a refund",
+          "html": "<p>Email <a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20refund%20request\">6677aditya@gmail.com</a> with the subject “KaratDesk refund request”. Include your name/business, purchase date, payment or invoice reference, and store activation ID if available. If you cannot locate a reference, contact us for help identifying the purchase.</p><p>Do not send banking passwords, OTPs, full card credentials, encryption keys, customer databases or recovery passphrases. We may request proportionate transaction verification; we will not ask you to disclose secrets to obtain a refund.</p>"
+        },
+        {
+          "id": "processing",
+          "title": "6. Processing and payment method",
+          "html": "<p>We aim to acknowledge requests within 48 hours. Once eligibility and the transaction are verified, we will initiate an approved refund within <strong>5 business days</strong>, normally to the original payment method. If that method cannot be used, we will agree a lawful alternative with you.</p><p>Your bank or payment provider may take additional time to credit the funds. Business days exclude weekends and applicable public holidays in India. We will provide an update if verification or a provider issue causes a delay; legally required timelines still apply.</p>"
+        },
+        {
+          "id": "after-refund",
+          "title": "7. Licence and records after a refund",
+          "html": "<p>After a refund, your right to use the refunded paid entitlement ends and you must stop using it. Keep your own business records and portable backups. A refund does not transfer ownership of those records to us, and we do not remotely erase your local database as a condition.</p><p>Before uninstalling, changing devices or altering a licence, use available export/backup options or ask for help preserving records. Offline licences may require administrative follow-up; do not assume a refund is a technical data-deletion or remote-revocation service.</p>"
+        },
+        {
+          "id": "rights",
+          "title": "8. Your legal rights and complaints",
+          "html": "<p>This policy does not exclude remedies for defective, deficient, misrepresented or undelivered products/services where applicable law provides them. It does not remove chargeback, consumer-forum or other lawful remedies. No blanket “no refunds” rule overrides mandatory rights.</p><p>For an unresolved issue, email our business/support contact at <a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20complaint\">6677aditya@gmail.com</a>. We aim to acknowledge complaints within 48 hours and address them within one month, subject to any shorter legal requirement. See the <a href=\"/contact.html\">Contact & Support</a> page for our address.</p>"
+        }
+      ]
+    },
+    {
+      "slug": "contact",
+      "title": "Contact & Support",
+      "kicker": "REAL PEOPLE. CLEAR CONTACT DETAILS.",
+      "lead": "Talk to Tech Aditya about KaratDesk, paid activation, support, privacy or a refund.",
+      "summary": "The official email below is the current contact channel. No telephone or WhatsApp number is published, and there is no payment checkout on this website.",
+      "sections": [
+        {
+          "id": "details",
+          "title": "Business contact",
+          "html": "<div class=\"contact-card\"><p><strong>Tech Aditya</strong><br>Software solutions &amp; products</p><address>Siddharth Nagar, Uttar Pradesh<br>India 272207</address><p><a class=\"button button-dark\" href=\"mailto:6677aditya@gmail.com\">6677aditya@gmail.com ↗</a></p></div><p>KaratDesk is our product name. Your jewellery store name, tagline and logo are separate customer-controlled branding.</p>"
+        },
+        {
+          "id": "support",
+          "title": "Support and product enquiries",
+          "html": "<p>For paid activation, compatibility questions or help with the app, email <a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20support\">6677aditya@gmail.com</a>. Include your operating system, app version, a clear description and a redacted screenshot if useful.</p><p>For a purchase, ask for written confirmation of price/taxes, licence duration, invoice/store/device allowances, activation arrangements and included support before paying. Do not rely on unofficial payment requests.</p><p>We aim to acknowledge support enquiries within 48 hours. Resolution time depends on the issue and any agreed support terms; there is no general 24/7 or fixed-resolution-time promise.</p>"
+        },
+        {
+          "id": "privacy-complaints",
+          "title": "Privacy, refunds and complaints",
+          "html": "<ul><li><a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20privacy%20request\">Privacy request</a> — use the subject “KaratDesk privacy request”.</li><li><a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20refund%20request\">Refund request</a> — include your payment/invoice reference and purchase date.</li><li><a href=\"mailto:6677aditya@gmail.com?subject=KaratDesk%20complaint\">Complaint</a> — describe the issue and the outcome you are seeking.</li></ul><p>Tech Aditya is the current published business, support and privacy contact. We aim to acknowledge complaints within 48 hours and address them within one month or an earlier legally required deadline. Your right to contact a competent authority or forum is unaffected.</p>"
+        },
+        {
+          "id": "safe-support",
+          "title": "Keep support safe",
+          "html": "<p>Never email your password, banking OTP, full payment-card details, database key or recovery passphrase. Redact customer information from screenshots. Do not delete AppData, reset a database or replace encryption keys to troubleshoot important records.</p><p>Keep a verified portable encrypted backup off the original computer before upgrades. If startup fails, preserve the installation files and ask for guidance. Existing v1.2.3 downloads use legacy display branding; newer startup-recovery improvements require a separately published installer.</p>"
+        }
+      ]
+    }
+  ]
+}

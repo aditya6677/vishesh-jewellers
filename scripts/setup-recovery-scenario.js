@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
 const { provisionStore, readInstallation } = require('../lib/database/first-run');
 const { desktopDatabaseKey } = require('../lib/database/desktop-key');
 const { openDatabase } = require('../lib/database/database');
@@ -14,6 +14,7 @@ const { TransactionRepository } = require('../lib/database/transaction-repositor
 const { DatabaseQueries } = require('../lib/database/queries');
 const { DashboardService } = require('../lib/services/dashboard-service');
 const { createPortableBackup } = require('../lib/database/portable-backup');
+const { activateRecovery } = require('../lib/database/startup-recovery');
 
 async function setupRecoveryScenario(safeStorage, platform) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vj-full-recovery-check-'));
@@ -57,7 +58,25 @@ async function setupRecoveryScenario(safeStorage, platform) {
     ranges.forEach((range, i) => assert.deepEqual(new DatabaseQueries(db, 'main').dashboard(range), reports[i]));
     assert.equal(db.pragma('integrity_check', { simple: true }), 'ok');
     assert.deepEqual(db.pragma('foreign_key_check'), []);
-    return { verified: true, platform, initialSetup: true, stockDeduction: true, invoiceAndSettlement: true, purchasesAndPayments: true, recoveryWithoutOriginalKey: true, wrongPassphraseRejected: true, exactRecordsMatch: true, financialReportRangesMatched: ranges.length, businessDataTouched: false };
+    db.close(); db = undefined; key.fill(0); key = undefined;
+    // Exercise the startup-error recovery path against disposable files, using
+    // the real OS keystore when this scenario runs through Electron in CI.
+    const previousSettings = fs.readFileSync(path.join(restoredUserData, 'database-installation.json'));
+    const oldDatabaseHash = createHash('sha256').update(fs.readFileSync(restored.databaseFile)).digest('hex');
+    const brokenKeyFile = path.join(restoredUserData, 'database-keys', createHash('sha256').update(restored.databaseFile).digest('hex') + '.bin');
+    fs.writeFileSync(brokenKeyFile, 'Disposable simulated damaged key');
+    const recoveryDirectory = fs.mkdtempSync(path.join(restoredUserData, 'recovery-'));
+    const repaired = await provisionStore({ userData: recoveryDirectory, safeStorage, platform, mode: 'restore', backupDirectory, passphrase });
+    const activated = activateRecovery({ userData: restoredUserData, recoveryDirectory, safeStorage, platform });
+    assert.deepEqual(readInstallation(restoredUserData), repaired);
+    assert.deepEqual(fs.readFileSync(path.join(activated.archive, 'database-installation.json')), previousSettings);
+    assert.equal(fs.readFileSync(brokenKeyFile, 'utf8'), 'Disposable simulated damaged key');
+    assert.equal(createHash('sha256').update(fs.readFileSync(restored.databaseFile)).digest('hex'), oldDatabaseHash);
+    ({ key } = desktopDatabaseKey({ userData: restoredUserData, safeStorage, platform, databaseFile: repaired.databaseFile }));
+    db = openDatabase(repaired.databaseFile, key);
+    assert.deepEqual(readSnapshot(db, 'main'), snapshot);
+    ranges.forEach((range, i) => assert.deepEqual(new DatabaseQueries(db, 'main').dashboard(range), reports[i]));
+    return { verified: true, platform, initialSetup: true, stockDeduction: true, invoiceAndSettlement: true, purchasesAndPayments: true, recoveryWithoutOriginalKey: true, wrongPassphraseRejected: true, exactRecordsMatch: true, financialReportRangesMatched: ranges.length, startupRecoveryPreservesOriginalFiles: true, businessDataTouched: false };
   } finally { if (db?.open) db.close(); key?.fill(0); fs.rmSync(root, { recursive: true, force: true }); }
 }
 module.exports = { setupRecoveryScenario };

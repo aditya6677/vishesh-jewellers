@@ -31,6 +31,36 @@ test('workspace preferences validate page sizes and tolerate unavailable storage
   assert.doesNotThrow(() => blocked.writePreference('sidebar', 'collapsed'));
 });
 
+test('older preview anchors open the drawer without navigating and detach cleanly', () => {
+  const { bindPreviewLink } = compile('frontend/invoice/preview-link.ts', {});
+  let click, opened = 0, prevented = 0;
+  const link = { classList: { remove(value) { assert.equal(value, 'btn-sm'); }, add(value) { assert.equal(value, 'invoice-preview-button'); } }, setAttribute(name, value) { assert.equal(name, 'aria-haspopup'); assert.equal(value, 'dialog'); },
+    addEventListener(name, callback) { assert.equal(name, 'click'); click = callback; },
+    removeEventListener(name, callback) { assert.equal(name, 'click'); assert.equal(callback, click); click = undefined; } };
+  const cleanup = bindPreviewLink(link, () => opened++);
+  assert.equal(link.textContent, 'Preview');
+  click({ preventDefault() { prevented++; } });
+  assert.equal(opened, 1); assert.equal(prevented, 1);
+  cleanup(); assert.equal(click, undefined);
+  assert.doesNotThrow(() => bindPreviewLink(null, () => assert.fail())());
+});
+
+test('invoice preview fits both window dimensions while PDF clones retain full paper size', () => {
+  const { previewScale, fullSizeInvoiceClone } = compile('frontend/invoice/InvoiceFit.tsx', { react: {} });
+  assert.equal(previewScale(850, 1200, 1000), 1);
+  assert.equal(previewScale(425, 1200, 1000), .5);
+  assert.equal(previewScale(850, 500, 1000), .5);
+  assert.equal(previewScale(850, 500, 2000), .25);
+  assert.equal(previewScale(0, 0, 0), 1);
+  const nodes = Object.fromEntries(['.invoice-fit-stage', '.invoice-fit-viewport', '.invoice-preview-drawer'].map(selector => [selector, { style: {} }]));
+  fullSizeInvoiceClone({ querySelector: selector => nodes[selector] });
+  assert.equal(nodes['.invoice-fit-stage'].style.transform, 'none');
+  assert.equal(nodes['.invoice-fit-stage'].style.width, '850px');
+  assert.equal(nodes['.invoice-fit-viewport'].style.overflow, 'visible');
+  assert.equal(nodes['.invoice-preview-drawer'].style.height, 'auto');
+  assert.doesNotThrow(() => fullSizeInvoiceClone({ querySelector: () => null }));
+});
+
 test('window placement rejects corrupt/offscreen preferences and saves normal rather than maximized bounds', t => {
   const displays = [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }];
   assert.equal(validBounds({ x: 9000, y: 0, width: 1440, height: 920 }, displays), null);
@@ -100,11 +130,25 @@ test('desktop close requires confirmation for dirty drafts and cannot interrupt 
 test('keyboard shortcuts reuse existing save/print/new controls and skip modal, repeated and modified keys', () => {
   const h = workspaceHarness();
   const key = (value, extra = {}) => { let prevented = false; h.emit('keydown', { key: value, ctrlKey: true, preventDefault() { prevented = true; }, ...extra }); return prevented; };
+  let printRequests = 0;
+  h.listeners.set('vj:print-invoice', new Set([() => printRequests++]));
   assert.equal(key('s'), true); assert.equal(h.nodes.get('btnCompleteSale').clicks, 1);
-  key('p'); assert.equal(h.nodes.get('btnPrint').clicks, 1);
+  key('p'); assert.equal(printRequests, 1);
   key('n'); assert.equal(h.nodes.get('btnNewInvoice').clicks, 1);
   key('s', { repeat: true }); key('s', { altKey: true }); assert.equal(h.nodes.get('btnCompleteSale').clicks, 1);
   h.nodes.get('btnCompleteSale').disabled = true; key('s'); assert.equal(h.nodes.get('btnCompleteSale').clicks, 1);
+});
+
+test('preview belongs beside sale actions while print and PDF are inside the drawer only', () => {
+  const { PageRenderer } = require('../lib/ui/page-renderer');
+  const { createConfig } = require('../lib/config');
+  const html = new PageRenderer(createConfig({})).render({ reactDashboard: true });
+  assert.match(html, /<span id="react-invoice-preview-action"><\/span><button class="btn btn-gold" id="btnCompleteSale">/);
+  assert.doesNotMatch(html, /<a[^>]*invoice-preview-jump|id="react-invoice-print-action"|id="react-invoice-pdf-action"/);
+  const source = fs.readFileSync(path.join(root, 'frontend/invoice/InvoicePreview.tsx'), 'utf8');
+  assert.match(source, /preview-output-actions"><button id="btnPrint"/);
+  assert.match(source, /separate\.className = 'invoice-new-action'/);
+  assert.match(source, /Preview<\/button>/);
 });
 
 test('reset ignores delayed React clearing and protects the next actual invoice edit', () => {

@@ -72,7 +72,7 @@ export function Workspace() {
         event.preventDefault(); clickButton('invoiceTab'); clickButton('btnNewInvoice');
       } else if (key === 's' && invoice) {
         event.preventDefault(); clickButton(window.vjInvoiceItems?.read().pending ? 'btnSavePendingOrder' : 'btnCompleteSale');
-      } else if (key === 'p' && invoice) { event.preventDefault(); clickButton('btnPrint'); }
+      } else if (key === 'p' && invoice) { event.preventDefault(); window.dispatchEvent(new Event('vj:print-invoice')); }
       else if (key === 'f') {
         const search = document.querySelector<HTMLInputElement>('.page.active input[type="search"], .page.active input[placeholder*="Search"], .page.active input[placeholder*="search"]');
         if (search) { event.preventDefault(); search.focus(); search.select(); }

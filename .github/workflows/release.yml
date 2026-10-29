@@ -95,5 +95,5 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --draft --title "Vishesh Jewellers $RELEASE_TAG" --notes-file "release-notes/$RELEASE_TAG.md"
+          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --draft --title "KaratDesk by Tech Aditya $RELEASE_TAG" --notes-file "release-notes/$RELEASE_TAG.md"
           gh release edit "$RELEASE_TAG" --draft=false --latest
