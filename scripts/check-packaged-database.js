@@ -47,8 +47,12 @@ async function check(root) {
     const credentials = { username: 'acceptance-admin', name: 'Disposable desktop acceptance', password: 'Disposable desktop acceptance password!', confirmPassword: 'Disposable desktop acceptance password!' };
     async function login() { const response = await request('/api/auth/login', 'POST', credentials); const value = await response.json(); assert.equal(response.status, 200, value.error); cookie = response.headers.get('set-cookie').split(';')[0]; }
     assert.equal((await request('/api/dashboard')).status, 401);
-    assert.equal((await json('/api/auth/status')).setupRequired, true);
+    const setup = await json('/api/auth/status');
+    assert.equal(setup.setupRequired, true);
+    credentials.legalAcceptance = { accepted: true, acceptanceVersion: setup.legal.acceptanceVersion, documentHash: setup.legal.documentHash };
     await json('/api/auth/setup', 'POST', credentials); await login();
+    const legal = await json('/api/legal');
+    assert.equal(legal.accepted, true); assert.equal(legal.acceptance.username, credentials.username);
     const trial = await json('/api/license'); assert.equal(trial.state, 'trial'); assert.equal(trial.daysRemaining, 14);
     assert.equal(trial.activationConfigured, true, 'The vendor public verification key must be bundled.');
     const page = await request('/'); const html = await page.text(); assert.equal(page.status, 200); assert.ok(html.includes('window.vjAccountSession='));
@@ -86,6 +90,7 @@ async function check(root) {
     const recovered = await restorePortableBackup(backup.path, recoveryPassphrase, path.join(directory, 'fresh-installation.db')); recoveredKey = recovered.key;
     base = await start(path.join(directory, 'fresh-installation.db'), recoveredKey); cookie = '';
     assert.equal((await json('/api/auth/status')).setupRequired, false); await login();
+    assert.equal((await json('/api/legal')).accepted, true);
     assert.deepEqual(await json('/api/dashboard'), before);
     assert.equal((await json('/api/license')).installationId, trial.installationId);
     const remaining = (await json('/api/stocks/' + stockId)).item;
