@@ -45,6 +45,7 @@ jobs:
         run: npm run check:setup-recovery
       - name: Build unsigned Windows x64 installer
         if: runner.os == 'Windows'
+        shell: bash
         run: npm run package:windows -- --x64 --publish never -c.win.signExecutable=false
       - name: Build unsigned universal macOS DMG
         if: runner.os == 'macOS'
