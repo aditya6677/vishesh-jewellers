@@ -56,6 +56,7 @@
       "electron-main.js",
       "scripts/setup.html",
       "scripts/setup-preload.js",
+      "scripts/workspace-preload.js",
       "server.js",
       "lib/**/*",
       "source/**/*",

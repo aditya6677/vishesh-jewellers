@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, safeStorage, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, safeStorage, ipcMain, screen } = require('electron');
 const { fork } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -9,6 +9,7 @@ const { replaceDesktopData } = require('./lib/desktop-data-files');
 let serverProcess;
 let serverUrl;
 let settingUp = false;
+let desktopCloseForQuit;
 const desktopUserData = app.getPath('userData');
 const sqliteDesktop = require('./lib/database/desktop-startup').desktopBackend({ backend: process.env.DATA_BACKEND, isPackaged: app.isPackaged, userData: desktopUserData }) === 'sqlite';
 if (sqliteDesktop) {
@@ -231,19 +232,57 @@ function startLocalServer() {
 
 function createWindow(url) {
   const appRoot = runtimeRoot();
+  const { loadWindowState, saveWindowState } = require('./lib/desktop-window-state');
+  const stateFile = path.join(app.getPath('userData'), 'workspace-window.json');
+  const state = loadWindowState(stateFile, screen.getAllDisplays());
   const window = new BrowserWindow({
     width: 1440,
     height: 920,
     minWidth: 1000,
     minHeight: 700,
+    ...(state?.bounds || {}),
     title: 'Vishesh Jewellers',
     icon: path.join(appRoot, 'assets', 'vishesh-jewellers-logo.png'),
     webPreferences: {
+      preload: path.join(__dirname, 'scripts/workspace-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
     }
   });
+  let rendererReady = false;
+  let closeConfirmed = false;
+  let closeRequested = false;
+  let quitRequested = false;
+  let saveTimer;
+  const authorized = event => event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame;
+  const ready = event => { if (authorized(event)) rendererReady = true; };
+  const confirm = event => {
+    if (authorized(event) && rendererReady && closeRequested) {
+      closeConfirmed = true;
+      const quitting = quitRequested;
+      window.destroy();
+      if (quitting) app.quit();
+    }
+  };
+  desktopCloseForQuit = () => {
+    if (!rendererReady || window.webContents.isDestroyed() || window.webContents.isCrashed()) return false;
+    closeRequested = true; quitRequested = true;
+    saveWindowState(stateFile, window);
+    window.webContents.send('workspace:request-close');
+    return true;
+  };
+  ipcMain.on('workspace:ready', ready);
+  ipcMain.on('workspace:confirm-close', confirm);
+  const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => saveWindowState(stateFile, window), 300); };
+  window.on('resize', persist); window.on('move', persist);
+  window.on('close', event => {
+    saveWindowState(stateFile, window);
+    if (rendererReady && !closeConfirmed && !window.webContents.isDestroyed() && !window.webContents.isCrashed()) { event.preventDefault(); closeRequested = true; quitRequested = false; window.webContents.send('workspace:request-close'); }
+  });
+  window.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) { rendererReady = false; closeRequested = false; } });
+  window.on('closed', () => { desktopCloseForQuit = undefined; clearTimeout(saveTimer); ipcMain.removeListener('workspace:ready', ready); ipcMain.removeListener('workspace:confirm-close', confirm); });
+  if (state?.maximized) window.maximize();
   window.loadURL(url);
 }
 
@@ -306,7 +345,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+  // Keep the backend alive if the user cancels quitting to finish an invoice.
+  if (desktopCloseForQuit?.()) { event.preventDefault(); return; }
   if (serverProcess && !serverProcess.killed) serverProcess.kill();
 });
 

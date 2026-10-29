@@ -3,6 +3,7 @@ import { recordsApi } from '../api';
 import { Dialog } from '../components/Dialog';
 import { Select } from '../components/Select';
 import { Pagination } from '../components/Pagination';
+import { usePageSize } from '../workspace/preferences';
 import { money } from '../transactions/TransactionForm';
 import { RecordDetails, balance, netTotal } from './RecordDetails';
 import type { InvoiceRecord, RecordFilters, RecordsSnapshot, SettlementInput } from '../types';
@@ -14,7 +15,7 @@ export function Records() {
   const [data, setData] = useState<RecordsSnapshot>({ items: [], total: 0, versions: {} });
   const [loaded, setLoaded] = useState(false), [loading, setLoading] = useState(false), [busy, setBusy] = useState(false);
   const [error, setError] = useState(''), [expanded, setExpanded] = useState<string>();
-  const [page, setPage] = useState(1), [size, setSize] = useState(10);
+  const [page, setPage] = useState(1), [size, setSize] = usePageSize('records');
   const [message, setMessage] = useState<{ title: string; text: string }>();
   const [confirmation, setConfirmation] = useState<{ action: 'paid' | 'delete'; record: InvoiceRecord; version: string }>();
   const request = useRef<AbortController | null>(null), lock = useRef(false), generation = useRef(0);

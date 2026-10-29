@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, transactionApi } from '../api';
 import { Dialog } from '../components/Dialog';
 import { Pagination } from '../components/Pagination';
+import { usePageSize } from '../workspace/preferences';
 import { TransactionForm, grams, money, paymentLabels } from './TransactionForm';
 import type { TransactionEntry, TransactionInput, TransactionKind, TransactionSnapshot } from '../types';
 
@@ -17,7 +18,7 @@ export function Transactions({ kind }: { kind: TransactionKind }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ title: string; text: string }>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = usePageSize(kind);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const lock = useRef(false);

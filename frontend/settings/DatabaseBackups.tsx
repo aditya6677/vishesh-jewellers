@@ -63,7 +63,7 @@ export function DatabaseBackups() {
         ? 'Saved to ' + result.path + '. Copy the entire folder to another device or secure cloud storage. Keep the recovery passphrase separately; it cannot be reset.'
         : action === 'import' ? 'The backup was imported and verified. Your current data has not changed. Select it below to verify or restore it.' : result.message || 'The encrypted backup was successfully recovered and checked. Current data was not replaced.' });
       if (result.name) setSelected(result.name);
-      setFiles([]); setAction(undefined); await refresh();
+      setFiles([]); setAction(undefined); await refresh(); window.dispatchEvent(new Event('vj:backup-updated'));
     } catch (cause) { setError((cause as Error).message); }
     finally { setPassphrase(''); setConfirmation(''); locked.current = false; setBusy(false); }
   }

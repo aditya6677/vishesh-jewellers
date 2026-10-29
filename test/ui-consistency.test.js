@@ -40,12 +40,14 @@ test('shared UI keeps calculated fields, table actions and small-screen dialogs 
   assert.match(pagination, /className="page-range" aria-live="polite"/);
 });
 
-test('invoice entry uses the full width and places its bounded live preview below', () => {
+test('invoice entry uses the full width with a dedicated preview drawer in the desktop workspace', () => {
   const css = fs.readFileSync(path.join(root, 'source/styles/application.css'), 'utf8');
   assert.match(css, /\.invoice-layout\s*\{ grid-template-columns:minmax\(0,1fr\); gap:28px;/);
   assert.match(css, /\.paper-outer\s*\{ position:static;[^}]*max-width:900px/);
   const source = fs.readFileSync(path.join(root, 'source/index.html'), 'utf8');
-  assert.match(source, /Your live invoice preview appears after the form/);
+  assert.match(source, /invoice-preview-jump/);
   const preview = fs.readFileSync(path.join(root, 'frontend/invoice/InvoicePreview.tsx'), 'utf8');
   assert.match(preview, /<h3>Live invoice preview<\/h3>/);
+  assert.match(preview, /className="invoice-preview-drawer"/);
+  assert.match(css, /\.desktop-workspace main \{ margin:0 0 0 var\(--sidebar-width\)/);
 });

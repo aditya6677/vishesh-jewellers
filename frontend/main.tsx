@@ -18,6 +18,7 @@ import { AppMessages } from './components/AppMessages';
 import { PinLock } from './components/PinLock';
 import { Navigation } from './components/Navigation';
 import { restoreTheme } from './theme';
+import { Workspace } from './workspace/Workspace';
 
 restoreTheme();
 
@@ -31,7 +32,12 @@ if (navigationTarget) {
   actions.setAttribute('role', 'group');
   actions.setAttribute('aria-label', 'Account actions');
   navigationTarget.before(actions);
+  // A fixed sidebar must not inherit the header's backdrop-filter containing block.
+  document.body.append(navigationTarget);
   createRoot(navigationTarget).render(<Navigation />);
+  const workspace = document.createElement('div');
+  document.body.append(workspace);
+  createRoot(workspace).render(<Workspace />);
 }
 const pinTarget = document.getElementById('react-pin-lock');
 if (pinTarget && !window.vjAccountSession) createRoot(pinTarget).render(<PinLock />);

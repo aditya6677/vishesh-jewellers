@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, stockApi } from '../api';
 import { Dialog } from '../components/Dialog';
 import { Pagination } from '../components/Pagination';
+import { usePageSize } from '../workspace/preferences';
 import { StockForm } from './StockForm';
 import type { Purity, StockEditor, StockInput, StockItem, StockSnapshot } from '../types';
 
@@ -16,7 +17,7 @@ export function Stocks() {
   const [purity, setPurity] = useState<Purity>('22K');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = usePageSize('stocks');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ title: string; text: string } | null>(null);
   const [deleting, setDeleting] = useState<{ item: StockItem; version: string } | null>(null);
