@@ -6,6 +6,8 @@ const path = require('node:path');
 
 test('desktop child server packages production modules beside unpacked runtime and excludes business data', () => {
   const pkg = require('../package.json');
+  assert.match(pkg.build.copyright, /Tech Aditya/);
+  assert.doesNotMatch(pkg.build.copyright, /\$\{year\}/, 'electron-builder does not define a year macro');
   assert.ok(pkg.build.asarUnpack.includes('node_modules/**/*'));
   assert.equal(pkg.build.mac.mergeASARs, false);
   assert.equal(pkg.build.afterPack, 'scripts/verify-packaged-layout.js');

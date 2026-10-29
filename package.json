@@ -1,6 +1,6 @@
 {
   "name": "vishesh-jewellers-json-app",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "author": "Tech Aditya",
   "main": "electron-main.js",
@@ -47,7 +47,7 @@
     "vite": "7.3.7"
   },
   "build": {
-    "copyright": "Copyright © ${year} Tech Aditya",
+    "copyright": "Copyright © 2026 Tech Aditya",
     "npmRebuild": false,
     "afterPack": "scripts/verify-packaged-layout.js",
     "appId": "com.visheshjewellers.billing",
