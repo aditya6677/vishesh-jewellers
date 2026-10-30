@@ -7,7 +7,8 @@ export function Snapshot({ value: s }: { value: DashboardSummary }) {
   const sections: [string, Entry[]][] = [
     ['Gold Sales', [['Total gold sold · net weight', s.gold.sold, 'weight'], ['Gold item amount', s.gold.sales]]],
     ['Silver Sales', [['Total silver sold · net weight', s.silver.sold, 'weight'], ['Silver item amount', s.silver.sales]]],
-    ['Total Sales', [['Gold + silver item amount', s.gold.sales + s.silver.sales], ['Final invoice sales', s.sales], ['Completed invoices', s.invoices, 'count'], ['Pending orders', s.pending, 'count']]],
+    ['Fine Gold Sales', [['Fine gold sold · net weight', s.fineGold?.sold || 0, 'weight'], ['Fine gold item amount', s.fineGold?.sales || 0]]],
+    ['Total Sales', [['All categories · item amount', s.gold.sales + s.silver.sales + (s.fineGold?.sales || 0)], ['Final invoice sales', s.sales], ['Completed invoices', s.invoices, 'count'], ['Pending orders', s.pending, 'count']]],
     ['Old Metal Received', [['Total old gold received', s.gold.received, 'weight'], ['Old gold value', s.gold.receivedValue], ['Total old silver received', s.silver.received, 'weight'], ['Old silver value', s.silver.receivedValue]]],
     ['Customer Collections', [['Amount paid by customers', s.collected], ['Outstanding due', s.due], ['Remaining before party payments', s.beforeParty]]],
     ['Outgoing Amounts', [['Payment to party', s.party], ['Old gold / silver purchases', s.purchases], ['Expenses · Self Expense', s.expenses]]],

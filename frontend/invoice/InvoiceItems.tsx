@@ -44,7 +44,7 @@ export function InvoiceItems() {
         onSelect={id => { void window.vjInvoiceItems?.selectStock(row.id, id); }} disabled={busy} required={!snapshot.pending} /></td>
       <td><input type="text" className="f-hsn" value={row.hsn} aria-label={`HSN item ${index + 1}`} style={{ width: 56 }} readOnly disabled={busy} /></td>
       <td><input type="hidden" className="f-purity" value={row.purity} /><Select label={`Purity item ${index + 1}`} value={row.purity}
-        options={['24K', '22K', '18K', '14K', 'Silver']} onChange={value => edit(row, 'purity', value)} disabled={busy || Boolean(row.stockId)} compact /></td>
+        options={['24K', '22K', '18K', '14K', 'Silver', 'Fine Gold']} onChange={value => edit(row, 'purity', value)} disabled={busy || Boolean(row.stockId)} compact /></td>
       <td>{number(row, 'gross', 'Gross weight', index + 1)}</td>
       <td>{number(row, 'net', 'Net weight', index + 1)}</td>
       <td>{number(row, 'pcs', 'Quantity', index + 1)}</td>

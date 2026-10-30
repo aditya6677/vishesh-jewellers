@@ -6,7 +6,7 @@
     const placeholder = document.querySelector(selector);
     if (!placeholder) return;
     const logo = document.createElement('img');
-    logo.src = '/assets/vishesh-jewellers-logo.png';
+    logo.src = '/assets/karatdesk-logo.png';
     logo.alt = 'Vishesh Jewellers';
     logo.className = className;
     placeholder.replaceWith(logo);
@@ -23,7 +23,7 @@
   window.vjApplyBranding = branding => {
     bizInfo = { ...bizInfo, ...branding };
     const name = branding.name || 'Vishesh Jewellers';
-    const logo = branding.logo || '/assets/vishesh-jewellers-logo.png';
+    const logo = branding.logo || '/assets/karatdesk-logo.png';
     document.title = name;
     const heading = document.querySelector('.brand-text h1');
     if (heading) heading.textContent = name;

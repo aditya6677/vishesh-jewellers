@@ -165,21 +165,27 @@ test('reset ignores delayed React clearing and protects the next actual invoice 
   assert.equal(prevented, true);
 });
 
-test('desktop close IPC accepts only the main window frame and removes handlers when closed', () => {
+test('desktop handoff keeps setup visible until load, and close IPC accepts only the main frame', async () => {
   const ipcMain = new EventEmitter(); let instance;
+  let finishLoad; const events = [];
   class Window extends EventEmitter {
     constructor(options) { super(); this.options = options; this.webContents = new EventEmitter(); this.webContents.mainFrame = {}; this.webContents.isDestroyed = () => false; this.webContents.isCrashed = () => false; this.sent = []; this.webContents.send = name => this.sent.push(name); instance = this; }
-    loadURL() {} maximize() {} destroy() { this.destroyed = true; this.emit('closed'); }
+    loadURL() { return new Promise(resolve => { finishLoad = resolve; }); } show() { events.push('show-main'); } maximize() {} destroy() { this.destroyed = true; this.emit('closed'); }
   }
   const source = fs.readFileSync(path.join(root, 'electron-main.js'), 'utf8');
   const create = source.slice(source.indexOf('function createWindow(url)'), source.indexOf('async function configureFirstRun'));
   let quits = 0;
   const context = {
     desktopCloseForQuit: undefined,
+    setupHandoffWindow: { isDestroyed: () => false, close: () => events.push('close-setup') },
     runtimeRoot: () => root, require: () => ({ loadWindowState: () => null, saveWindowState() {} }), path, app: { getPath: () => '/private/tmp', quit: () => quits++ },
     screen: { getAllDisplays: () => [] }, BrowserWindow: Window, ipcMain, __dirname: root, clearTimeout, setTimeout
   };
-  vm.runInNewContext(create + '\ncreateWindow("http://127.0.0.1:3000");', context);
+  const loaded = vm.runInNewContext(create + '\ncreateWindow("http://127.0.0.1:3000");', context);
+  assert.equal(instance.options.show, false);
+  assert.deepEqual(events, []);
+  finishLoad(); await loaded;
+  assert.deepEqual(events, ['show-main', 'close-setup']);
   let prevented = false;
   const close = () => instance.emit('close', { preventDefault() { prevented = true; } });
   const other = { sender: {}, senderFrame: {} };

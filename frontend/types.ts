@@ -1,11 +1,11 @@
 export type Metal = 'gold' | 'silver';
 export type InvoiceStatus = 'completed' | 'pending' | 'voided';
 export type PaymentType = 'amount' | 'metal' | 'self-expense';
-export type Purity = '24K' | '22K' | '18K' | '14K' | 'Silver';
+export type Purity = '24K' | '22K' | '18K' | '14K' | 'Silver' | 'Fine Gold';
 export interface StockInput { item: string; purity: Purity; qty: number; gross: number; net: number }
 export interface StockItem extends StockInput { id: string; added: string; rate: number }
 export interface PageInfo { page: number; pageSize: number; total: number }
-export interface StockSnapshot { items: StockItem[]; versions: Record<string, string>; pagination?: PageInfo; total?: number; totals?: Record<Metal, { count: number; gross: number; net: number }>; refreshRequired?: boolean; affected?: StockItem[] }
+export interface StockSnapshot { items: StockItem[]; versions: Record<string, string>; pagination?: PageInfo; total?: number; totals?: Record<Metal | 'fineGold', { count: number; gross: number; net: number }>; refreshRequired?: boolean; affected?: StockItem[] }
 export type StockEditor = { mode: 'add' } | { mode: 'edit' | 'batch'; item: StockItem; version: string };
 export interface DateRange { from: string; to: string }
 export interface MetalSummary {
@@ -16,11 +16,11 @@ export interface DashboardSummary {
   invoices: number; pending: number; sales: number; collected: number; due: number;
   party: number; expenses: number; purchases: number; beforeParty: number;
   afterPayment: number; openingCash: number; closingCash: number;
-  gold: MetalSummary; silver: MetalSummary;
+  gold: MetalSummary; silver: MetalSummary; fineGold: { sold: number; sales: number };
 }
 export interface DashboardSnapshot {
   summary: DashboardSummary;
-  fresh: Record<Metal, number>;
+  fresh: Record<Metal | 'fineGold', number>;
   old: Record<Metal, number>;
   lowStockLimits: Record<Metal, number>;
 }

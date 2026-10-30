@@ -1,0 +1,54 @@
+'use strict';
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { randomBytes, randomUUID } = require('node:crypto');
+const { openDatabase } = require('../lib/database/database');
+const { importSnapshot, readSnapshot } = require('../lib/database/snapshot-migration');
+const { StockRepository } = require('../lib/database/stock-repository');
+const { InvoiceRepository } = require('../lib/database/invoice-repository');
+const { DatabaseQueries } = require('../lib/database/queries');
+const { DashboardService } = require('../lib/services/dashboard-service');
+
+test('Fine Gold sales and inventory remain separate, including date ranges and void reversals', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'karatdesk-fine-gold-'));
+  const db = openDatabase(path.join(directory, 'test.db'), randomBytes(32), { create: true });
+  t.after(() => { db.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const original = { id: 'gold', item: 'Existing 24K', purity: '24K', qty: 2, gross: 20, net: 20 };
+  importSnapshot(db, { 'stock-list': [original], 'invoice-records': [], 'invoice-counter': 1, 'old-gold-records': [], 'purchase-records': [], 'payment-records': [] }, { storeId: 'main', sourceSha256: 'a'.repeat(64), acknowledgeLegacy: true });
+  const now = () => new Date('2026-10-30T10:00:00Z');
+  const stocks = new StockRepository(db, 'main', { now, id: () => 'fine' });
+  stocks.create({ item: 'Fine bullion', purity: 'Fine Gold', qty: 4, gross: 40, net: 40 });
+  const invoices = new InvoiceRepository(db, 'main', { now });
+  const queries = new DatabaseQueries(db, 'main');
+  const sale = { requestId: randomUUID(), number: 'VJ000001', status: 'completed', customer: 'Synthetic Fine Gold', invoiceDate: '2026-10-30', items: [{ stockId: 'fine', name: 'Fine bullion', purity: 'Fine Gold', pcs: 2, gross: 10, net: 10, rate: 1000, making: 0 }], exchanges: [], manualDiscount: 0, paid: 10000, gstRate: 0, expectedTotal: 10000 };
+  invoices.create(sale);
+  assert.equal(stocks.get('fine').item.net, 30);
+  assert.equal(stocks.get('fine').item.qty, 2);
+  assert.deepEqual(stocks.get('gold').item, original);
+  for (const range of [{}, { from: '2026-10-30', to: '2026-10-30' }]) {
+    const sql = queries.dashboard(range);
+    const memory = new DashboardService({ read: () => readSnapshot(db, 'main') }).snapshot(range);
+    assert.deepEqual(sql.summary.fineGold, { sold: 10, sales: 10000 });
+    assert.equal(sql.summary.gold.sold, 0);
+    assert.equal(sql.fresh.gold, 20);
+    assert.equal(sql.fresh.fineGold, 30);
+    assert.deepEqual(sql.summary, memory.summary);
+  }
+  assert.equal(queries.dashboard({ from: '2026-10-29', to: '2026-10-29' }).summary.fineGold.sold, 0);
+  invoices.edit(sale.number, { ...sale, version: invoices.get(sale.number).version, items: [{ ...sale.items[0], pcs: 1, gross: 5, net: 5 }], paid: 5000, expectedTotal: 5000 });
+  assert.equal(stocks.get('fine').item.net, 35);
+  assert.equal(queries.dashboard().summary.fineGold.sold, 5);
+  invoices.void(sale.number, { version: invoices.get(sale.number).version, reason: 'Synthetic reversal' });
+  assert.equal(stocks.get('fine').item.net, 40);
+  assert.equal(stocks.get('fine').item.qty, 4);
+  assert.equal(queries.dashboard().summary.fineGold.sold, 0);
+  assert.deepEqual(stocks.get('gold').item, original);
+  const next = { ...sale, requestId: randomUUID(), number: 'VJ000002' };
+  invoices.create(next);
+  invoices.delete(next.number);
+  assert.equal(stocks.get('fine').item.net, 40);
+  assert.equal(queries.dashboard().summary.fineGold.sold, 0);
+});

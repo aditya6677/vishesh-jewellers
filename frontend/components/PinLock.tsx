@@ -26,7 +26,7 @@ export function PinLock() {
   }, [open]);
   if (!open) return null;
   return <div className="pin-lock-card">
-    <img className="pin-lock-logo" src="/assets/vishesh-jewellers-logo.png" alt="Vishesh Jewellers" />
+    <img className="pin-lock-logo" src="/assets/karatdesk-logo.png" alt="Vishesh Jewellers" />
     <div className="eyebrow">Private workspace</div><h1>Welcome back</h1><p>Enter your 4-digit PIN to open Vishesh Jewellers.</p>
     <form className="pin-lock-form" noValidate onSubmit={event => {
       event.preventDefault();

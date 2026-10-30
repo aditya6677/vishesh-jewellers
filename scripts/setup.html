@@ -33,9 +33,10 @@ if(!backupDirectory||!passphrase){el('error').textContent='Choose a folder and e
 if(mode==='new'&&!el('store-name').value.trim()){el('error').textContent='Enter your store name to continue.';return}
 if(mode==='new'&&(passphrase.length<12||passphrase!==el('confirm').value||!el('ack').checked)){el('error').textContent='Use at least 12 characters, confirm the same passphrase, and acknowledge the recovery guidance.';return}
 busy=true;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=true);el('continue').textContent='Preparing encrypted store…';
-try{const result=await window.storeSetup.submit({mode,backupDirectory,passphrase,confirmPassphrase:el('confirm').value,recoveryAcknowledged:el('ack').checked,storeName:el('store-name').value,tagline:el('store-tagline').value});if(!result.ok)el('error').textContent=result.error}
+let opening=false;
+try{const result=await window.storeSetup.submit({mode,backupDirectory,passphrase,confirmPassphrase:el('confirm').value,recoveryAcknowledged:el('ack').checked,storeName:el('store-name').value,tagline:el('store-tagline').value});if(!result.ok)el('error').textContent=result.error;else{opening=true;el('continue').textContent='Opening KaratDesk…'}}
 catch{el('error').textContent='Setup could not finish. Existing data has not been replaced.'}
-finally{el('passphrase').value='';el('confirm').value='';busy=false;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);if(recoveryMode)el('mode-trigger').disabled=true;el('continue').textContent=mode==='new'?'Create store & encrypted backup':'Restore & open app'}
+finally{el('passphrase').value='';el('confirm').value='';if(!opening){busy=false;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);if(recoveryMode)el('mode-trigger').disabled=true;el('continue').textContent=mode==='new'?'Create store & encrypted backup':'Restore & open app'}}
 };
 if(['new','restore'].includes(recoveryMode)){el('mode').value=recoveryMode;el('mode').onchange();el('mode-trigger').disabled=true}
 </script></body></html>

@@ -255,7 +255,7 @@ test('dashboard API preserves legacy summaries and filters without changing save
   for (const range of [{}, { from: '2026-10-01', to: '2026-10-31' }]) {
     const result = await (await request('/api/dashboard?' + new URLSearchParams(range))).json();
     assert.deepEqual(result.summary, calculateDashboard(data[StorageKey.INVOICES], data[StorageKey.PURCHASES], data[StorageKey.PAYMENTS], data[StorageKey.OLD_METAL], range));
-    assert.deepEqual(result.fresh, { gold: 9, silver: 100 });
+    assert.deepEqual(result.fresh, { gold: 9, silver: 100, fineGold: 0 });
     assert.deepEqual(result.old, { gold: 2, silver: 0 });
   }
   for (const query of ['from=2026-02-30', 'from=invalid', 'from=2026-10-31&to=2026-10-01']) {

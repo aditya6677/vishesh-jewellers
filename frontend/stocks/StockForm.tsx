@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Select } from '../components/Select';
 import type { Purity, StockEditor, StockInput } from '../types';
 
-export const purities: readonly Purity[] = ['24K', '22K', '18K', '14K', 'Silver'];
+export const purities: readonly Purity[] = ['24K', '22K', '18K', '14K', 'Silver', 'Fine Gold'];
 
 export function StockForm({ editor, initialPurity, busy, save, cancel }: {
   editor: StockEditor; initialPurity: Purity; busy: boolean;
@@ -20,8 +20,8 @@ export function StockForm({ editor, initialPurity, busy, save, cancel }: {
     <form data-permission={editor.mode === 'edit' || editor.mode === 'batch' ? 'stocks.edit' : 'stocks.create'} onSubmit={submit} noValidate>
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div className="row row-3">
-          <div className="field"><label htmlFor="stock-name">Item (Gold / Silver) *</label><input id="stock-name" name="item" type="text" required placeholder="e.g. Gold Ring or Silver Chain" defaultValue={editor.mode === 'add' ? '' : editor.item.item} readOnly={editor.mode === 'batch'} /></div>
-          <div className="field"><label>Purity *</label><Select label="Purity" value={purity} options={purities} onChange={value => setPurity(value as Purity)} disabled={busy || editor.mode === 'batch'} /></div>
+          <div className="field"><label htmlFor="stock-name">Item (Gold / Silver / Fine Gold) *</label><input id="stock-name" name="item" type="text" required placeholder="e.g. Gold Ring or Silver Chain" defaultValue={editor.mode === 'add' ? '' : editor.item.item} readOnly={editor.mode === 'batch'} /></div>
+          <div className="field"><label>Purity / category *</label><Select label="Purity" value={purity} options={purities} onChange={value => setPurity(value as Purity)} disabled={busy || editor.mode === 'batch'} /></div>
           <div className="field"><label htmlFor="stock-qty">Quantity added (pcs) *</label><input type="number" id="stock-qty" name="qty" min="1" step="1" required defaultValue={existing?.qty ?? 1} /></div>
         </div>
         <div className="row row-2">

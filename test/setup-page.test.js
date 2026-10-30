@@ -63,7 +63,8 @@ test('new layout retains validation, secure setup payload and passphrase clearin
   assert.equal(submitted[0].recoveryAcknowledged, true);
   assert.equal(f.passphrase.value, '');
   assert.equal(f.confirm.value, '');
-  assert.equal(f.continue.disabled, false);
+  assert.equal(f.continue.disabled, true);
+  assert.equal(f.continue.textContent, 'Opening KaratDesk…');
 });
 
 test('switching to restore hides only new-store fields and clears sensitive values', () => {

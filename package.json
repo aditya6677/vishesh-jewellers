@@ -1,6 +1,6 @@
 {
   "name": "vishesh-jewellers-json-app",
-  "version": "1.4.5",
+  "version": "1.5.0",
   "private": true,
   "author": "Tech Aditya",
   "main": "electron-main.js",
@@ -26,6 +26,7 @@
     "pretest": "npm run build:frontend",
     "start": "node server.js",
     "start:database": "node scripts/start-migrated.js",
+    "dev:database": "nodemon --config nodemon.database.json",
     "dev": "nodemon --config nodemon.json server.js",
     "watch": "node --watch server.js",
     "desktop": "electron .",

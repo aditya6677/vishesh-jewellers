@@ -16,6 +16,7 @@ let serverProcess;
 let serverUrl;
 let settingUp = false;
 let launchingWorkspace = false;
+let setupHandoffWindow;
 let desktopCloseForQuit;
 const desktopUserData = app.getPath('userData');
 const sqliteDesktop = require('./lib/database/desktop-startup').desktopBackend({ backend: process.env.DATA_BACKEND, isPackaged: app.isPackaged, userData: desktopUserData }) === 'sqlite';
@@ -243,6 +244,7 @@ function createWindow(url) {
   const stateFile = path.join(app.getPath('userData'), 'workspace-window.json');
   const state = loadWindowState(stateFile, screen.getAllDisplays());
   const window = new BrowserWindow({
+    show: false,
     width: 1440,
     height: 920,
     minWidth: 1000,
@@ -290,7 +292,12 @@ function createWindow(url) {
   window.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) { rendererReady = false; closeRequested = false; } });
   window.on('closed', () => { desktopCloseForQuit = undefined; clearTimeout(saveTimer); ipcMain.removeListener('workspace:ready', ready); ipcMain.removeListener('workspace:confirm-close', confirm); });
   if (state?.maximized) window.maximize();
-  window.loadURL(url);
+  return window.loadURL(url).then(() => {
+    window.show();
+    if (setupHandoffWindow && !setupHandoffWindow.isDestroyed()) setupHandoffWindow.close();
+    setupHandoffWindow = undefined;
+    return window;
+  }).catch(error => { window.destroy(); throw error; });
 }
 
 async function configureFirstRun({ recovery = false, mode, parent } = {}) {
@@ -317,7 +324,7 @@ async function configureFirstRun({ recovery = false, mode, parent } = {}) {
         if (recovery && request?.mode !== mode) throw new Error('Use the recovery mode selected on the previous screen.');
         const config = await provisionStore({ userData: setupDirectory, safeStorage, mode: request?.mode, backupDirectory: request?.backupDirectory, passphrase: request?.passphrase, confirmPassphrase: request?.confirmPassphrase, recoveryAcknowledged: request?.recoveryAcknowledged, storeName: request?.storeName, tagline: request?.tagline });
         if (recovery) require('./lib/database/startup-recovery').activateRecovery({ userData, recoveryDirectory: setupDirectory, safeStorage });
-        completed = true; resolve(config); setup.close(); return { ok: true };
+        completed = true; setupHandoffWindow = setup; resolve(config); return { ok: true };
       } catch (error) { return { ok: false, error: error.message }; }
       finally { busy = false; }
     });
@@ -342,10 +349,12 @@ async function launchWorkspace() {
         await configureFirstRun();
         const url = await startLocalServer();
         if (!sqliteDesktop) try { createWeeklyBackup(configuredDataDir()); } catch (error) { dialog.showErrorBox('Weekly backup could not be created', error.message); }
-        createWindow(url);
+        await createWindow(url);
         settingUp = false;
         return;
       } catch (error) {
+        if (setupHandoffWindow && !setupHandoffWindow.isDestroyed()) setupHandoffWindow.close();
+        setupHandoffWindow = undefined;
         serverProcess?.kill(); serverUrl = null;
         settingUp = true;
         const action = await require('./lib/desktop-recovery-window').showStartupRecovery({ app, BrowserWindow, ipcMain, shell, scriptRoot: __dirname, setup: configureFirstRun, error });

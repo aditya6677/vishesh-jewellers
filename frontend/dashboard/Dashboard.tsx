@@ -84,7 +84,7 @@ export function Dashboard() {
     </div>
     {snapshot && <>
       <div className="dashboard-metal-grid">
-        <div className="panel"><h3><span className="dot" />Fresh Stock Remaining</h3><div className="record-info-grid"><Metric label="Fresh Gold" value={snapshot.fresh.gold} unit="weight" /><Metric label="Fresh Silver" value={snapshot.fresh.silver} unit="weight" /></div></div>
+        <div className="panel"><h3><span className="dot" />Fresh Stock Remaining</h3><div className="record-info-grid"><Metric label="Fresh Gold" value={snapshot.fresh.gold} unit="weight" /><Metric label="Fresh Silver" value={snapshot.fresh.silver} unit="weight" /><Metric label="Fine Gold" value={snapshot.fresh.fineGold || 0} unit="weight" /></div></div>
         <div className="panel"><h3><span className="dot" />Old Metal Balance</h3><div className="record-info-grid"><Metric label="Old Gold" value={snapshot.old.gold} unit="weight" className="paid-amount" /><Metric label="Old Silver" value={snapshot.old.silver} unit="weight" className="paid-amount" /></div></div>
       </div>
       {low.length > 0 && <div className="panel low-stock-panel"><h3><span className="dot" />Low Stock Warning</h3><div className="low-stock-list">{low.map(metal => <div className="low-stock-item" key={metal}><b>{metal === 'gold' ? 'Gold' : 'Silver'} is running low</b><span>{snapshot.fresh[metal].toFixed(3)} g remaining · Alert below {snapshot.lowStockLimits[metal].toFixed(3)} g</span></div>)}</div></div>}

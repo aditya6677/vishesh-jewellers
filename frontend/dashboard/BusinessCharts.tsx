@@ -25,7 +25,7 @@ export function BusinessCharts({ value: summary }: { value: DashboardSummary }) 
       <p className="business-chart-footnote">Cash movement, not profit. Metal settlements are excluded from collections.</p>
     </section>
     <section className="business-chart-card" aria-labelledby="metal-chart-title">
-      <div className="business-chart-heading"><div><h4 id="metal-chart-title">Sales by metal</h4><p>Gold and silver item amounts</p></div></div>
+      <div className="business-chart-heading"><div><h4 id="metal-chart-title">Sales by metal</h4><p>Jewellery gold and silver · Fine Gold shown separately</p></div></div>
       {total > 0 ? <div className="sales-mix-chart">
         <svg viewBox="0 0 140 140" role="img" aria-label={`Sales mix: gold ${(goldShare * 100).toFixed(1)}%, silver ${((1 - goldShare) * 100).toFixed(1)}%`}>
           <circle className="sales-mix-base" cx="70" cy="70" r="50" fill="none" strokeWidth="13" />

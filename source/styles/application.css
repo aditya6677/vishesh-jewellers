@@ -26,9 +26,8 @@ dialog.shared-message-dialog::backdrop { background:rgba(0,0,0,.65); backdrop-fi
 #page-stocks .row-3:has(#st-qty) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-#page-stocks .stat-cards { grid-template-columns: repeat(2, 1fr); }
+#page-stocks .stat-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #page-dashboard .stat-cards { grid-template-columns: repeat(4, 1fr); }
-#page-stocks .stat-card:nth-child(3) { display: none; }
 #page-stocks .stat-card .val small { display: block; margin-top: 2px; font-family: var(--font-ui); font-size: 12px; font-weight: 500; color: var(--gold-light); }
 #page-stocks:not(.react-page) .data-table th:nth-child(6), #page-stocks:not(.react-page) .data-table td:nth-child(6),
 #page-stocks:not(.react-page) .data-table th:nth-child(7), #page-stocks:not(.react-page) .data-table td:nth-child(7) {

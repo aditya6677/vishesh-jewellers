@@ -93,11 +93,11 @@ export function Stocks() {
   const currentPage = Math.min(page, Math.max(1, Math.ceil(rowCount / pageSize)));
   return <>
     <div className="page-head"><p className="eyebrow">Inventory</p><h2>Stocks</h2><p className="sub">Record the item count and total batch weights. Remaining stock is tracked by weight; gross and net weights below cover all pieces in the entered quantity.</p></div>
-    <div className="stat-cards">{(['Gold', 'Silver'] as const).map(metal => {
-      const items = data.items.filter(item => (item.purity === 'Silver') === (metal === 'Silver'));
+    <div className="stat-cards">{(['Gold', 'Silver', 'Fine Gold'] as const).map(metal => {
+      const items = data.items.filter(item => (metal === 'Fine Gold' ? item.purity === 'Fine Gold' : metal === 'Silver' ? item.purity === 'Silver' : !['Silver', 'Fine Gold'].includes(item.purity)));
       return <div className="stat-card" key={metal}><div className="lbl">{metal} Stock</div><div className="val stock-summary"><div className="stock-weight-pair">
-        {(['gross', 'net'] as const).map(field => <div className="stock-weight-item" key={field}><span>{field === 'gross' ? 'Gross' : 'Net'}</span><strong>{weight(data.totals?.[metal === 'Silver' ? 'silver' : 'gold'][field] ?? items.reduce((sum, item) => sum + (Number(item[field]) || 0), 0))} g</strong></div>)}
-      </div><small className="stock-entry-count">{data.totals?.[metal === 'Silver' ? 'silver' : 'gold'].count ?? items.length} items</small></div></div>;
+        {(['gross', 'net'] as const).map(field => <div className="stock-weight-item" key={field}><span>{field === 'gross' ? 'Gross' : 'Net'}</span><strong>{weight(data.totals?.[metal === 'Fine Gold' ? 'fineGold' : metal === 'Silver' ? 'silver' : 'gold']?.[field] ?? items.reduce((sum, item) => sum + (Number(item[field]) || 0), 0))} g</strong></div>)}
+      </div><small className="stock-entry-count">{data.totals?.[metal === 'Fine Gold' ? 'fineGold' : metal === 'Silver' ? 'silver' : 'gold']?.count ?? items.length} items</small></div></div>;
     })}</div>
     {loadError && <p role="alert" className="due-amount">{loadError} <button className="btn btn-ghost btn-sm" type="button" onClick={() => { void reload(); }}>Refresh Stocks</button></p>}
     <div ref={formTop}><StockForm key={reset} editor={editor} initialPurity={purity} busy={busy || !loaded} save={input => { void save(input); }} cancel={resetForm} /></div>

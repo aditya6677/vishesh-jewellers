@@ -9,7 +9,7 @@ export function InvoicePaper({ snapshot: s, paperRef }: { snapshot: InvoicePrevi
   const balance = s.totals.grand - s.paid;
   return <div id="invoicePaper" ref={paperRef} data-invoice-renderer="react" style={s.business.logo ? { '--invoice-logo-image': `url("${s.business.logo}")` } as CSSProperties : undefined}>
     <div className="paper-head"><div className="paper-brand">
-      <img src={s.business.logo || '/assets/vishesh-jewellers-logo.png'} alt={s.business.name} className="invoice-logo" />
+      <img src={s.business.logo || '/assets/karatdesk-logo.png'} alt={s.business.name} className="invoice-logo" />
       <div><h2 id="p-biz-name">{s.business.name}</h2><p>{s.business.tagline ?? 'Beginning... of Special Relationship...'}</p></div>
     </div><div className="paper-contact">
       <div className="gst-badge" id="p-gstin">{s.totals.gstPct === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (s.business.gstin || '—')}</div><br />
