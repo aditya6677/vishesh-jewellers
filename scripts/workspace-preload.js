@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // No arbitrary IPC, filesystem access or credentials are exposed to the renderer.
 contextBridge.exposeInMainWorld('vjDesktop', Object.freeze({
+  legacySource: options => ipcRenderer.invoke('legacy-import:source', options),
   onCloseRequest(callback) {
     if (typeof callback !== 'function') throw new TypeError('A close callback is required.');
     const handler = () => callback();

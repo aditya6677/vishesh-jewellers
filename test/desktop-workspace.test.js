@@ -167,6 +167,7 @@ test('reset ignores delayed React clearing and protects the next actual invoice 
 
 test('desktop handoff keeps setup visible until load, and close IPC accepts only the main frame', async () => {
   const ipcMain = new EventEmitter(); let instance;
+  ipcMain.handle = () => {}; ipcMain.removeHandler = () => {};
   let finishLoad; const events = [];
   class Window extends EventEmitter {
     constructor(options) { super(); this.options = options; this.webContents = new EventEmitter(); this.webContents.mainFrame = {}; this.webContents.isDestroyed = () => false; this.webContents.isCrashed = () => false; this.sent = []; this.webContents.send = name => this.sent.push(name); instance = this; }

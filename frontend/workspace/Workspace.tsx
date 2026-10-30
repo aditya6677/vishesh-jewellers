@@ -4,7 +4,7 @@ import { StatusBar } from './StatusBar';
 
 declare global {
   interface Window {
-    vjDesktop?: { onCloseRequest: (callback: () => void) => () => void; confirmClose: () => void };
+    vjDesktop?: { onCloseRequest: (callback: () => void) => () => void; confirmClose: () => void; legacySource: (options: { portable?: boolean; passphrase?: string }) => Promise<{ snapshot?: Record<string, unknown>; saved?: boolean; cancelled?: boolean; error?: string }> };
   }
 }
 

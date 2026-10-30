@@ -265,6 +265,30 @@ function createWindow(url) {
   let quitRequested = false;
   let saveTimer;
   const authorized = event => event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame;
+  let readingLegacy = false;
+  ipcMain.handle('legacy-import:source', async (event, options = {}) => {
+    if (!authorized(event) || readingLegacy) return { error: 'Legacy import is unavailable.' };
+    readingLegacy = true;
+    try {
+      if (new URL(event.senderFrame.url).origin !== new URL(url).origin) throw new Error('Legacy migration is available only inside this local workspace.');
+      const cookies = await window.webContents.session.cookies.get({ url });
+      const response = await fetch(new URL('/api/auth/status', url), { headers: { cookie: cookies.map(cookie => cookie.name + '=' + cookie.value).join('; ') }, signal: AbortSignal.timeout(10000) });
+      const account = await response.json();
+      if (!account.user || !account.permissions?.includes('settings.restore') || account.user.mustChangePassword) throw new Error('Sign in with permission to restore store data.');
+      const source = await require('./lib/legacy-desktop-source').readLegacySource({ parent: window, dialog, safeStorage, keyFile: dataKeyFile() });
+      if (!source) return { cancelled: true };
+      const { prepare, portable } = require('./lib/services/legacy-import-service');
+      const snapshot = prepare(source).snapshot;
+      if (!options.portable) return { snapshot };
+      const envelope = portable(snapshot, options.passphrase);
+      const chosen = await dialog.showSaveDialog(window, { title: 'Save portable encrypted legacy data', defaultPath: 'KaratDesk-Legacy-Portable.json', filters: [{ name: 'Encrypted portable data', extensions: ['json'] }] });
+      if (chosen.canceled || !chosen.filePath) return { cancelled: true };
+      if (fs.existsSync(chosen.filePath)) throw new Error('Choose a new filename; existing files are never overwritten.');
+      fs.writeFileSync(chosen.filePath, JSON.stringify(envelope), { mode: 0o600, flag: 'wx' });
+      return { saved: true };
+    } catch (error) { return { error: error.message || 'Legacy data could not be opened.' }; }
+    finally { readingLegacy = false; }
+  });
   const ready = event => { if (authorized(event)) rendererReady = true; };
   const confirm = event => {
     if (authorized(event) && rendererReady && closeRequested) {
@@ -290,7 +314,7 @@ function createWindow(url) {
     if (rendererReady && !closeConfirmed && !window.webContents.isDestroyed() && !window.webContents.isCrashed()) { event.preventDefault(); closeRequested = true; quitRequested = false; window.webContents.send('workspace:request-close'); }
   });
   window.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) { rendererReady = false; closeRequested = false; } });
-  window.on('closed', () => { desktopCloseForQuit = undefined; clearTimeout(saveTimer); ipcMain.removeListener('workspace:ready', ready); ipcMain.removeListener('workspace:confirm-close', confirm); });
+  window.on('closed', () => { desktopCloseForQuit = undefined; clearTimeout(saveTimer); ipcMain.removeHandler('legacy-import:source'); ipcMain.removeListener('workspace:ready', ready); ipcMain.removeListener('workspace:confirm-close', confirm); });
   if (state?.maximized) window.maximize();
   return window.loadURL(url).then(() => {
     window.show();

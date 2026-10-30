@@ -5,6 +5,7 @@ import { DatabaseBackups } from './DatabaseBackups';
 import { StoreBranding } from './StoreBranding';
 import { LicensePlan } from './LicensePlan';
 import { LegalSupport } from '../legal/LegalSupport';
+import { LegacyImport } from './LegacyImport';
 
 type Action = 'backup' | 'export' | 'folder' | 'restore';
 
@@ -100,6 +101,7 @@ export function Settings() {
       {window.vjDatabaseMode && <p className="sub">SQLite preview Excel exports are limited to 10,000 rows / 25 MB. For a larger invoice report, use the streaming CSV export in Records.</p>}
       <button data-permission="settings.export" className="btn btn-gold" disabled={disabled} onClick={() => { void run('export'); }}>{busy === 'export' ? 'Preparing workbook…' : '↓ Export All Data to Excel'}</button>
     </div>
+    {window.vjDatabaseMode && <LegacyImport />}
     <LegalSupport />
     {busy && <p role="status" aria-live="polite">Working… Please keep this window open.</p>}
     {confirmation && <Dialog title={confirmation === 'restore' ? 'Restore Backup?' : 'Change Data Folder?'} confirmLabel={confirmation === 'restore' ? 'Continue with Restore' : 'Choose Folder'} busy={Boolean(busy)} onClose={() => { setConfirmation(undefined); setSelectedFile(undefined); }} onConfirm={() => { void run(confirmation); }}>
