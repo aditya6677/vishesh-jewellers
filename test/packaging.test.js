@@ -11,7 +11,7 @@ test('desktop child server packages production modules beside unpacked runtime a
   assert.ok(pkg.build.asarUnpack.includes('node_modules/**/*'));
   assert.equal(pkg.build.mac.mergeASARs, false);
   assert.equal(pkg.build.afterPack, 'scripts/verify-packaged-layout.js');
-  for (const pattern of ['server.js', 'lib/**/*', 'source/**/*', 'public/**/*', 'assets/**/*']) {
+  for (const pattern of ['package.json', 'server.js', 'lib/**/*', 'source/**/*', 'public/**/*', 'assets/**/*']) {
     assert.ok(pkg.build.files.includes(pattern)); assert.ok(pkg.build.asarUnpack.includes(pattern));
   }
   for (const pattern of pkg.build.files) assert.ok(!/^(data|backups|\.env)(\/|$)/.test(pattern));

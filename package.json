@@ -1,6 +1,6 @@
 {
   "name": "vishesh-jewellers-json-app",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "private": true,
   "author": "Tech Aditya",
   "main": "electron-main.js",
@@ -71,6 +71,7 @@
       "package.json"
     ],
     "asarUnpack": [
+      "package.json",
       "node_modules/**/*",
       "server.js",
       "lib/**/*",
