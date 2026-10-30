@@ -3,6 +3,12 @@ const { fork } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+// Keep the existing encrypted profile/Keychain identity across the product rename.
+// Installer, executable and window branding are independent of this internal name.
+if (app.isPackaged && require('./package.json').name === 'vishesh-jewellers-json-app') {
+  app.setName('Vishesh Jewellers');
+  app.setPath('userData', path.join(app.getPath('appData'), 'Vishesh Jewellers'));
+}
 const { createJsonStore } = require('./lib/json-store');
 const { replaceDesktopData } = require('./lib/desktop-data-files');
 
@@ -43,7 +49,7 @@ function configuredDataDir() {
 }
 
 async function chooseDataLocation(currentDataDir) {
-  const result = await dialog.showOpenDialog({ title: 'Choose a folder for Vishesh Jewellers data', properties: ['openDirectory', 'createDirectory'] });
+  const result = await dialog.showOpenDialog({ title: 'Choose a folder for KaratDesk data', properties: ['openDirectory', 'createDirectory'] });
   if (result.canceled || !result.filePaths[0]) return;
   const targetDir = path.join(result.filePaths[0], 'Vishesh Jewellers Data');
   if (path.resolve(targetDir) === path.resolve(currentDataDir)) return;
@@ -53,7 +59,7 @@ async function chooseDataLocation(currentDataDir) {
       type: 'warning',
       buttons: ['Use Existing Data', 'Cancel'],
       defaultId: 1,
-      message: 'A Vishesh Jewellers data file already exists in this folder.',
+      message: 'A KaratDesk data file already exists in this folder.',
       detail: 'Using it will replace the app’s active data location. No files will be deleted.'
     });
     if (choice.response !== 0) return;
@@ -113,7 +119,7 @@ function createWeeklyBackup(dataDir) {
 async function createManualBackup(dataDir) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const result = await dialog.showSaveDialog({
-    title: 'Save encrypted Vishesh Jewellers backup',
+    title: 'Save encrypted KaratDesk backup',
     defaultPath: path.join(backupsDir(), `Vishesh-Jewellers-Backup-${stamp}.json`),
     buttonLabel: 'Save Encrypted Backup',
     filters: [{ name: 'Encrypted JSON backup', extensions: ['json'] }]
@@ -126,7 +132,7 @@ async function createManualBackup(dataDir) {
 
 function decryptBackupStore(backup) {
   if (!backup || backup.format !== 'vishesh-jewellers-backup-v1' || !backup.keyEnvelope || !backup.encryptedStore) {
-    throw new Error('This is not a supported Vishesh Jewellers backup file.');
+    throw new Error('This is not a supported KaratDesk backup file.');
   }
   if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure storage is unavailable on this computer.');
   const key = Buffer.from(safeStorage.decryptString(Buffer.from(backup.keyEnvelope, 'base64')), 'base64');
@@ -143,7 +149,7 @@ function decryptBackupStore(backup) {
 
 async function restoreBackup(dataDir) {
   const result = await dialog.showOpenDialog({
-    title: 'Select an encrypted Vishesh Jewellers backup',
+    title: 'Select an encrypted KaratDesk backup',
     properties: ['openFile'],
     filters: [{ name: 'Encrypted JSON backup', extensions: ['json'] }]
   });
@@ -242,8 +248,8 @@ function createWindow(url) {
     minWidth: 1000,
     minHeight: 700,
     ...(state?.bounds || {}),
-    title: 'Vishesh Jewellers',
-    icon: path.join(appRoot, 'assets', 'vishesh-jewellers-logo.png'),
+    title: 'KaratDesk',
+    icon: path.join(appRoot, 'assets', 'desktop', 'karatdesk.png'),
     webPreferences: {
       preload: path.join(__dirname, 'scripts/workspace-preload.js'),
       contextIsolation: true,

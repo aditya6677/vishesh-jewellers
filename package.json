@@ -1,10 +1,10 @@
 {
   "name": "vishesh-jewellers-json-app",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "private": true,
   "author": "Tech Aditya",
   "main": "electron-main.js",
-  "description": "Vishesh Jewellers invoicing and inventory with encrypted local storage",
+  "description": "KaratDesk by Tech Aditya — jewellery invoicing and inventory with encrypted local storage",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build:icons": "node scripts/build-desktop-icons.js",
@@ -51,7 +51,7 @@
     "npmRebuild": false,
     "afterPack": "scripts/verify-packaged-layout.js",
     "appId": "com.visheshjewellers.billing",
-    "productName": "Vishesh Jewellers",
+    "productName": "KaratDesk",
     "files": [
       "electron-main.js",
       "scripts/setup.html",

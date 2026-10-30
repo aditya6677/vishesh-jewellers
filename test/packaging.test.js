@@ -26,8 +26,14 @@ test('packaging gate accepts complete runtime and rejects missing unpacked layou
   assert.throws(() => verifyRoot(path.join(__dirname, 'nonexistent-packaged-runtime')), /layout is incomplete/);
 });
 
-test('desktop icons use the business logo with valid multi-resolution native containers', () => {
+test('desktop icons use KaratDesk branding with valid multi-resolution native containers', () => {
   const pkg = require('../package.json');
+  assert.equal(pkg.build.productName, 'KaratDesk');
+  assert.equal(pkg.build.appId, 'com.visheshjewellers.billing', 'retain installer upgrade identity');
+  const main = fs.readFileSync(path.join(__dirname, '../electron-main.js'), 'utf8');
+  assert.ok(main.includes("app.setName('Vishesh Jewellers')"), 'retain protected-key identity');
+  assert.ok(main.indexOf("app.setName('Vishesh Jewellers')") < main.indexOf("const desktopUserData"));
+  assert.ok(fs.existsSync(path.join(__dirname, '../assets/desktop/karatdesk.png')));
   assert.equal(pkg.build.mac.icon, 'assets/desktop/icon.icns');
   assert.equal(pkg.build.win.icon, 'assets/desktop/icon.ico');
   const ico = fs.readFileSync(path.join(__dirname, '..', pkg.build.win.icon));

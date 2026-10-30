@@ -9,7 +9,7 @@ const { execFileSync } = require('node:child_process');
 function buildIcons() {
   if (process.platform !== 'darwin') throw new Error('Regenerate icons on macOS; Windows builds use assets/desktop/icon.ico.');
   const root = path.join(__dirname, '..');
-  const source = path.join(root, 'assets/vishesh-jewellers-logo.png');
+  const source = path.join(root, 'assets/desktop/karatdesk.png');
   const output = path.join(root, 'assets/desktop');
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'vj-icons-'));
   try {
@@ -43,7 +43,7 @@ function buildIcons() {
       offset += png.length;
     });
     fs.writeFileSync(path.join(output, 'icon.ico'), Buffer.concat([header, ...sizes.map(size => pngs.get(size))]));
-    console.log('Generated macOS ICNS and multi-resolution Windows ICO from existing logo.');
+    console.log('Generated KaratDesk macOS ICNS and multi-resolution Windows ICO.');
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
