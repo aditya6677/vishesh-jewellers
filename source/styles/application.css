@@ -26,7 +26,7 @@ dialog.shared-message-dialog::backdrop { background:rgba(0,0,0,.65); backdrop-fi
 #page-stocks .row-3:has(#st-qty) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-#page-stocks .stat-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#page-stocks .stat-cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 #page-dashboard .stat-cards { grid-template-columns: repeat(4, 1fr); }
 #page-stocks .stat-card .val small { display: block; margin-top: 2px; font-family: var(--font-ui); font-size: 12px; font-weight: 500; color: var(--gold-light); }
 #page-stocks:not(.react-page) .data-table th:nth-child(6), #page-stocks:not(.react-page) .data-table td:nth-child(6),
@@ -516,3 +516,24 @@ dialog.legal-reader{width:min(960px,96vw);height:88vh;overflow:hidden;display:no
 .legal-pending-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0;padding:12px 18px;border:1px solid #b6995740;border-radius:12px;font-size:12px}
 html[data-theme=light] dialog.legal-review,html[data-theme=light] dialog.legal-centre,html[data-theme=light] dialog.legal-reader{background:#fffcf6;color:#30291c}
 @media(max-width:600px){.legal-section-header,.legal-business-contact{align-items:flex-start;flex-direction:column}.legal-acceptance-record dl{grid-template-columns:1fr}dialog.legal-review,dialog.legal-centre{padding:20px}.legal-review h2{font-size:26px}.legal-reader-toolbar .legal-eyebrow{font-size:8px}.legal-pending-banner{flex-wrap:wrap}}
+.invoice-tax-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+#react-invoice-tax {
+  grid-column: 1 / -1;
+}
+.invoice-tax-fields > .field {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.stock-picker-create { display:block; margin:12px auto 2px; }
+.invoice-add-stock-dialog { width:min(760px,calc(100% - 40px)); max-width:760px; max-height:90vh; overflow:auto; }
+.invoice-add-stock-dialog .panel { margin:0!important; padding:0; background:transparent; border:0; box-shadow:none; }
+.invoice-add-stock-dialog .panel > h3 { display:none; }
+.invoice-add-stock-dialog .row { align-items:end; }
+.invoice-add-stock-note { margin:8px 0 20px; }
+.invoice-add-stock-error { padding:12px; border:1px solid rgba(232,120,120,.3); border-radius:8px; color:#f3a6a6!important; background:rgba(180,50,50,.09); }
+[data-theme="light"] .invoice-add-stock-error { color:#9d2828!important; }

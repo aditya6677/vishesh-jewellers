@@ -23,8 +23,9 @@
     return {
       number: invoiceInputValue('inv-no'), invoiceDate: invoiceInputValue('inv-date'), status,
       customer: invoiceInputValue('cust-name'), mobile: invoiceInputValue('cust-mobile'), address: invoiceInputValue('cust-address'),
+      taxTreatment: invoiceInputValue('invoice-tax-treatment'), customerGstin: invoiceInputValue('customer-gstin'),
       business: invoiceInputValue('biz-name'), gstin: invoiceInputValue('biz-gstin'), terms: invoiceInputValue('inv-terms'),
-      items: enteredRows.map(row => ({ lineId: row.id, stockId: row.stockId || '', name: row.name || '', hsn: row.hsn || '', purity: row.purity || '', gross: row.gross, net: row.net, pcs: row.pcs, rate: row.rate, making: row.making })),
+      items: enteredRows.map(row => ({ lineId: row.id, stockId: row.stockId || '', name: row.name || '', hsn: row.hsn || '', purity: row.purity || '', gross: row.gross, net: row.net, pcs: row.pcs, rate: row.rate, making: row.making, otherCharges: row.otherCharges || 0 })),
       exchanges, manualDiscount, paid: invoiceInputValue('amount-paid'), gstRate: Number(invoiceInputValue('gst-rate')) * 2,
       expectedTotal: amount(document.getElementById('mini-grand').textContent),
       invoiceMarkup: document.getElementById('invoicePaper').outerHTML

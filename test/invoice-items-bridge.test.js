@@ -30,6 +30,14 @@ function fixture({ rates = async () => ({ goldPerGram: 12000, silverPerGram: 100
   return { context, api: context.window.vjInvoiceItems, handlers, messages, previews: () => previews };
 }
 
+test('fine silver uses silver rates while fine gold uses gold rates, with zero when unavailable', () => {
+  const f = fixture();
+  const rates = { goldPerGram: 14000, silverPerGram: 190 };
+  assert.equal(f.context.invoiceRateForStock({ purity: 'Fine Silver' }, rates), 190);
+  assert.equal(f.context.invoiceRateForStock({ purity: 'Fine Gold' }, rates), 14000);
+  assert.equal(f.context.invoiceRateForStock({ purity: 'Fine Silver' }, {}), 0);
+});
+
 test('stock selection copies identity and purity, leaves total weights empty, and uses the existing benchmark conversion', async () => {
   const f = fixture();
   await f.api.selectStock('row-1', 'ring');

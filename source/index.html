@@ -191,49 +191,52 @@
   /* ---------- PAPER INVOICE PREVIEW ---------- */
   .paper-outer{position:sticky; top:96px;}
   #invoicePaper{
-    background:var(--ivory); color:var(--text-dark); border-radius:6px; padding:28px 30px 24px;
+    background:#FFFDF9; color:#29352E; border-radius:8px; padding:32px 32px 26px;
     box-shadow:0 25px 60px -20px rgba(0,0,0,0.6), 0 2px 0 rgba(198,154,58,0.6);
     font-family:var(--font-ui); position:relative; isolation:isolate; overflow:hidden;
   }
   #invoicePaper::before{
-    content:""; position:absolute; z-index:2; inset:8px; border:1px solid rgba(198,154,58,0.5); border-radius:3px; pointer-events:none;
+    content:""; position:absolute; z-index:2; inset:9px; border:1px solid #E5DDCD; border-radius:4px; pointer-events:none;
   }
   #invoicePaper::after{content:""; position:absolute; z-index:0; inset:0; background-image:var(--invoice-logo-image,url('/assets/karatdesk-logo.png')); background-position:center; background-size:265px; background-repeat:no-repeat; opacity:0.055; pointer-events:none;}
   #invoicePaper > *{position:relative; z-index:1;}
-  .paper-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding-bottom:12px; border-bottom:2px solid var(--gold);}
+  .paper-head{display:flex; justify-content:space-between; align-items:center; gap:18px; padding-bottom:18px; border-bottom:2px solid #B59254;}
   .paper-brand{display:flex; align-items:center; gap:12px;}
-  .paper-brand h2{font-family:var(--font-display); font-size:30px; line-height:0.95; margin:0; color:#211A10; letter-spacing:0.065em; font-weight:700; font-variant:small-caps;}
+  .paper-brand h2{font-family:var(--font-display); font-size:32px; line-height:1.08; margin:0; color:#253B30; letter-spacing:0.025em; font-weight:700; font-variant:normal;}
   .paper-brand p{margin:6px 0 0; color:#80652E; font-family:var(--font-ui); font-size:9px; font-weight:600; letter-spacing:0.09em; line-height:1.25; text-align:center; text-transform:none;}
-  .paper-contact{text-align:right; font-size:10.5px; color:#6B5D42; line-height:1.6;}
-  .gst-badge{font-family:var(--font-mono); font-size:10px; background:#EFE3BC; color:#5B4A22; padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:3px;}
+  .paper-contact{text-align:right; font-size:10px; color:#647064; line-height:1.65; max-width:220px; overflow-wrap:anywhere;}
+  .gst-badge{font-family:var(--font-ui); font-size:9px; font-weight:600; letter-spacing:.05em; background:#F1EDDF; border:1px solid #E4DBC4; color:#655331; padding:4px 9px; border-radius:4px; display:inline-block; margin-bottom:4px;}
 
-  .meta-row{display:flex; justify-content:space-between; margin-top:14px; font-size:12px; color:#5B4A22;}
+  .meta-row{display:flex; justify-content:space-between; margin-top:16px; padding:0 0 12px; border-bottom:1px solid #E9E4D8; font-size:11px; color:#74786C;}
   .meta-row .inv-no{font-family:var(--font-mono); font-weight:600; font-size:13px; color:#2B2317;}
 
-  .bill-to{margin-top:14px; background:#F1E8CF; border-radius:6px; padding:10px 14px;}
+  .bill-to{margin-top:16px; background:#F5F4ED; border-left:3px solid #B59254; border-radius:0 6px 6px 0; padding:12px 15px;}
   .bill-to .lbl{font-size:9.5px; letter-spacing:0.16em; text-transform:uppercase; color:#8A7647; margin-bottom:2px;}
-  .bill-to .nm{font-family:var(--font-display); font-size:18px; font-weight:600; color:#2B2317;}
+  .bill-to .nm{font-family:var(--font-ui); font-size:16px; font-weight:600; color:#253B30;}
   .bill-to .addr{font-size:12px; color:#5B4A22; margin-top:2px;}
 
-  table.paper-items{width:100%; border-collapse:collapse; margin-top:16px; font-size:11px;}
+  table.paper-items{width:100%; border-collapse:collapse; margin-top:20px; font-size:10px; font-variant-numeric:tabular-nums;}
   table.paper-items thead th{
-    background:#2B2317; color:var(--gold-pale); padding:7px 6px; font-size:9.5px; text-transform:uppercase;
-    letter-spacing:0.04em; text-align:left; font-weight:600;
+    background:#293D32; color:#F6EDD7; padding:9px 5px; font-size:8px; text-transform:uppercase;
+    letter-spacing:0.035em; text-align:left; font-weight:600; line-height:1.45;
   }
   table.paper-items thead th:last-child, table.paper-items td:last-child{text-align:right;}
-  table.paper-items tbody td{padding:6px 6px; border-bottom:1px solid #E2D4A8; color:#3A3020;}
-  table.paper-items tbody tr:nth-child(even){background:#F6EFDA;}
-  table.paper-items td.num{font-family:var(--font-mono);}
+  table.paper-items tbody td{padding:10px 5px; border-bottom:1px solid #E8E4D9; color:#384039; vertical-align:top; line-height:1.5;}
+  table.paper-items tbody tr:nth-child(even){background:#F7F6F0;}
+  table.paper-items td.num{font-family:var(--font-ui); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;}
+  table.paper-items thead th:nth-child(n+5){text-align:right;}
+  table.paper-items tbody td:nth-child(2){min-width:85px; font-weight:500; overflow-wrap:anywhere;}
+  table.paper-items tbody td:last-child{font-weight:600; color:#253B30;}
 
-  .paper-totals{margin-top:6px; margin-left:auto; width:270px;}
+  .paper-totals{box-sizing:border-box; margin-top:18px; margin-left:auto; width:300px; padding:10px 13px 12px; border:1px solid #E7E1D3; border-radius:7px; background:#FAF8F1; break-inside:avoid;}
   .paper-totals .tl{display:flex; justify-content:space-between; font-size:12px; padding:4px 0; color:#5B4A22; border-bottom:1px dotted #D8C89A;}
   .paper-totals .tl b{font-family:var(--font-mono); color:#2B2317;}
-  .paper-totals .gt{display:flex; justify-content:space-between; margin-top:6px; padding:9px 10px; background:#2B2317; border-radius:5px; color:var(--gold-pale); font-family:var(--font-display); font-size:17px; font-weight:700;}
+  .paper-totals .gt{display:flex; justify-content:space-between; gap:12px; margin-top:9px; padding:11px 12px; background:#293D32; border-radius:4px; color:#F6EDD7; font-family:var(--font-ui); font-size:15px; font-weight:600;}
   .paper-totals .gt b{font-family:var(--font-mono); color:#F2E3B8;}
 
   .words-line{margin-top:10px; font-size:11px; color:#5B4A22; font-style:italic;}
 
-  .paper-foot{display:flex; justify-content:space-between; align-items:flex-end; margin-top:26px; gap:14px;}
+  .paper-foot{display:flex; justify-content:space-between; align-items:flex-end; margin-top:24px; padding-top:16px; border-top:1px solid #E7E1D3; gap:20px; break-inside:avoid;}
   .terms{font-size:9px; color:#8A7647; line-height:1.6; max-width:280px;}
   .terms .t-title{font-weight:600; color:#5B4A22; text-transform:uppercase; letter-spacing:0.08em; font-size:9.5px; margin-bottom:3px;}
   .sig-block{text-align:center; position:relative; min-width:150px;}
@@ -325,7 +328,7 @@
     #invoicePaper::before{inset:3mm;border-color:#e7d9b4;}
     #invoicePaper::after{opacity:.035;}
     .paper-head{align-items:center;padding-bottom:5mm;border-bottom:1.2pt solid #b78a31;}
-    .paper-brand h2{font-family:'Cormorant Garamond',Georgia,serif!important;font-size:25pt;letter-spacing:.035em;color:#2c2418!important;}
+    .paper-brand h2{font-family:'Cormorant Garamond',Georgia,serif!important;font-size:25pt;letter-spacing:.025em;color:#253b30!important;}
     .paper-brand p{font-family:'Jost','Helvetica Neue',Arial,sans-serif!important;color:#755d2e!important;font-size:7.5pt;letter-spacing:.07em;}
     .paper-contact{font-size:8pt;color:#514a3c!important;line-height:1.5;}
     .gst-badge{background:#f2e9d1!important;color:#544421!important;}
@@ -333,16 +336,16 @@
     .meta-row .inv-no{color:#29251f!important;font-size:10pt;}
     .bill-to{margin-top:4mm;padding:3mm 4mm;background:#f5f0e4!important;border-left:2pt solid #b78a31;border-radius:0;}
     .bill-to .lbl,.terms,.terms .t-title{color:#6f644d!important;}
-    .bill-to .nm{font-family:'Cormorant Garamond',Georgia,serif!important;font-size:15pt;color:#29251f!important;}
+    .bill-to .nm{font-family:'Jost','Helvetica Neue',Arial,sans-serif!important;font-size:12pt;color:#253b30!important;}
     .bill-to .addr{color:#514a3c!important;font-size:9pt;}
-    table.paper-items{margin-top:5mm;font-size:8.5pt;}
-    table.paper-items thead th{padding:2.5mm 2mm;background:#393226!important;color:#f4e8c6!important;font-size:7pt;}
-    table.paper-items tbody td{padding:2mm;color:#39352e!important;border-bottom-color:#e6dfd1;}
+    table.paper-items{margin-top:5mm;font-size:7.5pt;}
+    table.paper-items thead th{padding:2.5mm 1.2mm;background:#293d32!important;color:#f4e8c6!important;font-size:6.5pt;}
+    table.paper-items tbody td{padding:2.5mm 1.2mm;color:#39352e!important;border-bottom-color:#e6dfd1;}
     table.paper-items tbody tr:nth-child(even){background:#f8f5ee!important;}
-    .paper-totals{width:76mm;margin-top:2mm;}
+    .paper-totals{width:79mm;margin-top:5mm;padding:3mm;background:#faf8f1!important;}
     .paper-totals .tl{padding:1.5mm 0;color:#514a3c!important;border-bottom-color:#ded5c2;font-size:9pt;}
     .paper-totals .tl b{color:#29251f!important;}
-    .paper-totals .gt{margin-top:2mm;padding:3mm;background:#393226!important;color:#f4e8c6!important;font-size:14pt;}
+    .paper-totals .gt{margin-top:2mm;padding:3mm;background:#293d32!important;color:#f4e8c6!important;font-size:12pt;}
     .paper-totals .gt b{color:#f4e8c6!important;}
     .words-line{color:#514a3c!important;font-size:8.5pt;}
     .paper-foot{margin-top:8mm;}
@@ -428,8 +431,8 @@
             <table class="itable" id="itemsTable">
               <thead>
                 <tr>
-                  <th>Item</th><th>From Stock *</th><th>HSN</th><th>Purity</th><th>Gross Wt (g) · total *</th><th>Net Wt (g) · total *</th>
-                  <th>Pcs *</th><th>Rate (₹/g) *</th><th>Making %</th><th>Amount (₹)</th><th></th>
+                  <th>Item</th><th>From Stock *</th><th>HSN</th><th>Purity</th><th>Gross Wt (g) · total *</th><th>Net Wt (g) · total *</th><th>Less Wt (g)</th>
+                  <th>Pcs *</th><th>Rate (₹/g) *</th><th>Making %</th><th>Other Charges (₹)</th><th>Amount (₹)</th><th></th>
                 </tr>
               </thead>
               <tbody id="itemsTbody"></tbody>
@@ -439,9 +442,11 @@
 
           <div class="row row-2" style="margin-top:16px;">
             <div class="field"><label>Exchange / Old Gold Deduction (₹)</label><input type="number" id="exchange-disc" value="0" step="0.01"></div>
+            <input type="hidden" id="invoice-tax-treatment" value="gst"><div class="field" id="customer-gstin-field" hidden><label for="customer-gstin">Customer / Business GSTIN *</label><input type="text" id="customer-gstin" maxlength="15" placeholder="15-character GSTIN"></div>
             <div class="field"><label>Tax treatment</label>
               <select id="gst-rate">
                 <option value="1.5">GST Invoice — 3% (CGST + SGST)</option>
+                <option value="1.5" data-treatment="b2b">B2B Invoice — 3% (CGST + SGST)</option>
                 <option value="0">Non-GST Invoice — No GST charged</option>
               </select>
             </div>
@@ -507,9 +512,10 @@ Customer will be intimated of any broken jewellery after sale.</textarea>
             <div class="addr" id="p-cust-address"></div>
           </div>
 
-          <table class="paper-items">
+          <div class="words-line" id="p-customer-gstin"></div>
+    <table class="paper-items">
             <thead>
-              <tr><th>#</th><th>Item</th><th>HSN</th><th>Purity</th><th>Gr.Wt</th><th>Net Wt</th><th>Pcs</th><th>Rate</th><th>Mkg%</th><th>Amount</th></tr>
+              <tr><th>#</th><th>Item</th><th>HSN</th><th>Purity</th><th>Gr.Wt</th><th>Net Wt</th><th>Less Wt</th><th>Pcs</th><th>Rate</th><th>Mkg%</th><th>Other ₹</th><th>Amount</th></tr>
             </thead>
             <tbody id="p-items-body"></tbody>
           </table>
@@ -798,7 +804,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 /* ================= INVOICE ROWS ================= */
 // gross/net on a row are PER-PIECE weights; pcs is how many of that piece are being sold.
 function newRow(){
-  return { id: uid(), name:'', hsn:'7113', purity:'22K', gross:'', net:'', pcs:1, rate:'', making:'10', stockId:'' };
+  return { id: uid(), name:'', hsn:'7113', purity:'22K', gross:'', net:'', pcs:1, rate:'', making:'10', otherCharges:0, stockId:'' };
 }
 
 function renderItemsDatalist(){
@@ -831,7 +837,7 @@ async function getInvoiceMarketRates(){
 
 function invoiceRateForStock(stock, rates){
   const purity = String(stock.purity || '').trim();
-  if(/^silver$/i.test(purity)) return Number(rates.silverPerGram) || 0;
+  if(/^(?:fine )?silver$/i.test(purity)) return Number(rates.silverPerGram) || 0;
   const match = purity.match(/(\d+(?:\.\d+)?)/);
   if(!match) return Number(rates.goldPerGram) || 0;
   const value = Number(match[1]);
@@ -928,9 +934,11 @@ function renderRowsTable(){
       </td>
       <td><input type="number" min="0.001" step="0.001" class="f-gross" value="${r.gross}" placeholder="0.000" required ${r.stockId?'readonly':''}></td>
       <td><input type="number" min="0.001" step="0.001" class="f-net" value="${r.net}" placeholder="0.000" required ${r.stockId?'readonly':''}></td>
+      <td><input type="text" class="f-less" aria-label="Less weight" readonly value="${r.gross === '' || r.net === '' ? '' : fmtWt(Number(r.gross) - Number(r.net))}"></td>
       <td><input type="number" min="1" step="1" class="f-pcs" value="${r.pcs}" style="width:56px;" required></td>
       <td><input type="number" min="0.01" step="0.01" class="f-rate" value="${r.rate}" placeholder="0.00" title="Editable; prefilled from the live IBJA benchmark when available" required></td>
       <td><input type="number" step="0.01" class="f-making" value="${r.making}" style="width:60px;"></td>
+      <td><input type="number" min="0" step="0.01" class="f-otherCharges" value="${r.otherCharges || 0}" aria-label="Other charges"></td>
       <td class="amount-cell">₹${fmt(rowAmount(r))}</td>
       <td><button class="rm-row" data-rm="${r.id}">×</button></td>
     </tr>
@@ -1017,6 +1025,7 @@ function renderRowsTable(){
       renderRowsTable(); renderPreview();
     });
     tr.querySelector('.f-rate').addEventListener('input', e=>{ row.rate = e.target.value; renderRowsTable(); renderPreview(); });
+    tr.querySelector('.f-otherCharges').addEventListener('input', e=>{ row.otherCharges = e.target.value; tr.querySelector('.amount-cell').textContent = '₹'+fmt(rowAmount(row)); renderPreview(); });
     tr.querySelector('.f-making').addEventListener('input', e=>{ row.making = e.target.value; renderRowsTable(); renderPreview(); });
   });
   tbody.querySelectorAll('[data-rm]').forEach(b=>{
@@ -1049,6 +1058,9 @@ function renderMiniTotals(){
 
 /* ================= PREVIEW ================= */
 function renderPreview(){
+  const b2b = document.getElementById('invoice-tax-treatment').value === 'b2b';
+  document.getElementById('customer-gstin-field').hidden = !b2b;
+  document.getElementById('p-customer-gstin').textContent = b2b ? 'Customer GSTIN: ' + document.getElementById('customer-gstin').value.toUpperCase() : '';
   document.getElementById('p-biz-name').textContent = document.getElementById('biz-name').value || 'Vishesh Jewellers';
   document.getElementById('p-biz-name-2').textContent = document.getElementById('biz-name').value || 'Vishesh Jewellers';
   document.getElementById('p-gstin').textContent = 'GSTIN: ' + (document.getElementById('biz-gstin').value || '—');
@@ -1071,15 +1083,17 @@ function renderPreview(){
       <td>${r.purity}</td>
       <td class="num">${fmtWt(parseFloat(r.gross)||0)}</td>
       <td class="num">${fmtWt(parseFloat(r.net)||0)}</td>
+      <td class="num">${fmtWt((parseFloat(r.gross)||0) - (parseFloat(r.net)||0))}</td>
       <td class="num">${parseInt(r.pcs)||1}</td>
       <td class="num">${fmt(r.rate)}</td>
       <td class="num">${fmt(r.making)}%</td>
+      <td class="num">${fmt(r.otherCharges || 0)}</td>
       <td class="num">${fmt(rowAmount(r))}</td>
     </tr>
-  `).join('') || `<tr><td colspan="10" style="text-align:center; color:#9C8B60; padding:16px 0;">Add items to see them here</td></tr>`;
+  `).join('') || `<tr><td colspan="12" style="text-align:center; color:#9C8B60; padding:16px 0;">Add items to see them here</td></tr>`;
 
   const t = computeTotals();
-  document.getElementById('p-gstin').textContent = t.gstPct === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (document.getElementById('biz-gstin').value || '—');
+  document.getElementById('p-gstin').textContent = t.gstPct === 0 ? 'ESTIMATE INVOICE' : 'GSTIN: ' + (document.getElementById('biz-gstin').value || '—');
   document.getElementById('p-totals').innerHTML = `
     <div class="tl"><span>Total</span><b>₹${fmt(t.subtotal)}</b></div>
     <div class="tl"><span>Exchange / Discount</span><b>₹${fmt(t.disc)}</b></div>
@@ -1108,7 +1122,12 @@ document.getElementById('addItemRow').addEventListener('click', ()=>{
 
 ['exchange-disc','gst-rate','biz-name','biz-gstin','biz-phone','biz-email','biz-address','cust-name','cust-mobile','cust-address','inv-no','inv-date','inv-terms']
   .forEach(id => document.getElementById(id).addEventListener('input', renderPreview));
-document.getElementById('gst-rate').addEventListener('change', renderPreview);
+document.getElementById('gst-rate').addEventListener('change', () => {
+  const select = document.getElementById('gst-rate');
+  document.getElementById('invoice-tax-treatment').value = select.selectedOptions[0]?.dataset.treatment || (select.value === '0' ? 'estimate' : 'gst');
+  renderPreview();
+});
+document.getElementById('customer-gstin').addEventListener('input', renderPreview);
 
 async function persistBizInfo(){
   bizInfo = {
@@ -1164,6 +1183,8 @@ async function resetInvoiceForm(bumpCounter){
   document.getElementById('cust-name').value = '';
   document.getElementById('cust-mobile').value = '';
   document.getElementById('cust-address').value = '';
+  document.getElementById('customer-gstin').value = '';
+  document.getElementById('invoice-tax-treatment').value = 'gst';
   document.getElementById('exchange-disc').value = 0;
   rows = [newRow()];
   saleCompleted = false;

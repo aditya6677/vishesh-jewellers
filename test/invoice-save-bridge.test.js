@@ -11,7 +11,7 @@ function bridge(fetchResponse) {
   const values = {
     'inv-no': 'VJ000001', 'inv-date': '2026-10-26', 'cust-name': 'Test Customer', 'cust-mobile': '', 'cust-address': '',
     'biz-name': 'Vishesh Jewellers', 'biz-gstin': '', 'inv-terms': '', 'invoice-discount': '50', 'amount-paid': '1000',
-    'gst-rate': '1.5', invoiceType: 'sale', 'exchange-disc': '0', btnCompleteSale: '', btnSavePendingOrder: ''
+    'gst-rate': '1.5', 'invoice-tax-treatment': 'gst', 'customer-gstin': '', invoiceType: 'sale', 'exchange-disc': '0', btnCompleteSale: '', btnSavePendingOrder: ''
   };
   for (const [id, value] of Object.entries(values)) nodes.set(id, {
     value, disabled: id === 'inv-no', handlers: {},

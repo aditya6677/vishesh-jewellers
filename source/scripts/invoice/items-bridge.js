@@ -1,4 +1,4 @@
-  const invoiceItemFields = ['name', 'purity', 'gross', 'net', 'pcs', 'rate', 'making'];
+  const invoiceItemFields = ['name', 'purity', 'gross', 'net', 'pcs', 'rate', 'making', 'otherCharges'];
   const invoiceRateRequests = new Map();
   let invoiceRateRequestId = 0;
   let invoiceItemsSaving = false;

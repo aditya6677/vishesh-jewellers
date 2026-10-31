@@ -34,13 +34,16 @@
   };
 
   const collectInvoiceRecord = status => {
+    const taxTreatment = document.getElementById('invoice-tax-treatment').value;
+    const customerGstin = taxTreatment === 'b2b' ? document.getElementById('customer-gstin').value.trim().toUpperCase() : '';
+    if (taxTreatment === 'b2b' && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(customerGstin)) throw new Error('Enter a valid 15-character customer GSTIN for the B2B invoice.');
     const paid = amount(document.getElementById('amount-paid').value);
     return {
       number: document.getElementById('inv-no').value || '—',
       date: document.getElementById('p-date').textContent || '—',
       weightMode: 'line-total',
       invoiceDate: document.getElementById('inv-date').value || '',
-      status,
+      status, taxTreatment, customerGstin,
       customer: document.getElementById('cust-name').value || 'Walk-in customer',
       mobile: document.getElementById('cust-mobile').value || '',
       address: document.getElementById('cust-address').value || '',
@@ -52,7 +55,7 @@
       discount: document.getElementById('mini-disc').textContent || '₹0.00',
       tax: document.getElementById('mini-gst').textContent || '₹0.00',
       total: document.getElementById('mini-grand').textContent || '₹0.00',
-      soldItems: rows.filter(row => row.stockId).map(row => ({ lineId: row.id, stockId: row.stockId, name: row.name, hsn: row.hsn || '', purity: row.purity, gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0 })),
+      soldItems: rows.filter(row => row.stockId).map(row => ({ lineId: row.id, stockId: row.stockId, name: row.name, hsn: row.hsn || '', purity: row.purity, gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0, otherCharges: Number(row.otherCharges) || 0 })),
       exchanges: getExchangeEntries().filter(exchange => exchange.weight > 0),
       manualDiscount: Math.max(Number(document.getElementById('invoice-discount').value) || 0, 0),
       gstRate: Number(document.getElementById('gst-rate').value) * 2 || 0,
@@ -84,7 +87,7 @@
     }
     const orderItems = enteredOrderItems;
     const record = collectInvoiceRecord('pending');
-    record.orderItems = orderItems.map((row, index) => ({ lineId: row.id || ('order-' + index), stockId: '', name: row.name, hsn: row.hsn || '', purity: row.purity || '', gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0 }));
+    record.orderItems = orderItems.map((row, index) => ({ lineId: row.id || ('order-' + index), stockId: '', name: row.name, hsn: row.hsn || '', purity: row.purity || '', gross: Number(row.gross) || 0, net: Number(row.net) || 0, pcs: Number(row.pcs) || 1, rate: Number(row.rate) || 0, making: Number(row.making) || 0, otherCharges: Number(row.otherCharges) || 0 }));
     record.soldItems = [];
     const records = await getRecords();
     records.unshift(record);

@@ -24,11 +24,11 @@ export function InvoiceItems() {
   }, []);
 
   const edit = (row: InvoiceItemRow, field: InvoiceItemField, value: string) => window.vjInvoiceItems?.update(row.id, field, value);
-  const number = (row: InvoiceItemRow, field: 'gross' | 'net' | 'pcs' | 'rate' | 'making', label: string, rowNumber: number) => <input
-    type="number" className={'f-' + field} aria-label={`${label} item ${rowNumber}`} value={row[field]}
-    min={field === 'pcs' ? '1' : field === 'rate' ? '0.01' : field === 'making' ? undefined : '0.001'}
+  const number = (row: InvoiceItemRow, field: 'gross' | 'net' | 'pcs' | 'rate' | 'making' | 'otherCharges', label: string, rowNumber: number) => <input
+    type="number" className={'f-' + field} aria-label={`${label} item ${rowNumber}`} value={row[field] ?? 0}
+    min={field === 'pcs' ? '1' : field === 'rate' ? '0.01' : field === 'otherCharges' ? '0' : field === 'making' ? undefined : '0.001'}
     step={field === 'pcs' ? '1' : field === 'gross' || field === 'net' ? '0.001' : '0.01'}
-    placeholder={field === 'gross' || field === 'net' ? '0.000' : '0.00'} required={field !== 'making'} disabled={busy}
+    placeholder={field === 'gross' || field === 'net' ? '0.000' : '0.00'} required={field !== 'making' && field !== 'otherCharges'} disabled={busy}
     style={field === 'pcs' ? { width: 56 } : field === 'making' ? { width: 60 } : undefined}
     title={field === 'rate' ? 'Editable; prefilled from the live IBJA benchmark when available' : undefined}
     onChange={event => edit(row, field, event.currentTarget.value)}
@@ -44,12 +44,14 @@ export function InvoiceItems() {
         onSelect={id => { void window.vjInvoiceItems?.selectStock(row.id, id); }} disabled={busy} required={!snapshot.pending} /></td>
       <td><input type="text" className="f-hsn" value={row.hsn} aria-label={`HSN item ${index + 1}`} style={{ width: 56 }} readOnly disabled={busy} /></td>
       <td><input type="hidden" className="f-purity" value={row.purity} /><Select label={`Purity item ${index + 1}`} value={row.purity}
-        options={['24K', '22K', '18K', '14K', 'Silver', 'Fine Gold']} onChange={value => edit(row, 'purity', value)} disabled={busy || Boolean(row.stockId)} compact /></td>
+        options={['24K', '22K', '18K', '14K', 'Silver', 'Fine Gold', 'Fine Silver']} onChange={value => edit(row, 'purity', value)} disabled={busy || Boolean(row.stockId)} compact /></td>
       <td>{number(row, 'gross', 'Gross weight', index + 1)}</td>
       <td>{number(row, 'net', 'Net weight', index + 1)}</td>
+      <td><input className="f-less" type="text" aria-label={`Less weight item ${index + 1}`} readOnly value={row.gross === '' || row.net === '' ? '' : (Number(row.gross) - Number(row.net)).toFixed(3)} /></td>
       <td>{number(row, 'pcs', 'Quantity', index + 1)}</td>
       <td>{number(row, 'rate', 'Rate per gram', index + 1)}</td>
       <td>{number(row, 'making', 'Making percentage', index + 1)}</td>
+      <td>{number(row, 'otherCharges', 'Other charges', index + 1)}</td>
       <td className="amount-cell">{money(row.amount)}</td>
       <td><button type="button" className="rm-row" disabled={busy} aria-label={`Remove invoice item ${index + 1}`} onClick={() => window.vjInvoiceItems?.remove(row.id)}>×</button></td>
     </tr>)}

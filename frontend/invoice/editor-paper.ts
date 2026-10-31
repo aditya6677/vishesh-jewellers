@@ -9,19 +9,31 @@ export function editedInvoiceMarkup(record: EditableRecord, draft: EditDraft): s
   const text = (selector: string, value: string) => { const element = paper.querySelector(selector); if (element) element.textContent = value; };
   const date = new Date(draft.invoiceDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   text('#p-cust-name', draft.customer.trim()); text('#p-cust-address', [draft.address.trim(), draft.mobile.trim() ? 'Mob: ' + draft.mobile.trim() : ''].filter(Boolean).join(' · '));
+  paper.querySelector('#p-customer-gstin')?.remove();
+  if (draft.taxTreatment === 'b2b') {
+    const line = document.createElement('div'); line.id = 'p-customer-gstin'; line.className = 'words-line'; line.textContent = 'Customer GSTIN: ' + draft.customerGstin.trim().toUpperCase();
+    paper.querySelector('.bill-to')?.after(line);
+  }
   text('#p-date', date); text('#p-terms', draft.terms.trim());
-  text('#p-gstin', Number(draft.gstRate) === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (record.gstin || '—'));
+  text('#p-gstin', Number(draft.gstRate) === 0 ? 'ESTIMATE INVOICE' : 'GSTIN: ' + (record.gstin || '—'));
   text('#p-words', totals.grand > 0 ? 'Rs. ' + window.vjInvoiceEditMath.words(totals.grand) + ' Only' : '');
   paper.querySelectorAll('.pending-invoice-watermark,.regenerated-settlement-history').forEach(element => element.remove());
   const body = paper.querySelector('#p-items-body');
+  const header = paper.querySelector('.paper-items thead tr');
+  if (header && !Array.from(header.children).some(cell => cell.textContent === 'Less Wt')) {
+    const cell = document.createElement('th'); cell.textContent = 'Less Wt'; header.insertBefore(cell, header.children[6] || null);
+  }
   if (body) {
     body.replaceChildren();
     draft.items.forEach((item, index) => {
       const row = document.createElement('tr');
-      [String(index + 1), item.name, item.hsn || '', item.purity, Number(item.gross).toFixed(3), Number(item.net).toFixed(3), String(item.pcs), Number(item.rate).toFixed(2), Number(item.making || 0).toFixed(2) + '%', window.vjInvoiceEditMath.totals([item], 0, 0).subtotal.toFixed(2)].forEach((value, column) => {
+      [String(index + 1), item.name, item.hsn || '', item.purity, Number(item.gross).toFixed(3), Number(item.net).toFixed(3), (Number(item.gross) - Number(item.net)).toFixed(3), String(item.pcs), Number(item.rate).toFixed(2), Number(item.making || 0).toFixed(2) + '%', Number(item.otherCharges || 0).toFixed(2), window.vjInvoiceEditMath.totals([item], 0, 0).subtotal.toFixed(2)].forEach((value, column) => {
         const cell = document.createElement('td'); if (column >= 4 || column === 2) cell.className = 'num'; cell.textContent = value; row.append(cell);
       }); body.append(row);
     });
+  }
+  if (header && !Array.from(header.children).some(cell => cell.textContent === 'Other ₹')) {
+    const cell = document.createElement('th'); cell.textContent = 'Other ₹'; header.insertBefore(cell, header.lastElementChild);
   }
   const panel = paper.querySelector('#p-totals');
   if (panel) {

@@ -29,6 +29,44 @@ function draft(overrides = {}) {
   };
 }
 
+test('other charges persist, are taxed, update dashboard totals and leave weight deductions unchanged', () => {
+  const f = fixture();
+  const input = draft();
+  input.items[0].otherCharges = 500;
+  input.expectedTotal = 9062;
+  const result = createInvoice(f.store, input);
+  assert.equal(result.record.soldItems[0].otherCharges, 500);
+  assert.equal(result.record.subtotal, '₹10,400.00');
+  assert.equal(result.record.tax, '₹312.00');
+  assert.equal(result.record.total, '₹9,062.00');
+  assert.equal(result.record.due, 8062);
+  assert.equal(result.stock[0].net, 81);
+  assert.equal(result.stock[0].qty, 6);
+  assert.equal(calculateDashboard([result.record], [], [], []).gold.sales, 10400);
+  for (const invalid of [-1, 'invalid', Infinity]) {
+    const rejected = fixture(), bad = draft();
+    bad.items[0].otherCharges = invalid;
+    assert.throws(() => createInvoice(rejected.store, bad), /Other charges/);
+    assert.equal(rejected.writes(), 0);
+  }
+});
+
+test('B2B requires customer GSTIN, preserves it separately from store GSTIN and keeps GST totals', () => {
+  const f = fixture();
+  const result = createInvoice(f.store, draft({ taxTreatment: 'b2b', customerGstin: ' 27abcde1234f1z5 ' }));
+  assert.equal(result.record.taxTreatment, 'b2b');
+  assert.equal(result.record.customerGstin, '27ABCDE1234F1Z5');
+  assert.equal(result.record.gstin, 'TEST');
+  assert.equal(result.record.total, '₹8,547.00');
+  for (const customerGstin of ['', 'bad', '27ABCDE1234F1A5']) {
+    const invalid = fixture();
+    assert.throws(() => createInvoice(invalid.store, draft({ taxTreatment: 'b2b', customerGstin })), /GSTIN/);
+    assert.equal(invalid.writes(), 0);
+  }
+  assert.throws(() => createInvoice(fixture().store, draft({ taxTreatment: 'b2b', customerGstin: '27ABCDE1234F1Z5', gstRate: 0 })), /GST treatment/);
+  assert.equal(createInvoice(fixture().store, draft({ customerGstin: '27ABCDE1234F1Z5' })).record.customerGstin, '');
+});
+
 test('sale commits invoice, line-total weights, quantity, all exchange rows, and counter in one write', () => {
   const f = fixture();
   const result = createInvoice(f.store, draft(), () => new Date('2026-10-26T10:00:00Z'));

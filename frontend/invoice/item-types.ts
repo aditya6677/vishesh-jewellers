@@ -3,10 +3,10 @@ import type { StockItem } from '../types';
 export interface InvoiceItemRow {
   id: string; stockId: string; name: string; hsn: string; purity: string;
   gross: string | number; net: string | number; pcs: string | number;
-  rate: string | number; making: string | number; amount: number;
+  rate: string | number; making: string | number; otherCharges?: string | number; amount: number;
   available: Record<string, number>;
 }
-export type InvoiceItemField = 'name' | 'purity' | 'gross' | 'net' | 'pcs' | 'rate' | 'making';
+export type InvoiceItemField = 'name' | 'purity' | 'gross' | 'net' | 'pcs' | 'rate' | 'making' | 'otherCharges';
 export interface InvoiceItemsSnapshot { items: InvoiceItemRow[]; stock: StockItem[]; pending: boolean }
 
 declare global {

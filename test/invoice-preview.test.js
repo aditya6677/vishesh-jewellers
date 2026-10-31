@@ -78,11 +78,43 @@ test('non-GST paper omits tax rows and displays advance as plus amount', () => {
   f.bridge.tax('0');
   f.nodes['amount-paid'].value = '9000';
   const markup = renderToStaticMarkup(React.createElement(paperComponent(), { snapshot: f.bridge.read() }));
-  assert.ok(markup.includes('NON-GST INVOICE'));
+  assert.ok(markup.includes('ESTIMATE INVOICE'));
   assert.ok(!markup.includes('CGST'));
   assert.ok(!markup.includes('SGST'));
   assert.ok(markup.includes('Excess / Plus Amount'));
   assert.ok(markup.includes('₹750.00'));
+});
+
+test('less weight is gross minus net for the entire line, not multiplied by pieces', () => {
+  const snapshot = previewBridge().bridge.read();
+  const render = () => renderToStaticMarkup(React.createElement(paperComponent(), { snapshot }));
+  assert.ok(render().includes('<th>Less Wt</th>'));
+  assert.ok(render().includes('<td class="num">10.000</td><td class="num">9.000</td><td class="num">1.000</td><td class="num">4</td>'));
+  snapshot.items[0].gross = '10.125';
+  snapshot.items[0].net = '9.100';
+  assert.ok(render().includes('<td class="num">1.025</td>'));
+  snapshot.items[0].net = '10.125';
+  assert.ok(render().includes('<td class="num">0.000</td>'));
+  assert.equal(snapshot.totals.grand, 8547);
+});
+
+test('invoice paper displays per-line other charges before the line amount', () => {
+  const snapshot = previewBridge().bridge.read();
+  snapshot.items[0].otherCharges = 500;
+  const markup = renderToStaticMarkup(React.createElement(paperComponent(), { snapshot }));
+  assert.ok(markup.includes('<th>Mkg%</th><th>Other ₹</th><th>Amount</th>'));
+  assert.ok(markup.includes('<td class="num">10.00%</td><td class="num">500.00</td>'));
+});
+
+test('B2B invoice paper prints customer GSTIN separately and never prints it on an estimate', () => {
+  const snapshot = previewBridge().bridge.read();
+  snapshot.taxTreatment = 'b2b';
+  snapshot.customer.gstin = '27ABCDE1234F1Z5';
+  const render = () => renderToStaticMarkup(React.createElement(paperComponent(), { snapshot }));
+  assert.ok(render().includes('Customer GSTIN: 27ABCDE1234F1Z5'));
+  assert.ok(render().includes('GSTIN: TESTGST'));
+  snapshot.taxTreatment = 'estimate';
+  assert.ok(!render().includes('27ABCDE1234F1Z5'));
 });
 test('custom store branding appears on invoice paper and its watermark without changing totals', () => {
   const snapshot = previewBridge().bridge.read();

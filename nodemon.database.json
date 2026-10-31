@@ -3,6 +3,7 @@
   "ext": "js,mjs,cjs,ts,tsx,json,html,css,svg,png",
   "ignore": ["data/**", "backups/**", "public/**", "dist/**", "release/**", "node_modules/**", "experiments/**", "**/*.db*", "**/*.app-lock*"],
   "delay": "1500",
+  "legacyWatch": true,
   "signal": "SIGTERM",
   "env": { "LOCAL_DATABASE_PORT": "56685" },
   "exec": "npm run build:frontend && node scripts/start-migrated.js"

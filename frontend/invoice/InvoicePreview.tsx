@@ -94,10 +94,10 @@ export function InvoicePreview() {
       <InvoiceFit>{snapshot ? <InvoicePaper snapshot={snapshot} paperRef={paper} /> : <p role="status">Loading invoice preview…</p>}</InvoiceFit>
     </dialog>, document.body)}
     {previewTarget && createPortal(<button type="button" className="btn btn-ghost invoice-preview-button" disabled={busy} aria-haspopup="dialog" onClick={openPreview}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>Preview</button>, previewTarget)}
-    {snapshot && taxTarget && createPortal(<div className="field"><label>Tax treatment</label><Select label="Tax treatment"
-      value={snapshot.taxValue === '0' ? 'Non-GST Invoice — No GST charged' : 'GST Invoice — 3% (CGST + SGST)'}
-      options={['GST Invoice — 3% (CGST + SGST)', 'Non-GST Invoice — No GST charged']} disabled={busy}
-      onChange={value => window.vjInvoicePreviewSource?.tax(value.startsWith('Non-GST') ? '0' : '1.5')} /></div>, taxTarget)}
+    {snapshot && taxTarget && createPortal(<div className="invoice-tax-fields"><div className="field"><label>Tax treatment</label><Select label="Tax treatment"
+      value={snapshot.taxTreatment === 'b2b' ? 'B2B Invoice — 3% (CGST + SGST)' : snapshot.taxValue === '0' ? 'Non-GST Invoice — No GST charged' : 'GST Invoice — 3% (CGST + SGST)'}
+      options={['GST Invoice — 3% (CGST + SGST)', 'B2B Invoice — 3% (CGST + SGST)', 'Non-GST Invoice — No GST charged']} disabled={busy}
+      onChange={value => window.vjInvoicePreviewSource?.tax(value.startsWith('B2B') ? 'b2b' : value.startsWith('Non-GST') ? '0' : '1.5')} /></div>{snapshot.taxTreatment === 'b2b' && <div className="field"><label htmlFor="invoice-customer-gstin">Customer / Business GSTIN *</label><input id="invoice-customer-gstin" type="text" required maxLength={15} autoCapitalize="characters" placeholder="15-character GSTIN" value={snapshot.customer.gstin || ''} onChange={event => window.vjInvoicePreviewSource?.customerGstin(event.currentTarget.value)} disabled={busy} /></div>}</div>, taxTarget)}
     {snapshot && termsTarget && createPortal(<div className="panel"><h3><span className="dot" />Terms &amp; Conditions</h3>
       <textarea id="react-inv-terms" aria-label="Terms & Conditions" value={snapshot.terms} style={{ minHeight: 70 }} disabled={busy}
         onChange={event => window.vjInvoicePreviewSource?.terms(event.currentTarget.value)} /></div>, termsTarget)}

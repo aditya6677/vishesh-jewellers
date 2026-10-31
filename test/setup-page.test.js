@@ -12,19 +12,20 @@ function preview(search) {
   fields['mode-options'].hidden = true;
   fields.mode.value = 'new';
   const submitted = [];
+  const main = { inert: false, attributes: {}, append() {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } };
   const context = {
     document: {
       addEventListener() {},
       getElementById: id => fields[id],
       createElement: () => ({}),
-      querySelector: () => ({ append() {} }),
+      querySelector: () => main,
       querySelectorAll: () => Object.values(fields)
     },
     URLSearchParams,
     window: { ...(search ? { location: { search } } : {}), storeSetup: { chooseBackup: async () => '/synthetic/backup', submit: async value => { submitted.push(value); return { ok: true }; } } }
   };
   vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], context);
-  return { fields, submitted, document: context.document };
+  return { fields, submitted, document: context.document, main, window: context.window };
 }
 
 test('compact onboarding keeps responsive columns and every setup field accessible', () => {
@@ -65,6 +66,26 @@ test('new layout retains validation, secure setup payload and passphrase clearin
   assert.equal(f.confirm.value, '');
   assert.equal(f.continue.disabled, true);
   assert.equal(f.continue.textContent, 'Opening KaratDesk…');
+});
+
+test('store setup shows page-level progress through handoff and dismisses it on failure', async () => {
+  const f = preview();
+  await f.fields.choose.onclick();
+  f.fields['store-name'].value = 'Synthetic store';
+  f.fields.passphrase.value = f.fields.confirm.value = 'Synthetic recovery phrase!';
+  f.fields.ack.checked = true;
+  let finish;
+  f.window.storeSetup.submit = () => new Promise(resolve => { finish = resolve; });
+  const pending = f.fields.continue.onclick();
+  assert.equal(f.fields['page-progress'].hidden, false);
+  assert.equal(f.fields['page-progress-title'].textContent, 'Creating your store…');
+  assert.equal(f.main.inert, true);
+  finish({ ok: false, error: 'Synthetic failure' }); await pending;
+  assert.equal(f.fields['page-progress'].hidden, true);
+  assert.equal(f.main.inert, false);
+  assert.equal(f.fields.error.textContent, 'Synthetic failure');
+  assert.equal(f.fields.continue.disabled, false);
+  assert.equal(f.fields.passphrase.value, '');
 });
 
 test('switching to restore hides only new-store fields and clears sensitive values', () => {

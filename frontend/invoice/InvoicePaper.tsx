@@ -12,18 +12,19 @@ export function InvoicePaper({ snapshot: s, paperRef }: { snapshot: InvoicePrevi
       <img src={s.business.logo || '/assets/karatdesk-logo.png'} alt={s.business.name} className="invoice-logo" />
       <div><h2 id="p-biz-name">{s.business.name}</h2><p>{s.business.tagline ?? 'Beginning... of Special Relationship...'}</p></div>
     </div><div className="paper-contact">
-      <div className="gst-badge" id="p-gstin">{s.totals.gstPct === 0 ? 'NON-GST INVOICE' : 'GSTIN: ' + (s.business.gstin || '—')}</div><br />
+      <div className="gst-badge" id="p-gstin">{s.totals.gstPct === 0 ? 'ESTIMATE INVOICE' : 'GSTIN: ' + (s.business.gstin || '—')}</div><br />
       <span id="p-phone">{s.business.phone ? 'Ph: ' + s.business.phone : ''}</span><br />
       <span id="p-email">{s.business.email}</span><br /><span id="p-address">{s.business.address}</span>
     </div></div>
     <div className="meta-row"><div>Invoice No.: <span className="inv-no" id="p-inv-no">{s.number}</span></div><div>Date: <span className="inv-no" id="p-date">{s.date}</span></div></div>
     <div className="bill-to"><div className="lbl">Bill To</div><div className="nm" id="p-cust-name">{s.customer.name}</div>
       <div className="addr" id="p-cust-address">{[s.customer.address, s.customer.mobile ? 'Mob: ' + s.customer.mobile : ''].filter(Boolean).join(' · ')}</div></div>
-    <table className="paper-items"><thead><tr><th>#</th><th>Item</th><th>HSN</th><th>Purity</th><th>Gr.Wt</th><th>Net Wt</th><th>Pcs</th><th>Rate</th><th>Mkg%</th><th>Amount</th></tr></thead>
+    {s.taxTreatment === 'b2b' && <div className="words-line" id="p-customer-gstin">Customer GSTIN: {s.customer.gstin}</div>}
+    <table className="paper-items"><thead><tr><th>#</th><th>Item</th><th>HSN</th><th>Purity</th><th>Gr.Wt</th><th>Net Wt</th><th>Less Wt</th><th>Pcs</th><th>Rate</th><th>Mkg%</th><th>Other ₹</th><th>Amount</th></tr></thead>
       <tbody id="p-items-body">{s.items.length ? s.items.map((row, index) => <tr key={row.id}><td>{index + 1}</td><td>{row.name || '—'}</td><td className="num">{row.hsn}</td><td>{row.purity}</td>
-        <td className="num">{weight(row.gross)}</td><td className="num">{weight(row.net)}</td><td className="num">{parseInt(String(row.pcs)) || 1}</td>
-        <td className="num">{number(row.rate)}</td><td className="num">{number(row.making)}%</td><td className="num">{number(row.amount)}</td></tr>)
-        : <tr><td colSpan={10} style={{ textAlign: 'center', color: '#9C8B60', padding: '16px 0' }}>Add items to see them here</td></tr>}</tbody>
+        <td className="num">{weight(row.gross)}</td><td className="num">{weight(row.net)}</td><td className="num">{weight(Number(row.gross) - Number(row.net))}</td><td className="num">{parseInt(String(row.pcs)) || 1}</td>
+        <td className="num">{number(row.rate)}</td><td className="num">{number(row.making)}%</td><td className="num">{number(row.otherCharges || 0)}</td><td className="num">{number(row.amount)}</td></tr>)
+        : <tr><td colSpan={12} style={{ textAlign: 'center', color: '#9C8B60', padding: '16px 0' }}>Add items to see them here</td></tr>}</tbody>
     </table>
     <div className="paper-totals" id="p-totals">
       <div className="tl"><span>Total</span><b>{money(s.totals.subtotal)}</b></div>

@@ -25,6 +25,11 @@ export function savedInvoiceMarkup(record: InvoiceRecord & { invoiceMarkup?: str
     if (/url\s*\(|expression\s*\(|@import|\\/i.test(element.getAttribute('style') || '')) element.removeAttribute('style');
   }
   const savedLogo = paper.querySelector('.invoice-logo')?.getAttribute('src') || '';
+  paper.querySelector('#p-customer-gstin')?.remove();
+  if (record.taxTreatment === 'b2b' && record.customerGstin) {
+    const line = document.createElement('div'); line.id = 'p-customer-gstin'; line.className = 'words-line'; line.textContent = 'Customer GSTIN: ' + record.customerGstin;
+    const recipient = paper.querySelector('.bill-to'); if (recipient) recipient.after(line); else paper.append(line);
+  }
   if (/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(savedLogo)) paper.style.setProperty('--invoice-logo-image', `url("${savedLogo}")`);
   paper.querySelectorAll('#p-seal,.seal,.voided-invoice-watermark,.pending-invoice-watermark,.payment-summary-line,.regenerated-payment-line,.regenerated-settlement-history').forEach(element => element.remove());
   if (record.status === 'voided' || record.status === 'pending') {

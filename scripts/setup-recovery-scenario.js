@@ -28,9 +28,9 @@ async function setupRecoveryScenario(safeStorage, platform) {
     db = openDatabase(config.databaseFile, key);
     const now = () => new Date('2026-10-29T08:00:00Z');
     const stocks = new StockRepository(db, 'main', { now, id: () => 'test-ring' });
-    stocks.create({ item: 'Recovery test ring', purity: '22K', qty: 20, gross: 100, net: 90 });
+    stocks.create({ item: 'Recovery Test Ring', purity: '22K', qty: 20, gross: 100, net: 90 });
     const invoices = new InvoiceRepository(db, 'main', { now });
-    invoices.create({ requestId: randomUUID(), number: 'VJ000001', status: 'completed', customer: 'Disposable recovery test', mobile: '9000012345', invoiceDate: '2026-10-29', items: [{ stockId: 'test-ring', name: 'Recovery test ring', purity: '22K', gross: 10, net: 9, pcs: 4, rate: 1000, making: 0 }], exchanges: [{ metal: 'silver', weight: 1, rate: 100 }], manualDiscount: 20, gstRate: 3, paid: 1000, expectedTotal: 9150 });
+    invoices.create({ requestId: randomUUID(), number: 'VJ000001', status: 'completed', customer: 'Disposable recovery test', mobile: '9000012345', invoiceDate: '2026-10-29', items: [{ stockId: 'test-ring', name: 'Recovery Test Ring', purity: '22K', gross: 10, net: 9, pcs: 4, rate: 1000, making: 0 }], exchanges: [{ metal: 'silver', weight: 1, rate: 100 }], manualDiscount: 20, gstRate: 3, paid: 1000, expectedTotal: 9150 });
     invoices.settle('VJ000001', { version: invoices.get('VJ000001').version, method: 'gold', weight: .1, rate: 1000 });
     const trades = new TransactionRepository(db, 'main', { now });
     trades.save('purchases', { metal: 'gold', weight: 10, rate: 1000 });

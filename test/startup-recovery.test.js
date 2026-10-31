@@ -40,8 +40,8 @@ test('startup recovery restores financial data with a new OS-wrapped key and pre
   const backupDirectory = path.join(root, 'portable-populated');
   try {
     const stocks = new StockRepository(db, 'main', { id: () => 'ring' });
-    stocks.create({ item: 'Recovery ring', purity: '22K', qty: 10, gross: 100, net: 90 });
-    new InvoiceRepository(db, 'main').create({ requestId: randomUUID(), number: 'VJ000001', status: 'completed', customer: 'Recovery customer', invoiceDate: '2026-10-30', items: [{ stockId: 'ring', name: 'Recovery ring', purity: '22K', gross: 10, net: 9, pcs: 4, rate: 1000, making: 0 }], exchanges: [], manualDiscount: 0, gstRate: 3, paid: 1000, expectedTotal: 9270 });
+    stocks.create({ item: 'Recovery Ring', purity: '22K', qty: 10, gross: 100, net: 90 });
+    new InvoiceRepository(db, 'main').create({ requestId: randomUUID(), number: 'VJ000001', status: 'completed', customer: 'Recovery customer', invoiceDate: '2026-10-30', items: [{ stockId: 'ring', name: 'Recovery Ring', purity: '22K', gross: 10, net: 9, pcs: 4, rate: 1000, making: 0 }], exchanges: [], manualDiscount: 0, gstRate: 3, paid: 1000, expectedTotal: 9270 });
     snapshot = readSnapshot(db, 'main'); report = new DatabaseQueries(db, 'main').dashboard({});
     await createPortableBackup(db, unlocked.key, phrase, backupDirectory);
   } finally { db.close(); unlocked.key.fill(0); }

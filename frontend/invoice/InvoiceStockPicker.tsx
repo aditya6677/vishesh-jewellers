@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { StockItem } from '../types';
+import { AddInvoiceStock } from './AddInvoiceStock';
 
 const weight = (value: number) => (Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
@@ -17,6 +18,8 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
   const [remoteItems, setRemoteItems] = useState<StockItem[] | null>(null);
   const [remoteError, setRemoteError] = useState('');
   const [remoteBusy, setRemoteBusy] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
+  const canCreate = !window.vjAccountSession || window.vjAccountSession.permissions.includes('stocks.create');
   const selected = stocks.find(stock => stock.id === selectedId);
   const label = selected ? `${selected.item} · ${selected.purity} · ${available[selected.id] || 0} pcs · #${String(selected.id).slice(-4)}` : '';
   const search = (query || '').trim().toLowerCase();
@@ -30,7 +33,7 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
     if (!input.current || disabled) return;
     const rect = input.current.getBoundingClientRect();
     const width = Math.min(Math.max(rect.width, 240), window.innerWidth - 24);
-    const height = Math.min(matches.length * 65 + 12, 320);
+    const height = Math.min(Math.max(matches.length * 65 + 12, 120), 320);
     setPosition({ left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
       top: window.innerHeight - rect.bottom < height + 12 && rect.top > height + 12 ? rect.top - height - 6 : rect.bottom + 6, width });
   };
@@ -80,6 +83,8 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
           event.preventDefault(); locate(); setActiveIndex(index => Math.max(0, Math.min(matches.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1))));
         } else if (event.key === 'Enter' && position && matches.length) {
           event.preventDefault(); choose(matches[Math.min(activeIndex, matches.length - 1)].id);
+        } else if (event.key === 'Enter' && position && search && !remoteBusy && !remoteError && canCreate) {
+          event.preventDefault(); setAdding((query || '').trim()); close();
         }
       }} />
     <input type="hidden" className="f-stock" value={selectedId} />
@@ -92,8 +97,12 @@ export function InvoiceStockPicker({ stocks, available, selectedId, rowNumber, o
         onMouseEnter={() => setActiveIndex(index)} onClick={() => choose(stock.id)}>
         <span className="stock-option-name">{stock.item}</span>
         <span className="stock-option-meta">{stock.purity} · {qty(stock) || 0} pcs · Gross {weight(stock.gross)} g · Net {weight(stock.net)} g</span>
-      </button>) : <div className="stock-picker-empty">No matching stock items</div>}
+      </button>) : <div className="stock-picker-empty">No matching stock items
+        {search && !remoteBusy && !remoteError && canCreate && <button type="button" className="btn btn-gold btn-sm stock-picker-create" onClick={() => { setAdding((query || '').trim()); close(); }}>＋ Add to stock</button>}
+      </div>}
       {window.vjDatabaseMode && remoteItems?.length === 50 && <div className="stock-picker-empty">Showing 50 matches. Type more to narrow the search.</div>}
     </div>, portalTarget || document.body)}
+    {adding !== null && <AddInvoiceStock name={adding} onClose={() => { setAdding(null); input.current?.focus(); }}
+      onCreated={stock => { setRemoteItems(current => [...(current || []), stock]); onSelect(stock.id, stock); setAdding(null); close(); }} />}
   </>;
 }

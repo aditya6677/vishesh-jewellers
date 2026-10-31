@@ -4,6 +4,19 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { calculateInvoiceLineAmount, calculateInvoiceTotals } = require('../lib/invoice-calculation');
 
+test('other charges are added once per line after making and before GST', () => {
+  const row = { net: 10, rate: 1000, making: 10, pcs: 4, otherCharges: 500 };
+  assert.equal(calculateInvoiceLineAmount(row), 11500);
+  const totals = calculateInvoiceTotals([row], 0, 1.5);
+  assert.equal(totals.subtotal, 11500);
+  assert.equal(totals.cgst, 172.5);
+  assert.equal(totals.sgst, 172.5);
+  assert.equal(totals.grand, 11845);
+  assert.equal(calculateInvoiceTotals([row], 0, 0).grand, 11500);
+  assert.equal(calculateInvoiceLineAmount({ ...row, otherCharges: '' }), 11000);
+  assert.equal(calculateInvoiceLineAmount({ ...row, otherCharges: undefined }), 11000);
+});
+
 // Keep the pre-migration arithmetic here as a compatibility oracle. These
 // expressions intentionally preserve JavaScript's original floating-point
 // operation order; changing them can change edge-case invoice totals.

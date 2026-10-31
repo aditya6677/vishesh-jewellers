@@ -3,6 +3,26 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+test('account progress covers the page and restores the form after errors without hiding navigation progress', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../lib/security/account-page.html'), 'utf8');
+  assert.ok(html.includes('id="page-progress" class="page-progress" role="status"'));
+  assert.ok(html.includes("showPageProgress('Creating Superadmin…'"));
+  assert.ok(html.includes("showPageProgress('Opening KaratDesk…'"));
+  assert.ok(html.includes('if(!navigating)hidePageProgress()'));
+  assert.ok(html.includes("document.querySelector('main').inert=true"));
+  assert.ok(html.includes("document.querySelector('main').inert=false"));
+  assert.ok(html.includes('@media(prefers-reduced-motion:reduce)'));
+});
+test('first administrator setup uses a compact responsive grid without changing consent or credential fields', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../lib/security/account-page.html'), 'utf8');
+  assert.ok(html.includes(".classList.toggle('setup-mode',state.setupRequired)"));
+  assert.ok(html.includes('.setup-mode #login-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))'));
+  assert.ok(html.includes('@media(max-width:600px)'));
+  assert.ok(html.includes('.setup-mode #login-form{grid-template-columns:1fr;'));
+  for (const id of ['name', 'username', 'password', 'confirm', 'login-submit']) assert.ok(html.includes('id="' + id + '"'));
+  assert.ok(html.includes("legalBox.id='setup-legal'"));
+  assert.ok(html.includes("el('legal-consent').required=!!state.setupRequired"));
+});
 test('account UI password controls remain accessible, non-submitting and dynamically enhanced', () => {
   const html = fs.readFileSync(path.join(__dirname, '../lib/security/account-page.html'), 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];

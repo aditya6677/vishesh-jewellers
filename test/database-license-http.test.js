@@ -31,9 +31,9 @@ test('new-store trial starts on setup; expiry keeps reads/backups accessible and
   assert.equal((await request('/api/auth/setup',credentials)).status,200);
   const login=await request('/api/auth/login',credentials);cookie=login.headers.get('set-cookie').split(';')[0];
   const trial=await(await request('/api/license')).json();assert.equal(trial.state,'trial');assert.equal(trial.daysRemaining,14);assert.equal(trial.invoiceLimit,null);
-  const stock={item:'Trial ring',purity:'22K',qty:10,gross:100,net:90};assert.equal((await request('/api/stocks',stock)).status,200);
+  const stock={item:'Trial Ring',purity:'22K',qty:10,gross:100,net:90};assert.equal((await request('/api/stocks',stock)).status,200);
   const stockId=(await(await request('/api/stocks')).json()).items[0].id;
-  const sale={requestId:randomUUID(),number:'VJ000001',status:'completed',customer:'Trial customer',invoiceDate:'2026-10-29',items:[{stockId,name:'Trial ring',purity:'22K',gross:1,net:1,pcs:1,rate:100,making:0}],exchanges:[],manualDiscount:0,gstRate:3,paid:50,expectedTotal:103};
+  const sale={requestId:randomUUID(),number:'VJ000001',status:'completed',customer:'Trial customer',invoiceDate:'2026-10-29',items:[{stockId,name:'Trial Ring',purity:'22K',gross:1,net:1,pcs:1,rate:100,making:0}],exchanges:[],manualDiscount:0,gstRate:3,paid:50,expectedTotal:103};
   assert.equal((await request('/api/invoices',sale)).status,200);
   assert.equal((await request('/api/invoices',sale)).status,200);
   assert.equal((await(await request('/api/license')).json()).invoicesIssued,1);

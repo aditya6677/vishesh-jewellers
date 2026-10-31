@@ -2,16 +2,16 @@ import type { InvoiceRecord, StockItem } from '../types';
 
 export interface EditLine {
   lineId: string; stockId: string; name: string; purity: string; hsn: string;
-  gross: string | number; net: string | number; pcs: string | number; rate: string | number; making: string | number;
+  gross: string | number; net: string | number; pcs: string | number; rate: string | number; making: string | number; otherCharges?: string | number;
 }
 export interface EditExchange { id: string; metal: 'gold' | 'silver'; weight: string | number; rate: string | number; required?: boolean }
 export interface EditableRecord extends InvoiceRecord {
-  invoiceDate?: string; savedAt?: string; initialPaid?: number; weightMode?: string;
+  taxTreatment?: string; customerGstin?: string; invoiceDate?: string; savedAt?: string; initialPaid?: number; weightMode?: string;
   soldItems?: EditLine[]; orderItems?: EditLine[]; terms?: string; invoiceMarkup?: string;
   manualDiscount?: number; discount?: string; tax?: string; gstRate?: number; gstin?: string;
 }
 export interface EditDraft {
-  customer: string; invoiceDate: string; mobile: string; address: string; terms: string;
+  taxTreatment: string; customerGstin: string; customer: string; invoiceDate: string; mobile: string; address: string; terms: string;
   items: EditLine[]; exchanges: EditExchange[]; manualDiscount: string; paid: string; gstRate: string;
 }
 export interface EditTotals { subtotal: number; disc: number; cgst: number; sgst: number; gstPct: number; grand: number; roundOff: number }
@@ -27,9 +27,10 @@ export function editDraft(record: EditableRecord): EditDraft {
   const exchanges = (record.exchanges || (record.exchange ? [record.exchange] : [])).map((entry, index) => ({ id: 'exchange-' + index, metal: entry.metal === 'silver' ? 'silver' as const : 'gold' as const, weight: Number(entry.weight) || 0, rate: Number(entry.rate) || 0 }));
   const exchange = (record.exchanges || (record.exchange ? [record.exchange] : [])).reduce((sum, entry) => sum + (Number(entry.value) || (Number(entry.weight) || 0) * (Number(entry.rate) || 0)), 0);
   return {
+    taxTreatment: record.taxTreatment || (Number(record.gstRate ?? (amount(record.tax) > 0 ? 3 : 0)) === 0 ? 'estimate' : 'gst'), customerGstin: record.customerGstin || '',
     customer: record.customer || '', invoiceDate: record.invoiceDate || record.savedAt?.slice(0, 10) || '', mobile: record.mobile || '', address: record.address || '', terms: record.terms || '',
     items: (record.status === 'pending' ? record.orderItems || [] : record.soldItems || []).map((item, index) => ({ ...item, lineId: item.lineId || 'edit-' + index,
-      hsn: item.hsn || '', gross: (Number(item.gross) || 0) * (record.weightMode === 'line-total' ? 1 : Number(item.pcs) || 1), net: (Number(item.net) || 0) * (record.weightMode === 'line-total' ? 1 : Number(item.pcs) || 1) })),
+      hsn: item.hsn || '', otherCharges: item.otherCharges || 0, gross: (Number(item.gross) || 0) * (record.weightMode === 'line-total' ? 1 : Number(item.pcs) || 1), net: (Number(item.net) || 0) * (record.weightMode === 'line-total' ? 1 : Number(item.pcs) || 1) })),
     exchanges, manualDiscount: Math.max(Number.isFinite(Number(record.manualDiscount)) ? Number(record.manualDiscount) : amount(record.discount) - exchange, 0).toFixed(2),
     paid: window.vjInvoiceEditMath.initialPaidFor(record).toFixed(2), gstRate: String(record.gstRate != null ? Number(record.gstRate) : amount(record.tax) > 0 ? 3 : 0)
   };
