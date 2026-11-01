@@ -8,7 +8,7 @@ export function DatabaseBackups() {
   const [locationOpen, setLocationOpen] = useState(false);
   const [backupFolder, setBackupFolder] = useState('');
   const [error, setError] = useState('');
-  const [action, setAction] = useState<'portable' | 'verify' | 'import' | 'prepare'>();
+  const [action, setAction] = useState<'portable' | 'verify' | 'import' | 'prepare' | 'automatic'>();
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [selected, setSelected] = useState('');
@@ -26,7 +26,8 @@ export function DatabaseBackups() {
   }
   useEffect(() => {
     const controller = new AbortController(); void refresh(controller.signal);
-    return () => controller.abort();
+    const timer = window.setInterval(() => { void refresh(controller.signal); }, 60000);
+    return () => { controller.abort(); window.clearInterval(timer); };
   }, []);
   const portable = status?.backups.filter(backup => backup.portable) || [];
   const labels = portable.map(backup => new Date(backup.createdAt).toLocaleString() + ' · ' + backup.name.slice(-8));
@@ -51,15 +52,15 @@ export function DatabaseBackups() {
   async function submit() {
     if (locked.current || !action) return;
     if (passphrase.length < 12 || new TextEncoder().encode(passphrase).length > 1024) { setError('Use a separate recovery passphrase of at least 12 characters (maximum 1024 bytes), not your app PIN.'); return; }
-    if (action === 'portable' && passphrase !== confirmation) { setError('The recovery passphrases do not match.'); return; }
+    if ((action === 'portable' || action === 'automatic') && passphrase !== confirmation) { setError('The recovery passphrases do not match.'); return; }
     if ((action === 'verify' || action === 'prepare') && !selected) { setError('Select a portable backup first.'); return; }
     locked.current = true; setBusy(true); setError('');
     try {
-      const result = await databaseBackupApi.run(action, passphrase, selected, action === 'import' ? { files: await importFiles() } : {});
+      const result = await databaseBackupApi.run(action, passphrase, selected, action === 'import' ? { files: await importFiles() } : action === 'automatic' ? { confirmation } : {});
       if (action === 'prepare') {
         if (!result.token) throw new Error('Recovery preparation did not return a confirmation token.');
         setPrepared({ token: result.token, counts: result.counts || [] }); setRestoreConfirmation('');
-      } else setMessage({ title: action === 'portable' ? 'Portable backup saved' : action === 'import' ? 'Backup imported' : 'Recovery verified', text: action === 'portable'
+      } else setMessage({ title: action === 'automatic' ? 'Daily backups enabled' : action === 'portable' ? 'Portable backup saved' : action === 'import' ? 'Backup imported' : 'Recovery verified', text: action === 'portable'
         ? 'Saved to ' + result.path + '. Copy the entire folder to another device or secure cloud storage. Keep the recovery passphrase separately; it cannot be reset.'
         : action === 'import' ? 'The backup was imported and verified. Your current data has not changed. Select it below to verify or restore it.' : result.message || 'The encrypted backup was successfully recovered and checked. Current data was not replaced.' });
       if (result.name) setSelected(result.name);
@@ -90,10 +91,19 @@ export function DatabaseBackups() {
     }}><p>Enter an existing folder on the computer running this app. Future portable and weekly backups will be saved there. Existing backups stay in their original folder; the active database will not move.</p><div className="field"><label htmlFor="backup-folder">Full folder path *</label><input id="backup-folder" type="text" value={backupFolder} onChange={event => setBackupFolder(event.target.value)} disabled={busy} placeholder="/Users/yourname/Documents/Backups" /></div><p className="sub">A dedicated SQLite subfolder is created automatically. Keep portable backups on another device too. Older backups can still be imported from their original location.</p>{error && <p className="due-amount" role="alert">{error}</p>}</Dialog>}
     <p className="sub">Create a portable encrypted backup with a separate recovery passphrase. It can be recovered after reinstalling, without the original installation key. Your original JSON data is unchanged.</p>
     <div className="record-info-grid" style={{ marginBottom: 16 }}>
-      <div className="record-info"><b>Backup folder</b><span style={{ overflowWrap: 'anywhere' }}>{status?.directory || 'Loading…'}</span></div>
+      <div className="record-info"><b>Ongoing backup folder</b><span style={{ overflowWrap: 'anywhere' }}>{status?.directory || 'Loading…'}</span></div>
       <div className="record-info"><b>Weekly safety copies</b><span>Checked at startup and daily while running. These copies require the original database key.</span></div>
     </div>
+    {status?.initialBackup && <div className="record-info" style={{ marginBottom: 16 }}><b>Initial setup snapshot</b><span style={{ overflowWrap: 'anywhere' }}>{status.initialBackup}</span><p className="sub">Created during onboarding, before administrator setup and later transactions. This snapshot does not update automatically. Create a current portable backup to protect your latest records.</p></div>}
     <p className="sub">Weekly copies are not portable recovery bundles. Keep a passphrase-protected portable backup off this computer. No backups are automatically deleted.</p>
+    <div className="legal-acceptance-record" style={{ marginTop: 16 }}>
+      <strong>Daily portable recovery backups · {status?.automatic?.enabled ? 'Enabled' : 'Setup required'}</strong>
+      <p className="sub">Encrypted backups run at startup when overdue, then are checked hourly while the app is open. A successful backup is created at most once every 24 hours. Keep the backup folder on another device or copy it off this computer. No cloud upload is included.</p>
+      <div className="record-info-grid"><div className="record-info"><b>Last successful daily backup</b><span>{status?.automatic?.lastSuccess ? new Date(status.automatic.lastSuccess).toLocaleString() : 'Not created yet'}</span></div><div className="record-info"><b>Next due</b><span>{status?.automatic?.nextDue ? new Date(status.automatic.nextDue).toLocaleString() + ' · while app is open' : 'After setup'}</span></div></div>
+      {status?.automatic?.lastError && <p className="due-amount" role="alert">{status.automatic.lastError}</p>}
+      <button data-permission="settings.backup" className="btn btn-ghost" disabled={busy || !status} onClick={() => { setError(''); setAction('automatic'); }}>{status?.automatic?.enabled ? 'Change Daily Recovery Passphrase' : 'Enable Daily Backups'}</button>
+      <p className="sub">Your passphrase is never saved. Recovery-key material is encrypted using this installation’s database key (OS-protected in the desktop app). Changing the phrase affects new daily backups only; older backups retain their original phrase. Automatic backups are not deleted automatically.</p>
+    </div>
     <div className="btn-row"><button data-permission="settings.backup" className="btn btn-gold" disabled={busy || !status} onClick={() => { setError(''); setAction('portable'); }}>Create Portable Backup</button><button data-permission="settings.backup" className="btn btn-ghost" disabled={busy || !status} onClick={() => { setError(''); setBackupFolder(status?.backupRoot || ''); setLocationOpen(true); }}>Change Backup Folder</button><button data-permission="settings.restore" className="btn btn-ghost" disabled={busy || !status} onClick={() => fileInput.current?.click()}>Import Backup…</button><button className="btn btn-ghost" disabled={busy} onClick={() => { void refresh(); }}>Refresh Backups</button></div>
     <input ref={fileInput} type="file" multiple accept=".db,.json" aria-label="Import portable backup files" hidden onChange={event => { const selectedFiles = Array.from(event.currentTarget.files || []); event.currentTarget.value = ''; if (selectedFiles.length) { setFiles(selectedFiles); setError(''); setAction('import'); } }} />
     {portable.length > 0 && <div style={{ marginTop: 18 }}>
@@ -103,10 +113,10 @@ export function DatabaseBackups() {
     </div>}
     <p className="sub">Verify Recovery never replaces current data. Restore requires a passphrase, a separate confirmation and a safety copy. Finish any unsaved work first. Import all three backup files together; browser import is limited to 25 MB.</p>
     {error && !action && !prepared && <p className="due-amount" role="alert">{error}</p>}
-    {action && <Dialog title={action === 'portable' ? 'Protect your backup' : action === 'prepare' ? 'Prepare backup restoration' : action === 'import' ? 'Import portable backup' : 'Verify backup recovery'} confirmLabel={action === 'portable' ? 'Create Encrypted Backup' : action === 'prepare' ? 'Prepare Restore' : action === 'import' ? 'Import and Verify' : 'Verify Recovery'} busy={busy} onClose={close} onConfirm={() => { void submit(); }}>
-      <p>{action === 'portable' ? 'Choose a long, unique recovery passphrase. Do not use PIN 5512. Losing this phrase and the original key means losing access to the backup.' : 'Enter the passphrase used for this backup. Your current data will not be changed.'}</p>
+    {action && <Dialog title={action === 'automatic' ? 'Protect daily recovery backups' : action === 'portable' ? 'Protect your backup' : action === 'prepare' ? 'Prepare backup restoration' : action === 'import' ? 'Import portable backup' : 'Verify backup recovery'} confirmLabel={action === 'automatic' ? 'Enable & Create First Backup' : action === 'portable' ? 'Create Encrypted Backup' : action === 'prepare' ? 'Prepare Restore' : action === 'import' ? 'Import and Verify' : 'Verify Recovery'} busy={busy} onClose={close} onConfirm={() => { void submit(); }}>
+      <p>{action === 'portable' || action === 'automatic' ? 'Choose a long, unique recovery passphrase and keep it separately. Losing this phrase and the original key means losing access to the backup.' : 'Enter the passphrase used for this backup. Your current data will not be changed.'}</p>
       <div className="field"><label htmlFor="backup-passphrase">Recovery passphrase *</label><input id="backup-passphrase" type="password" autoComplete="off" required minLength={12} value={passphrase} disabled={busy} onChange={event => setPassphrase(event.target.value)} /></div>
-      {action === 'portable' && <div className="field" style={{ marginTop: 12 }}><label htmlFor="backup-confirm">Confirm recovery passphrase *</label><input id="backup-confirm" type="password" autoComplete="off" required minLength={12} value={confirmation} disabled={busy} onChange={event => setConfirmation(event.target.value)} /></div>}
+      {(action === 'portable' || action === 'automatic') && <div className="field" style={{ marginTop: 12 }}><label htmlFor="backup-confirm">Confirm recovery passphrase *</label><input id="backup-confirm" type="password" autoComplete="off" required minLength={12} value={confirmation} disabled={busy} onChange={event => setConfirmation(event.target.value)} /></div>}
       {error && <p className="due-amount" role="alert">{error}</p>}
     </Dialog>}
     {prepared && <Dialog title="Replace current database?" confirmLabel="Restore Backup" danger busy={busy} onClose={() => { if (!locked.current) { setPrepared(undefined); setError(''); } }} onConfirm={() => { void activate(); }}>

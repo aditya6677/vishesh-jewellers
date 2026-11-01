@@ -30,12 +30,13 @@ export const recordsApi = {
 export interface DataLocation { path: string; desktop: boolean }
 export interface BackupStatus { latest: string | null; desktop: boolean }
 export interface DatabaseBackupStatus extends BackupStatus {
-  backend: 'sqlite'; directory: string; backupRoot?: string;
+  backend: 'sqlite'; directory: string; backupRoot?: string; initialBackup?: string | null;
+  automatic?: { enabled: boolean; lastSuccess: string | null; nextDue: string | null; lastError: string | null };
   backups: { name: string; portable: boolean; createdAt: string }[];
 }
 export const databaseBackupApi = {
   status: (signal?: AbortSignal) => get<DatabaseBackupStatus>('/api/backup-status', signal),
-  run: async (action: 'portable' | 'verify' | 'import' | 'prepare' | 'activate' | 'location', passphrase: string, name?: string, extra: Record<string, unknown> = {}) => {
+  run: async (action: 'portable' | 'verify' | 'import' | 'prepare' | 'activate' | 'location' | 'automatic', passphrase: string, name?: string, extra: Record<string, unknown> = {}) => {
     const response = await fetch('/api/database-backup/' + action, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...extra, passphrase, name }), signal: AbortSignal.timeout(120000)

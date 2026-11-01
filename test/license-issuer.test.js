@@ -14,7 +14,8 @@ test('vendor CLI encrypts private keys, refuses overwrite and issues store-bound
   assert.throws(()=>execFileSync(process.execPath,[script,'keys','--public',publicFile,'--private',privateFile],options));
   const store=randomUUID();
   const token=execFileSync(process.execPath,[script,'issue','--private',privateFile,'--store',store,'--plan','Paid test','--limit','1000'],options).trim();
-  const license=verifyLicense(token,fs.readFileSync(publicFile,'utf8'),store);assert.equal(license.invoiceLimit,1000);assert.equal(license.expiresAt,null);
+  const license=verifyLicense(token,fs.readFileSync(publicFile,'utf8'),store);assert.equal(license.invoiceLimit,1000);assert.equal(license.expiresAt-license.issuedAt,365*86400000);
+  assert.throws(()=>execFileSync(process.execPath,[script,'issue','--private',privateFile,'--store',store,'--expires',new Date(Date.now()+400*86400000).toISOString()],options));
   const files=JSON.parse(fs.readFileSync(path.join(__dirname,'../package.json'),'utf8')).build.files;
   assert.equal(files.includes('scripts/license-issuer.js'),false);
 });

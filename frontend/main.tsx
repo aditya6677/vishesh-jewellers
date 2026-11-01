@@ -19,6 +19,7 @@ import { PinLock } from './components/PinLock';
 import { Navigation } from './components/Navigation';
 import { restoreTheme } from './theme';
 import { Workspace } from './workspace/Workspace';
+import { LicenseBanner } from './components/LicenseBanner';
 import { LegalGate } from './legal/LegalGate';
 
 restoreTheme();
@@ -50,11 +51,8 @@ if (window.vjAccountSession) {
   restricted.textContent = knownPermissions.filter(permission => !permissions.includes(permission)).map(permission => `[data-permission="${permission}"]{display:none!important}`).join('\n') + (!permissions.includes('invoices.create') ? '#btnCompleteSale,#btnSavePendingOrder{display:none!important}' : '');
   document.head.append(restricted);
   const planBanner = document.createElement('aside');
-  planBanner.setAttribute('aria-live', 'polite');
-  planBanner.className = 'license-status-banner';
-  planBanner.hidden = true; document.querySelector('main')?.prepend(planBanner);
-  const refreshPlan = async () => { try { const response = await fetch('/api/license'); if (!response.ok) return; const plan = await response.json() as { state: string; daysRemaining?: number; message: string }; planBanner.hidden = plan.state === 'disabled' || plan.state === 'paid'; planBanner.textContent = plan.state === 'trial' ? `Full-feature trial · ${plan.daysRemaining} days remaining · Manage your plan in Settings` : plan.message; } catch { /* API guards remain authoritative when a status refresh fails. */ } };
-  void refreshPlan(); setInterval(() => { void refreshPlan(); }, 60000); window.addEventListener('vj:license-refresh', () => { void refreshPlan(); });
+  document.querySelector('main')?.prepend(planBanner);
+  createRoot(planBanner).render(<LicenseBanner />);
   window.addEventListener('vj:lock-workspace', () => { void fetch('/api/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).finally(() => { location.href = '/login'; }); });
   const originalFetch = window.fetch.bind(window);
   window.fetch = async (...args) => { const result = await originalFetch(...args); if (result.status === 401) location.href = '/login'; if (result.status === 428) window.dispatchEvent(new Event('vj:legal-review')); return result; };

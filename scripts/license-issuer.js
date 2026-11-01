@@ -32,12 +32,14 @@ async function main() {
     fs.writeFileSync(values.public, pair.publicKey, { flag: 'wx', mode: 0o644 });
     console.log('Issuer keys created. Bundle only the public key; keep the encrypted private key and passphrase off customer machines.');
   } else {
-    const expiresAt = values.expires ? Date.parse(values.expires) : null;
+    const issuedAt = Date.now();
+    const annualTerm = 365 * 86400000;
+    const expiresAt = values.expires ? Date.parse(values.expires) : issuedAt + annualTerm;
     const invoiceLimit = values.limit ? Number(values.limit) : null;
-    if (!/^[a-f0-9-]{36}$/.test(values.store || '') || !values.plan.trim() || values.plan.length > 80 || (expiresAt !== null && (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now())) || (invoiceLimit !== null && (!Number.isSafeInteger(invoiceLimit) || invoiceLimit < 1))) throw new Error('Enter a valid store activation ID, future expiry and positive invoice allowance.');
+    if (!/^[a-f0-9-]{36}$/.test(values.store || '') || !values.plan.trim() || values.plan.length > 80 || !Number.isSafeInteger(expiresAt) || expiresAt <= issuedAt || expiresAt > issuedAt + annualTerm || (invoiceLimit !== null && (!Number.isSafeInteger(invoiceLimit) || invoiceLimit < 1))) throw new Error('Enter a valid store activation ID and positive invoice allowance. Paid subscriptions expire within 365 days; omit --expires for a full annual term.');
     const key = createPrivateKey({ key: fs.readFileSync(values.private), passphrase });
     if (key.asymmetricKeyType !== 'ed25519') throw new Error('An Ed25519 issuer key is required.');
-    const payload = Buffer.from(JSON.stringify({ version: 1, installationId: values.store, type: 'paid', plan: values.plan, expiresAt, invoiceLimit })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ version: 1, installationId: values.store, type: 'paid', plan: values.plan, issuedAt, expiresAt, invoiceLimit })).toString('base64url');
     console.log(payload + '.' + sign(null, Buffer.from(payload), key).toString('base64url'));
   }
 }

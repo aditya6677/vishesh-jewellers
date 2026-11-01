@@ -1,0 +1,72 @@
+'use strict';
+const test = require('node:test'), assert = require('node:assert/strict');
+const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+const { randomBytes } = require('node:crypto');
+const { openDatabase } = require('../lib/database/database');
+const { importSnapshot, readSnapshot } = require('../lib/database/snapshot-migration');
+const { DatabaseBackupService } = require('../lib/database/backup-service');
+const { restorePortableBackup } = require('../lib/database/portable-backup');
+
+test('daily backups survive original-key loss, run once per 24h and preserve manual copies', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'karatdesk-daily-'));
+  const key = randomBytes(32), databaseFile = path.join(directory, 'store.db');
+  const db = openDatabase(databaseFile, key, { create: true });
+  t.after(() => { if (db.open) db.close(); key.fill(0); fs.rmSync(directory, { recursive: true, force: true }); });
+  importSnapshot(db, { 'invoice-counter': 12, 'business-info': { name: 'Recovery Test' } }, { storeId: 'main', sourceSha256: 'b'.repeat(64), acknowledgeLegacy: true });
+  let now = new Date('2026-11-01T10:00:00Z');
+  const config = { databaseFile, backupDir: path.join(directory, 'backups') };
+  let service = new DatabaseBackupService(db, key, config, { now: () => now });
+  assert.equal(service.status().automatic.enabled, false);
+  const phrase = 'Daily recovery phrase kept separately!';
+  await assert.rejects(service.configureAutomatic(phrase, 'different phrase'), /do not match/);
+  const first = await service.configureAutomatic(phrase, phrase);
+  const expected = readSnapshot(db, 'main');
+  const metadata = fs.readFileSync(databaseFile + '.automatic-backup.json', 'utf8');
+  assert.ok(!metadata.includes(phrase)); assert.ok(!metadata.includes(key.toString('base64')));
+  assert.equal(service.status().automatic.lastSuccess, now.toISOString());
+  await service.createScheduled(); assert.equal(service.status().backups.length, 1);
+  service = new DatabaseBackupService(db, key, config, { now: () => now });
+  now = new Date('2026-11-02T09:59:59Z'); await service.createScheduled(); assert.equal(service.status().backups.length, 1);
+  now = new Date('2026-11-02T10:00:00Z'); await service.createScheduled(); assert.equal(service.status().backups.length, 2);
+  await assert.rejects(restorePortableBackup(first.path, 'Wrong recovery passphrase!', path.join(directory, 'wrong.db')), /Recovery failed/);
+  const restored = await restorePortableBackup(first.path, phrase, path.join(directory, 'recovered.db'));
+  const recovered = openDatabase(path.join(directory, 'recovered.db'), restored.key);
+  try { assert.deepEqual(readSnapshot(recovered, 'main'), expected); }
+  finally { recovered.close(); restored.key.fill(0); }
+  const replacement = path.join(directory, 'other-backups'); fs.mkdirSync(replacement);
+  await service.changeLocation(replacement);
+  now = new Date('2026-11-03T10:00:00Z'); await service.createScheduled();
+  assert.equal(service.status().backups.length, 1); assert.ok(fs.existsSync(first.path));
+  const newPhrase = 'Replacement daily recovery passphrase!';
+  const changed = await service.configureAutomatic(newPhrase, newPhrase);
+  const newRecovery = await restorePortableBackup(changed.path, newPhrase, path.join(directory, 'new-recovered.db')); newRecovery.key.fill(0);
+  assert.deepEqual(readSnapshot(db, 'main'), expected);
+});
+
+test('automatic backup reports destination failure and retries without advancing success', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'karatdesk-daily-failure-'));
+  const key = randomBytes(32), databaseFile = path.join(directory, 'store.db');
+  const db = openDatabase(databaseFile, key, { create: true });
+  t.after(() => { db.close(); key.fill(0); fs.rmSync(directory, { recursive: true, force: true }); });
+  let now = new Date('2026-11-01T10:00:00Z');
+  const service = new DatabaseBackupService(db, key, { databaseFile, backupDir: path.join(directory, 'backups') }, { now: () => now });
+  const phrase = 'Daily recovery failure test phrase';
+  await service.configureAutomatic(phrase, phrase);
+  const success = service.status().automatic.lastSuccess;
+  now = new Date('2026-11-02T10:00:00Z');
+  const original = service.directory; service.directory = path.join(directory, 'not-a-folder'); fs.writeFileSync(service.directory, 'blocked');
+  await assert.rejects(service.createScheduled());
+  assert.equal(service.automatic.status().lastSuccess, success);
+  assert.match(service.automatic.status().lastError, /failed/);
+  service.directory = original; await service.createScheduled();
+  assert.equal(service.status().automatic.lastError, null);
+  assert.equal(service.status().automatic.lastSuccess, now.toISOString());
+  const configuration = databaseFile + '.automatic-backup.json';
+  const saved = JSON.parse(fs.readFileSync(configuration, 'utf8'));
+  const salt = Buffer.from(saved.salt, 'base64'); salt[0] ^= 1;
+  fs.writeFileSync(configuration, JSON.stringify({ ...saved, salt: salt.toString('base64') }));
+  now = new Date('2026-11-03T10:00:00Z');
+  await assert.rejects(service.createScheduled());
+  assert.equal(service.automatic.status().lastSuccess, saved.lastSuccess);
+  assert.match(service.automatic.status().lastError, /failed/);
+});

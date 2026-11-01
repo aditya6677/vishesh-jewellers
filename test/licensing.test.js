@@ -19,6 +19,22 @@ function fixture(t) {
   const token=changes=>{const payload=Buffer.from(JSON.stringify({version:1,installationId:service.status().installationId,type:'paid',plan:'Paid test',expiresAt:null,invoiceLimit:null,...changes})).toString('base64url');return payload+'.'+sign(null,Buffer.from(payload),pair.privateKey).toString('base64url')};
   return {service,database,token,setTime:value=>{now=value},getTime:()=>now};
 }
+test('annual paid licence expires after 365 days, keeps data intact, and supplies renewal contacts', t => {
+  const f=fixture(t);f.service.beginTrial();const original=readSnapshot(f.database.db,'main'),start=f.getTime(),expiry=start+365*DAY;
+  const token=f.token({issuedAt:start,expiresAt:expiry});
+  assert.equal(f.service.activate(token).daysRemaining,365);
+  f.setTime(expiry-1);assert.equal(f.service.status().daysRemaining,1);assert.equal(f.service.status().writable,true);
+  f.setTime(expiry);const expired=f.service.status();
+  assert.equal(expired.state,'expired');assert.equal(expired.writable,false);assert.equal(expired.daysRemaining,0);
+  assert.match(expired.message,/read-only/);assert.match(expired.message,/Team KaratDesk/);assert.match(expired.message,/7275493769/);
+  assert.equal(expired.support.email,'6677aditya@gmail.com');
+  assert.throws(()=>f.service.assertWrite(),/expired/);
+  assert.throws(()=>f.service.activate(token),/expired/);
+  assert.deepEqual(readSnapshot(f.database.db,'main'),original);
+  assert.equal(f.service.activate(f.token({issuedAt:expiry,expiresAt:expiry+365*DAY})).daysRemaining,365);
+  assert.deepEqual(readSnapshot(f.database.db,'main'),original);
+  assert.throws(()=>f.service.activate(f.token({issuedAt:expiry,expiresAt:expiry+400*DAY})),/term/);
+});
 test('14-day trial begins once, has full allowance, expires exactly and detects clock rollback',t=>{
   const f=fixture(t),before=readSnapshot(f.database.db,'main');
   assert.equal(f.service.status().state,'not-started');

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { legalStatus, type LegalDocument, type LegalStatus } from './legal-api';
 import { PolicyReader } from './PolicyReader';
+import support from '../../lib/domain/support-contact.json';
 
 export function LegalSupport() {
   const [status, setStatus] = useState<LegalStatus>();
@@ -24,7 +25,7 @@ export function LegalSupport() {
       {status.acceptance ? <dl><div><dt>Accepted by</dt><dd>{status.acceptance.name} · {status.acceptance.username}</dd></div><div><dt>Date</dt><dd>{new Date(status.acceptance.acceptedAt).toLocaleString()}</dd></div><div><dt>Policy version</dt><dd>{status.acceptance.policyVersion}</dd></div><div><dt>Recorded in app</dt><dd>v{status.acceptance.appVersion}</dd></div></dl> : <p>{status.enabled ? 'An Owner or Superadmin can review and accept the current licence. Existing records, exports and backups remain accessible.' : 'Recording administrator acceptance requires username/password accounts and the encrypted database. These documents are still available to read.'}</p>}
       {status.enabled && !status.accepted && <button type="button" className="btn btn-gold btn-sm" onClick={() => window.dispatchEvent(new Event('vj:legal-review'))}>Review licence</button>}
     </div>}
-    {status && <div className="legal-business-contact"><div><strong>{status.business.name}</strong><span>{status.business.address}</span></div><a className="btn btn-ghost btn-sm" href={'mailto:' + status.business.email + '?subject=KaratDesk%20support'}>{status.business.email} ↗</a></div>}
+    {status && <div className="legal-business-contact"><div><strong>{status.business.name}</strong><span>{status.business.address}</span><span>Trial or paid plan — call or email Team KaratDesk for support.</span></div><div className="legal-support-links"><a className="btn btn-ghost btn-sm" href={'mailto:' + support.email + '?subject=KaratDesk%20support'}>{support.email} ↗</a><a className="btn btn-ghost btn-sm" href={'tel:' + support.phoneHref}>Call {support.phone} ↗</a></div></div>}
     <p className="legal-privacy-note">Licence acceptance is stored in your encrypted local database. It is not consent to optional marketing or unrelated data use. Never send passwords, encryption keys or recovery passphrases to support.</p>
     {reading && <PolicyReader document={reading} close={() => setReading(undefined)} />}
   </section>;

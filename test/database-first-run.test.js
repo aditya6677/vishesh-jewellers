@@ -29,6 +29,18 @@ test('first-run creates a separate protected store and restores portable data wi
   await assert.rejects(provisionStore({ userData, safeStorage, platform: 'darwin', mode: 'new' }), /already configured/);
   const { key } = desktopDatabaseKey({ userData, safeStorage, platform: 'darwin', databaseFile: config.databaseFile });
   const db = openDatabase(config.databaseFile, key);
+  const { DatabaseBackupService } = require('../lib/database/backup-service');
+  const backups = new DatabaseBackupService(db, key, { databaseFile: config.databaseFile, backupDir: path.join(userData, 'default-backups') });
+  assert.equal(backups.status().backupRoot, fs.realpathSync(dir));
+  assert.equal(backups.status().initialBackup, config.initialBackup);
+  backups.createWeekly();
+  assert.equal(backups.status().backups.length, 1);
+  const changedFolder = path.join(dir, 'chosen-later'); fs.mkdirSync(changedFolder);
+  await backups.changeLocation(changedFolder);
+  const reopenedBackups = new DatabaseBackupService(db, key, { databaseFile: config.databaseFile, backupDir: dir });
+  assert.equal(reopenedBackups.status().backupRoot, fs.realpathSync(changedFolder));
+  assert.equal(reopenedBackups.status().initialBackup, config.initialBackup);
+  assert.ok(fs.existsSync(path.join(config.initialBackup, 'manifest.json')));
   const expected = readSnapshot(db, 'main');
   assert.equal(expected['invoice-counter'], 1);
   const backupDirectory = config.initialBackup;

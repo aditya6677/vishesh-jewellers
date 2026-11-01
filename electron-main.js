@@ -360,6 +360,8 @@ async function configureFirstRun({ recovery = false, mode, parent } = {}) {
   });
   process.env.DATABASE_FILE = installation.databaseFile;
   process.env.STORE_ID = installation.storeId;
+  if (installation.initialBackup) process.env.INITIAL_BACKUP = installation.initialBackup;
+  else delete process.env.INITIAL_BACKUP;
   if (installation.accountsEnabled) process.env.ACCOUNTS_ENABLED = '1';
   if (installation.licensingEnabled) process.env.LICENSING_ENABLED = '1';
 }

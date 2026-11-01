@@ -74,17 +74,11 @@ export function Settings() {
   }
 
   const disabled = Boolean(busy) || !location || Boolean(message?.reload);
-  return <>
+  return <div className="settings-workspace">
     <div className="page-head"><p className="eyebrow">Application settings</p><h2>Settings</h2><p className="sub">Manage encrypted data, backups, and readable reports.</p></div>
     {loadError && <p className="due-amount" role="alert">{loadError}</p>}
     {window.vjAccountSession && <LicensePlan />}
     {(!window.vjAccountSession || window.vjAccountSession.user.role === 'superadmin') && <StoreBranding />}
-    <div className="panel"><h3><span className="dot" />Data Location</h3>
-      <div className="record-info-grid" style={{ marginBottom: 18 }}><div className="record-info"><b>Current folder</b><span style={{ overflowWrap: 'anywhere' }}>{location?.path || (loadError ? 'Unavailable' : 'Loading…')}</span></div><div className="record-info"><b>Protection</b><span className="paid-amount">AES-256 encrypted</span></div></div>
-      <p className="sub">{window.vjDatabaseMode ? 'Database folder changes are disabled during this preview. Backups and restore do not change the configured data location.' : 'The desktop app copies existing data to the selected folder, then restarts. The old folder is not deleted.'}</p>
-      <div className="btn-row"><button className="btn btn-gold" disabled={disabled || !location?.desktop || window.vjDatabaseMode} onClick={() => setConfirmation('folder')}>Choose Data Folder</button><button className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { void reload(); }}>Refresh Settings</button></div>
-      {location && !location.desktop && !window.vjDatabaseMode && <p className="sub">Changing the data folder is available in the desktop app.</p>}
-    </div>
     <div className="panel" style={{ marginTop: 18 }}><h3><span className="dot" />Encrypted Backups</h3>
       {window.vjDatabaseMode ? <DatabaseBackups /> : <>
       <p className="sub">A backup is created automatically once per week when the {location?.desktop ? 'desktop app' : 'local server'} starts. You can also create one manually or restore a previous backup.</p>
@@ -102,11 +96,20 @@ export function Settings() {
       <button data-permission="settings.export" className="btn btn-gold" disabled={disabled} onClick={() => { void run('export'); }}>{busy === 'export' ? 'Preparing workbook…' : '↓ Export All Data to Excel'}</button>
     </div>
     {window.vjDatabaseMode && <LegacyImport />}
+    {window.vjDatabaseMode ? <section className="panel storage-overview" aria-label="Local data storage">
+      <div className="storage-overview-heading"><span className="storage-shield" aria-hidden="true">◇</span><div><h3>Your data stays on this computer</h3><p className="sub">Encrypted local storage. Manage recovery copies in Encrypted Backups above.</p></div><span className="storage-protection">AES-256 encrypted</span></div>
+      <details className="storage-advanced"><summary>Advanced storage details</summary><div className="storage-path"><span>Active database folder</span><code>{location?.path || (loadError ? 'Unavailable' : 'Loading…')}</code><p className="sub">For troubleshooting only. Do not move or delete this folder manually. To transfer your store, use a portable backup and recovery.</p></div></details>
+    </section> : <div className="panel"><h3><span className="dot" />Data Location</h3>
+      <div className="record-info-grid" style={{ marginBottom: 18 }}><div className="record-info"><b>Current folder</b><span style={{ overflowWrap: 'anywhere' }}>{location?.path || (loadError ? 'Unavailable' : 'Loading…')}</span></div><div className="record-info"><b>Protection</b><span className="paid-amount">AES-256 encrypted</span></div></div>
+      <p className="sub">{window.vjDatabaseMode ? 'Database folder changes are disabled during this preview. Backups and restore do not change the configured data location.' : 'The desktop app copies existing data to the selected folder, then restarts. The old folder is not deleted.'}</p>
+      <div className="btn-row"><button className="btn btn-gold" disabled={disabled || !location?.desktop || window.vjDatabaseMode} onClick={() => setConfirmation('folder')}>Choose Data Folder</button><button className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { void reload(); }}>Refresh Settings</button></div>
+      {location && !location.desktop && !window.vjDatabaseMode && <p className="sub">Changing the data folder is available in the desktop app.</p>}
+    </div>}
     <LegalSupport />
     {busy && <p role="status" aria-live="polite">Working… Please keep this window open.</p>}
     {confirmation && <Dialog title={confirmation === 'restore' ? 'Restore Backup?' : 'Change Data Folder?'} confirmLabel={confirmation === 'restore' ? 'Continue with Restore' : 'Choose Folder'} busy={Boolean(busy)} onClose={() => { setConfirmation(undefined); setSelectedFile(undefined); }} onConfirm={() => { void run(confirmation); }}>
       <p>{confirmation === 'restore' ? `Restoring ${selectedFile ? '“' + selectedFile.name + '”' : 'a backup'} replaces the current app data. A safety backup is saved first. The matching encryption key is required.` : 'Your existing data will be copied to the chosen folder and the desktop app will restart. Finish any unsaved work before continuing.'}</p>
     </Dialog>}
     {message && <Dialog title={message.title} onClose={() => { if (message.reload) window.location.reload(); else setMessage(undefined); }}><p>{message.text}</p></Dialog>}
-  </>;
+  </div>;
 }
